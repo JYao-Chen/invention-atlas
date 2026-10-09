@@ -18,6 +18,7 @@ import IndexProgress from './IndexProgress';
 import DataRecords from './DataRecords';
 import HelpManual from './HelpManual';
 import {restoredNavigation} from '@/lib/navigation-state';
+import {readEventStream as readSSE} from '@/lib/event-stream';
 type Tool={name:string;title:string;group:string;available:boolean;defaultParams?:Params;reason:string};
 const DEMO='分析当前数据集的主要申请人、技术主题和代表专利，展示引证关系，并拆解一项代表专利的权利要求，生成报告。';
 async function api(path:string,body?:unknown,method?:string){const response=await fetch('/api/'+path,{method:method||(body?'POST':'GET'),headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw new Error(data.error||'请求失败');return data;}
@@ -39,6 +40,9 @@ export default function Workbench(){
  const [modelForm,setModelForm]=useState({model:'',base:'',apiKey:''});
  const stream=useRef<AbortController|null>(null),currentRun=useRef(''),contentRef=useRef<HTMLElement|null>(null),chatRef=useRef<HTMLDivElement|null>(null),nearBottom=useRef(true);
  const [showLatest,setShowLatest]=useState(false);
+ const requestedFollowups=useRef(new Set<string>());
+ const [suggesting,setSuggesting]=useState('');
+ useEffect(()=>{const latest=turns.at(-1);if(report||busy||!latest||latest.followups?.length===5||!latest.answer.trim()||!['completed','partial'].includes(latest.status)||requestedFollowups.current.has(latest.id))return;requestedFollowups.current.add(latest.id);setSuggesting(latest.id);void (async()=>{try{const response=await fetch('/api/runs/'+latest.id+'/followups',{method:'POST',headers:{Accept:'text/event-stream'}});if(!response.ok||!response.body)return;await readSSE(response.body,text=>{const data=JSON.parse(text);if(Array.isArray(data.questions))setTurns(value=>value.map(r=>r.id===latest.id&&r.answer===latest.answer&&r.status!=='running'?{...r,followups:data.questions}:r));});}catch{}finally{setSuggesting(value=>value===latest.id?'':value);}})();},[turns,busy,report]);
  useEffect(()=>{if(nearBottom.current)chatRef.current?.scrollTo({top:chatRef.current.scrollHeight});},[turns,phase,mobileFocus]);
  useEffect(()=>{contentRef.current?.scrollTo({top:0});},[view,report?.id]);
  async function loadData(id?:string){const [d,config]=await Promise.all([api('datasets'),api('settings')]);setSettings(config);setModelForm({model:config.model,base:config.base,apiKey:''});setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));setMeta(selected);if(selected){const t=await api('tools?dataset='+selected.id);setTools(t.tools);await loadRecords(selected.id,1,'');}else{setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
@@ -71,7 +75,7 @@ export default function Workbench(){
  async function send(question=text){if(!meta||busy||!question.trim())return;setError('');setReport(undefined);setView('analysis');setMobileFocus(true);try{let id=conversationId;if(!id){const c=await api('conversations',{datasetId:meta.id});id=c.id;sessionStorage.setItem('patent-conversation',id);setConversationId(id);}const r=await api('runs',{conversationId:id,datasetId:meta.id,question});setRestored(false);setTurns(value=>[...value,r]);setText('');await follow(r.id);}catch(e){setError((e as Error).message);setBusy(false);}}
  async function runTool(){if(!meta||toolBusy||busy)return;setError('');setToolBusy(true);setReport(undefined);try{let params:Params;try{params=JSON.parse(parameters);}catch{throw new Error('参数格式不正确。请使用 JSON，例如 {} 表示默认范围。');}const title=tools.find(t=>t.name===selectedTool)?.title||selectedTool;const c=await api('conversations',{datasetId:meta.id,title:'工具 · '+title});const r=await api('runs',{conversationId:c.id,datasetId:meta.id,question:'直接运行：'+title,mode:'tool',steps:[{tool:selectedTool,params}]});sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setResults([]);setRestored(false);setPhase('');setTurns([r]);await follow(r.id);setNotice('任务已结束，结果与已完成分段已保存。');}catch(e){setError((e as Error).message);}finally{setToolBusy(false);}}
  async function save(r:Run){try{await api('reports',{runId:r.id});await refreshHistory();setNotice('报告已保存。可在报告库查看或下载。');}catch(e){setError((e as Error).message);}}
- async function retry(r:Run){try{await api('runs/'+r.id+'/retry-report',{});setTurns(value=>value.map(t=>t.id===r.id?{...t,status:'running',answer:'',error:''}:t));await follow(r.id);}catch(e){setError((e as Error).message);}}
+ async function retry(r:Run){try{await api('runs/'+r.id+'/retry-report',{});requestedFollowups.current.delete(r.id);setTurns(value=>value.map(t=>t.id===r.id?{...t,status:'running',answer:'',error:'',followups:undefined}:t));await follow(r.id);}catch(e){setError((e as Error).message);}}
  if(logged===null)return <div className="boot">正在打开专利分析工作台…</div>;
  if(!logged)return <main className="login">
 <div className="login-intro">
@@ -380,9 +384,9 @@ export default function Workbench(){
 <span>{r.status==='completed'?'已完成':r.status==='partial'?'部分完成':r.status==='running'?'进行中':r.status==='cancelled'?'已停止':r.status==='interrupted'?'运行中断':'失败'}</span>{!report&&r.status!=='running'&&<>
 <button disabled={busy||!meta} onClick={()=>send(r.question)}>重新运行问题</button>{r.results.length>0&&<button onClick={()=>save(r)}>保存报告</button>}{r.results.some(result=>result.status==='completed')&&<button disabled={busy} onClick={()=>retry(r)}>重新生成报告</button>}</>
 }</div>
+{!report&&r===shownTurns.at(-1)&&['completed','partial'].includes(r.status)&&<div className="followup-questions" aria-label="相关追问">{suggesting===r.id&&<small role="status">正在生成相关追问…</small>}{r.followups?.map(question=><button key={question} disabled={busy} onClick={()=>{setText(question);requestAnimationFrame(()=>document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus());}}>{question}<ArrowUpRight size={14}/></button>)}</div>}
 </section>)}</div>{!report&&busy&&activeTask&&<ExecutionProgress run={activeTask} title={progressTitle}/>
-} {!report&&phase&&!busy&&<div className="phase" role="status">{busy&&<span className="loading-dot"/>
-}{phase}</div>}{showLatest&&<button className="chat-jump" onClick={()=>{nearBottom.current=true;chatRef.current?.scrollTo({top:chatRef.current.scrollHeight,behavior:'smooth'});setShowLatest(false);}}>回到最新消息</button>}<PatentComposer text={text} onText={setText} onSend={()=>send()} onStop={()=>api('runs/'+currentRun.current+'/stop',{})} busy={busy} disabled={!meta||Boolean(report)}/>
+}{showLatest&&<button className="chat-jump" onClick={()=>{nearBottom.current=true;chatRef.current?.scrollTo({top:chatRef.current.scrollHeight,behavior:'smooth'});setShowLatest(false);}}>回到最新消息</button>}<PatentComposer text={text} onText={setText} onSend={()=>send()} onStop={()=>api('runs/'+currentRun.current+'/stop',{})} busy={busy} disabled={!meta||Boolean(report)}/>
 </aside>
 </div>
 </div>

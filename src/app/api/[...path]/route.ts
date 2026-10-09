@@ -9,6 +9,7 @@ import {TOOL_DEFS,executeTool,capability} from '@/server/tools';
 import {toolDefaults} from '@/server/planning';
 import {nameClusterTopics} from '@/server/cluster-topics';
 import {startRun,stopRun,isActive,retryReport} from '@/server/agent';
+import {followups} from '@/server/followups';
 import {importText,datasetMeta} from '@/server/importers';
 import {modelConfig,publicModelSettings,resolveModelSettings,saveModelSettings} from '@/server/config';
 import {embed,chat} from '@/server/model';
@@ -56,9 +57,15 @@ async function handle(request:Request,{params}:{params:Promise<{path:string[]}>}
   if(method==='DELETE'){if(runs(id).some(r=>isActive(r.id)))throw new Error('请先停止正在运行的任务');db.prepare('DELETE FROM conversations WHERE id=?').run(id);db.prepare('DELETE FROM runs WHERE conversation_id=?').run(id);return NextResponse.json({ok:true});}
  }
  if(resource==='runs'){
+  if(id&&action==='followups'&&method==='POST'){
+   if(!request.headers.get('accept')?.includes('text/event-stream'))return NextResponse.json({questions:await followups(id)});
+   const encoder=new TextEncoder();let closed=false;
+   const stream=new ReadableStream({start(output){const send=(data:unknown)=>{if(!closed)output.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));};void followups(id,questions=>send({questions})).then(questions=>send({questions,done:true})).catch(()=>send({done:true,error:'追问生成未完成'})).finally(()=>{if(!closed){closed=true;output.close();}});},cancel(){closed=true;}});
+   return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-cache','X-Accel-Buffering':'no'}});
+  }
   if(method==='POST'&&!id){const body=await request.json();const question=String(body.question||'').trim();if(!question||question.length>12000)throw new Error('问题应为1至12000字符');if(runs(body.conversationId).some(r=>isActive(r.id)))throw new Error('该对话已有任务在运行');if(body.mode==='tool'&&(!Array.isArray(body.steps)||body.steps.length!==1))throw new Error('直接工具任务必须指定一项工具');const r=startRun(body.conversationId,body.datasetId,question,body.steps,body.mode==='tool');const c=conversations().find(c=>c.id===body.conversationId);if(c?.title==='新对话')db.prepare('UPDATE conversations SET title=? WHERE id=?').run(question.slice(0,40),c.id);return NextResponse.json(r,{status:202});}
   if(action==='stop'){stopRun(id);return NextResponse.json({ok:true});}
-  if(action==='retry-report')return NextResponse.json(await retryReport(id),{status:202});
+  if(action==='retry-report'){const r=run(id);if(r&&!isActive(id)){delete r.followups;saveRun(r);}return NextResponse.json(await retryReport(id),{status:202});}
   const r=run(id);if(!r)return NextResponse.json({error:'运行不存在'},{status:404});
   if(action==='events'){
    let after=Number(url.searchParams.get('after')||0),closed=false;const encoder=new TextEncoder();let timer:ReturnType<typeof setTimeout>;
