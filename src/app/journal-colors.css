@@ -170,6 +170,12 @@ td { border-bottom-color:#e1e6ee }
 .followup-questions button svg { flex:none }
 .followup-heading { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:520px; gap:12px; color:var(--muted) }
 .followup-heading .followup-refresh { background:transparent; padding:4px 7px; font-size:12px; min-height:28px }
+.word-cloud-detail { max-height:340px; overflow:auto }
+.keyword-patents { border-top:1px solid var(--line); margin-top:8px; padding-top:8px }
+.keyword-patents>div { margin-top:8px }
+.keyword-patents span { display:block; font-size:11px; line-height:1.5 }
+.keyword-patents button { min-height:26px; padding:3px 0; border:0; background:transparent; color:var(--accent) }
+.keyword-patents blockquote { margin:5px 0; font-size:11px; line-height:1.5; color:var(--muted) }
 @media(max-width:730px){.assistant .chat-jump{right:16px;bottom:80px}.followup-questions button{font-size:14px}}
 .help-mobile-chapters { display:none }
 .help-reading-section { scroll-margin-top:20px }

@@ -9,6 +9,7 @@ import {citationMainPaths,citationScreening,extractEffects,type EffectExtractor}
 import {extractClaimElements} from './claim-analysis';
 import {compareClaims} from './claim-comparison';
 import {governedRecords,datasetAudit} from './research';
+import {linkRows} from './result-contract';
 import type {EntityRule} from '@/lib/types';
 
 export const TOOL_DEFS=[
@@ -24,13 +25,18 @@ export const TOOL_DEFS=[
 ] as const;
 const integer=z.preprocess(v=>typeof v==='string'&&/^\d+$/.test(v)?Number(v):v,z.number().int());
 export const paramsSchema=z.object({query:z.string().max(2000).optional(),top_k:integer.pipe(z.number().min(1).max(1000)).optional(),year_start:integer.optional(),year_end:integer.optional(),applicant:z.string().optional(),ipc:z.string().optional(),claim_numbers:z.array(integer.pipe(z.number().min(1))).max(1000).optional(),patent_numbers:z.array(z.string()).max(5).optional(),k:integer.pipe(z.number().min(2).max(12)).optional(),dimension:z.enum(['applicant','inventor']).optional(),strategies:z.array(z.object({name:z.string(),query:z.string()})).min(2).max(10).optional(),strategy_id:z.string().max(100).optional(),frequency:z.enum(['year','month']).optional(),counting:z.enum(['publication','family']).optional()}).strict();
-export function capability(tool:string,records:Patent[]){const def=TOOL_DEFS.find(d=>d[0]===tool);if(!def)return {available:false,reason:'未知工具'};if(tool==='analyze_legal_status'&&!records.some(p=>p.legalStatus&&p.legalAsOf))return {available:false,reason:'当前数据没有同时提供状态与来源时点的记录'};const missing=def[3].filter(field=>!records.some(p=>{const v=p[field as keyof Patent];return Array.isArray(v)?v.length>0:Boolean(v);}));return {available:records.length>0&&!missing.length,reason:!records.length?'尚未导入专利':missing.length?'当前数据缺少 '+missing.join('、'):''};}
+export function capability(tool:string,records:Patent[],datasetCount=records.length){const def=TOOL_DEFS.find(d=>d[0]===tool);if(!def)return {available:false,reason:'未知工具'};if(!records.length)return {available:false,reason:datasetCount?'当前研究范围或筛选条件没有匹配的专利；未执行统计，请调整分类、年份或检索范围。':'尚未导入专利'};if(tool==='analyze_legal_status'&&!records.some(p=>p.legalStatus&&p.legalAsOf))return {available:false,reason:'当前数据没有同时提供状态与来源时点的记录'};const missing=def[3].filter(field=>!records.some(p=>{const v=p[field as keyof Patent];return Array.isArray(v)?v.length>0:Boolean(v);}));return {available:!missing.length,reason:missing.length?'当前数据缺少 '+missing.join('、'):''};}
 export function scope(records:Patent[],params:Params){return records.filter(p=>(!params.year_start||Number(p.publicationDate.slice(0,4))>=params.year_start)&&(!params.year_end||Number(p.publicationDate.slice(0,4))<=params.year_end)&&(!params.applicant||p.applicants.some(x=>x.toLowerCase().includes(params.applicant!.toLowerCase())))&&(!params.ipc||p.ipc.some(x=>x.startsWith(params.ipc!))));}
 export type ToolContext={monitorScope?:string;entityRules?:EntityRule[];nameTopics?:(rows:Row[],records:Patent[],signal?:AbortSignal)=>Promise<Row[]>;onWork?:(done:number,total:number,label:string)=>void;semantic?:boolean;signal?:AbortSignal;queryVector?:number[];extract?:(patent:Patent)=>Promise<Row[]>;effectExtract?:EffectExtractor;onProgress?:(done:number,total:number)=>void;onCheckpoint?:(done:number,total:number,reused:number)=>void};
 export async function executeTool(name:string,input:unknown,meta:Dataset,all:Patent[],ctx:ToolContext={}):Promise<AnalysisResult>{
- const params=paramsSchema.parse(input);const specific=['search_patents','read_patent_details','analyze_claim_elements','compare_claims','analyze_tech_matrix','audit_dataset'].includes(name);const normalized=specific?all:governedRecords(all,ctx.entityRules||[]).records;const inputRecords=scope(normalized,params);const governed=governedRecords(inputRecords,[],specific?'publication':params.counting);const records=governed.records,def=TOOL_DEFS.find(d=>d[0]===name);if(!def)throw new Error('工具不存在');
- const result:AnalysisResult={id:randomUUID(),tool:name,title:def[1],status:'completed',datasetId:meta.id,params,summary:'',rows:[],warnings:['结果仅代表当前导入与筛选后的语料。'],method:'描述性统计',evidence:[],createdAt:new Date().toISOString()};const cap=capability(name,records);if(!cap.available)return {...result,status:'unavailable',summary:cap.reason};
+ const params=paramsSchema.parse(input);const specific=['search_patents','read_patent_details','analyze_claim_elements','compare_claims','analyze_tech_matrix','audit_dataset'].includes(name);
+ params.counting=specific?'publication':params.counting||'publication';
+ if(['search_patents','analyze_ipc_distribution','analyze_country_distribution','generate_wordcloud','analyze_yearly_keywords','analyze_burst_terms','analyze_competitor_evolution','analyze_entity_portfolio','analyze_patent_valuation','analyze_citation_network','analyze_family_geography','analyze_legal_status','audit_search_strategy','monitor_patent_changes'].includes(name))params.top_k=params.top_k||(name==='generate_wordcloud'?50:name==='analyze_yearly_keywords'?10:20);
+ if(name==='analyze_clustering')params.k=params.k||6;if(name==='analyze_co_network')params.dimension=params.dimension||'applicant';if(name==='analyze_patent_trend')params.frequency=params.frequency||'year';
+ const normalized=specific?all:governedRecords(all,ctx.entityRules||[]).records;const inputRecords=scope(normalized,params);const governed=governedRecords(inputRecords,[],params.counting);const records=governed.records,def=TOOL_DEFS.find(d=>d[0]===name);if(!def)throw new Error('工具不存在');
+ const result:AnalysisResult={id:randomUUID(),tool:name,title:def[1],status:'completed',datasetId:meta.id,params,summary:'',rows:[],warnings:['结果仅代表当前导入与筛选后的语料。'],method:'描述性统计',evidence:[],createdAt:new Date().toISOString()};
  result.scope={inputCount:inputRecords.length,analyzedCount:records.length,counting:specific?'publication':params.counting||'publication',patentIds:records.map(p=>p.id),entityRules:ctx.entityRules||[]};
+ const cap=capability(name,records,meta.count);if(!cap.available)return {...result,status:'unavailable',summary:cap.reason,rowSources:[]};
  if(params.counting==='family'&&!specific)result.warnings.push(`按来源familyId去重，保留最早公开件；${governed.unknown} 条缺标识记录独立保留。代表件字段不等同于全同族信息。`);
  if(ctx.entityRules?.length)result.warnings.push('申请人按人工确认的别名规则归并；原始名称和受让人字段未改写。');
  const top=params.top_k||20;const summary=(text:string)=>result.summary=text;const evidence=(ps:Patent[])=>result.evidence.push(...ps.map(p=>p.id));
@@ -88,5 +94,5 @@ export async function executeTool(name:string,input:unknown,meta:Dataset,all:Pat
   result.method='claim-evidence-v2：按原文片段编号辅助拆解全部指定权利要求与技术关联；逐字定位引文、每段保存断点；claim_numbers可显式选择，不限制前三项或8个要素。';summary(`分析 ${selected.length} 条专利的 ${selected.reduce((n,p)=>n+p.claims.filter(c=>!params.claim_numbers||params.claim_numbers.includes(c.number)).length,0)} 项权利要求，提取 ${result.rows.length} 个可定位要素。`);result.warnings.push('模型辅助抽取需要人工复核；这不是权利范围解释、侵权判断或FTO意见。');evidence(selected);break;
  }
  }
- if(ctx.signal?.aborted)throw new Error('任务已停止');return result;
+ if(ctx.signal?.aborted)throw new Error('任务已停止');result.rowSources=linkRows(result,records);return result;
 }

@@ -69,6 +69,7 @@ export function saveRun(r:Run){db.prepare('INSERT OR REPLACE INTO runs VALUES(?,
 export function event(id:string,name:string,payload:unknown){db.prepare('INSERT INTO events(run_id,event,payload) VALUES(?,?,?)').run(id,name,JSON.stringify(payload));}
 export function events(id:string,after=0){return db.prepare('SELECT seq,event,payload FROM events WHERE run_id=? AND seq>? ORDER BY seq').all(id,after) as {seq:number;event:string;payload:string}[];}
 export function saveResult(r:AnalysisResult){db.prepare('INSERT OR REPLACE INTO results VALUES(?,?)').run(r.id,JSON.stringify(r));}
+export function savedResult(id:string):AnalysisResult|undefined{const row=db.prepare('SELECT payload FROM results WHERE id=?').get(id) as {payload:string}|undefined;return row?JSON.parse(row.payload):undefined;}
 export function savedResults(datasetId:string):AnalysisResult[]{return (db.prepare('SELECT payload FROM results ORDER BY rowid DESC').all() as {payload:string}[]).map(row=>JSON.parse(row.payload) as AnalysisResult).filter(result=>result.datasetId===datasetId).slice(0,24);}
 export function reports():{id:string;title:string;createdAt:string;run:Run}[]{return (db.prepare('SELECT * FROM reports ORDER BY created_at DESC').all() as {id:string;title:string;payload:string;created_at:string}[]).map(r=>({id:r.id,title:r.title,createdAt:r.created_at,...JSON.parse(r.payload)}));}
 export function saveReport(r:Run,title:string){const id=randomUUID();db.prepare('INSERT INTO reports VALUES(?,?,?,?,?)').run(id,title,r.id,JSON.stringify({run:r}),new Date().toISOString());return id;}

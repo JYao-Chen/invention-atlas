@@ -10,6 +10,12 @@ const {clusters,citationGraph,pagerank,concentration}=await import('../src/serve
 // These small invented fixtures exercise algorithms only. They are never imported into the app.
 const fixtures=[0,1,2].map(i=>({...normalize({id:`US${900+i}B1`,title:`Blockchain authentication ${i}`,abstract:'Encrypted transaction security privacy',applicants:i===0?['Alpha','Beta']:['Alpha'],assignees:['Different owner'],publication_date:`202${i}-01-01`,ipc:['G06F16/00'],cpc:['H04L9/32'],claims:[{number:1,text:'A method comprising verifying a transaction.'}],description:'Test fixture description',citations:i===0?['US901','US999']:['US999'],family_members:['US900B1','EP900A1'],legal_status:'Granted',legal_status_as_of:'2025-01-01'},'UNIT TEST ONLY'),embedding:i===2?[0,1]:[1,0]}));
 const meta=datasetMeta('UNIT TEST ONLY',fixtures,'test','test only');
+test('empty filtered ranges are not reported as an unimported dataset',async()=>{
+ const filtered=await executeTool('analyze_burst_terms',{ipc:'H04L'},meta,fixtures);
+ assert.match(filtered.summary,/筛选条件没有匹配/);assert.equal(filtered.scope?.analyzedCount,0);
+ const unimported=await executeTool('analyze_burst_terms',{}, {...meta,count:0},[]);
+ assert.equal(unimported.summary,'尚未导入专利');
+});
 const parameters:Record<string,object>={search_patents:{query:'blockchain',top_k:2},read_patent_details:{patent_numbers:['US900B1']},audit_search_strategy:{strategies:[{name:'a',query:'blockchain'},{name:'b',query:'authentication'}]},monitor_patent_changes:{query:'blockchain',strategy_id:'unit-test'}};
 for(const [name] of TOOL_DEFS){
  if(name==='compare_claims')continue; // Evidence matching is covered with a model stub in claim-comparison.test.ts and real-model acceptance.
