@@ -150,19 +150,8 @@ export default function Workbench(){
 <span>语义索引 <strong>{meta.indexed}/{meta.count}</strong>
 </span>
 </div>
-<section className="source-panel">
-{meta.source.startsWith('https')?<a href={meta.source} target="_blank" rel="noreferrer">打开数据来源 <ArrowUpRight size={14}/></a>:<span className="muted">{meta.source}</span>}
-<details>
-<summary>字段覆盖与缺失项</summary>
-<div className="coverage">{Object.entries(meta.coverage).map(([field,ratio])=>
-<div key={field}>
-<span>{{title:'标题',abstract:'摘要',applicants:'申请人',publicationDate:'公开日期',ipc:'IPC',cpc:'CPC',claims:'权利要求',description:'说明书',citations:'引证',familyId:'同族标识',familyMembers:'同族成员',legalStatus:'法律状态'}[field]||field}</span>
-<progress value={ratio} max={1}/>
-<strong>{Math.round(ratio*100)}%</strong>
-</div>)}</div>
-<ul>{meta.warnings.map(w=>
-<li key={w}>{w}</li>)}</ul>
-</details><IndexProgress key={meta.id} datasetId={meta.id} indexed={meta.indexed} total={meta.count} onUpdated={()=>loadData(meta.id)}/><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></section>
+<div className="dataset-actions">
+<IndexProgress key={meta.id} datasetId={meta.id} indexed={meta.indexed} total={meta.count} onUpdated={()=>loadData(meta.id)}/><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></div>
 <div className="list-heading">
 <h3>专利记录 <small>{total} 条</small>
 </h3>
