@@ -1,0 +1,6 @@
+'use client';
+import type {Run} from '@/lib/types';
+export default function ResearchTrail({run,onPatent}:{run:Run;onPatent:(id:string,datasetId:string)=>void}){
+ if(!run.scope)return null;const scope=run.scope;
+ return <details className="research-trail"><summary>研究范围 · {scope.mode==='dataset'?'当前数据集':scope.mode==='previous'?'沿用上轮结果':'检索候选集'} · {scope.patentIds.length} 条 · {scope.counting==='family'?'同族计数':'公开件计数'}</summary><div><p>{scope.query||'范围由本次执行计划确定'}{scope.sourceRunId&&' · 来源运行 '+scope.sourceRunId.slice(0,8)}</p>{scope.notes.map((note,i)=><p key={i}>{note}</p>)}{scope.selections.map((s,i)=><p key={i}><strong>{s.query}</strong> · {s.patentIds.length} 条 · {s.method}</p>)}{run.reviews?.map((review,i)=><p key={i}>检索复核 {review.round} · {review.decision==='expand'?'补检索':review.decision==='limited'?'范围受限':'继续分析'}：{review.reason}</p>)}<details><summary>查看范围内公开编号</summary><div className="research-ids">{scope.patentIds.map(id=><button className="text-link" key={id} onClick={()=>onPatent(id,run.datasetId)}>{id}</button>)}</div></details>{run.audit&&<ul>{run.audit.map((a,i)=><li key={i}>{run.plan[i]?.tool} · {a.status==='completed'?'完成':a.status==='missing'?'未执行':a.status==='unavailable'?'数据不足':'失败'}：{a.reason}</li>)}</ul>}</div></details>;
+}

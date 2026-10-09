@@ -1,0 +1,115 @@
+/* User-supplied scientific figure palette: colour encodes groups, not decoration. */
+:root {
+ --canvas:#f7f9fc; --paper:#ffffff; --ink:#2c323b; --muted:#606975;
+ --line:#dfe5ed; --soft:#f0f4f9; --action:#416397; --action-hover:#34517d;
+ --accent:#416397; --selected:#eaf1fa; --selected-line:#bfd0e7;
+ --green:#327567; --danger:#a23e50; --warning:#865a24;
+ --chart:#4f75b0; --indigo:#76618f; --amber:#9a713b;
+ --method-surface:#f3eff8; --history-surface:#faf3e9;
+}
+::selection { background:#d9e5f6; color:#243954 }
+.atlas-sidebar,.atlas-mobile-nav,.tool-groups { background:#fbfcfe }
+.topbar,.conversation-mode .topbar { background:#fff }
+.atlas-brand>svg { color:#4f75b0 }
+button:hover,.button:hover { background:#f0f4f9; border-color:#c9d4e2 }
+button:active,.button:active { background:#e4ecf6 }
+.primary:hover { background:var(--action-hover); border-color:var(--action-hover) }
+.primary:active { background:#2c466d }
+input,textarea,select { border-color:#dfe5ed }
+input::placeholder,textarea::placeholder { color:#6e7682 }
+.atlas-sidebar>.app-nav button:hover { background:#f0f4f9 }
+.atlas-sidebar>.app-nav button.active,.atlas-mobile-nav button.active { background:var(--section-tint,#eaf1fa); color:var(--section-ink,#365783) }
+.atlas-sidebar>.app-nav button svg,.atlas-mobile-nav button svg { color:var(--section-ink,#52637b) }
+[data-page="data"] { --section-tint:#e8f4f2; --section-ink:#326c63 }
+[data-page="analysis"] { --section-tint:#eaf1fa; --section-ink:#365783 }
+[data-page="history"] { --section-tint:#fbece9; --section-ink:#984c48 }
+[data-page="reports"] { --section-tint:#fbf3e3; --section-ink:#82612f }
+[data-page="settings"] { --section-tint:#f1ebf7; --section-ink:#705a8a }
+[data-page="assistant"] { --section-tint:#ebeff8; --section-ink:#52658d }
+[data-group] { --section-color:#6e99c8; --section-tint:#eef4fb; --section-ink:#365783 }
+[data-group="检索与读取"] { --section-color:#6e99c8; --section-tint:#eef4fb; --section-ink:#365783 }
+[data-group="数据与态势"] { --section-color:#73c5b7; --section-tint:#edf7f5; --section-ink:#326c63 }
+[data-group="热点与主题"] { --section-color:#ac99cd; --section-tint:#f3eff9; --section-ink:#705a8a }
+[data-group="竞争格局"] { --section-color:#ef6e65; --section-tint:#fdf0ed; --section-ink:#984c48 }
+[data-group="技术路线"] { --section-color:#82b6df; --section-tint:#edf6fc; --section-ink:#3d647f }
+[data-group="价值与机会"] { --section-color:#c49c4a; --section-tint:#fcf5e7; --section-ink:#82612f }
+[data-group="引证与同族"] { --section-color:#657da0; --section-tint:#eef1f7; --section-ink:#455d80 }
+[data-group="审计与监测"] { --section-color:#eb965e; --section-tint:#fdf2e9; --section-ink:#925c30 }
+[data-group="法律与权利要求"] { --section-color:#e3b7bc; --section-tint:#faf0f2; --section-ink:#8d5260 }
+.tool-groups details { border-left:3px solid var(--section-color); padding-left:6px; margin:5px 0 10px }
+.tool-groups summary { color:var(--section-ink) }
+.tool-groups button:hover,.tool-groups button.active { background:var(--section-tint); color:var(--section-ink) }
+.tool-params>h3 { color:var(--section-ink); background:var(--section-tint); border-left:3px solid var(--section-color); border-radius:6px; padding:10px 12px }
+.tool-params>.primary { background:var(--section-ink); border-color:var(--section-ink) }
+.tool-params>.primary:hover { filter:brightness(.93) }
+.suggested-questions button[data-group] { background:var(--section-tint); border:1px solid var(--line); border-top:3px solid var(--section-color); box-shadow:none }
+.suggested-questions button[data-group] strong { color:var(--section-ink) }
+.suggested-questions button[data-group]:hover { border-color:var(--section-color); background:var(--section-tint) }
+.result-panel { border-top:3px solid var(--section-color,#6e99c8); background:#fff }
+.result-panel>header { background:var(--section-tint,#eef4fb); border-radius:8px; padding:9px 12px; margin-bottom:14px }
+.result-panel>header h3 { color:var(--section-ink,#365783) }
+.result-tabs button { background:#f4f6fa; color:#465466; border:1px solid transparent }
+.result-tabs button.selected { background:var(--section-tint,#eef4fb); color:var(--section-ink,#365783); border-color:var(--section-color,#6e99c8) }
+.result-tabs button:hover,.top-actions button:hover,.settings-actions button:not(.primary):hover { background:#eaf1fa }
+.source-panel { background:#eef6fb; border-color:#d6e5f0; border-left-color:#82b6df }
+.source-panel.research-settings { background:#f4f0f9; border-color:#e3dced; border-left-color:#ac99cd }
+.import-panel { background:#faf4e9; border:1px solid #eadfc9; border-left:3px solid #c49c4a; padding:12px 18px; border-radius:12px }
+.dataset-facts>span { padding:5px 12px; border-radius:6px; background:#eef4fb; color:#365783 }
+.dataset-facts>span:nth-child(2) { background:#edf7f5; color:#326c63 }
+.dataset-facts>span:nth-child(3) { background:#f3eff9; color:#705a8a }
+.dataset-facts strong { color:inherit }
+.dataset-overview>div:nth-child(1) { background:#eef4fb }
+.dataset-overview>div:nth-child(2) { background:#fdf0ed }
+.dataset-overview>div:nth-child(3) { background:#edf7f5 }
+.dataset-overview>div { padding:10px 14px; border-radius:8px }
+th { background:#edf2f8; color:#3c4d65 }
+tbody tr:nth-child(15n+1),tbody tr:nth-child(15n+2),tbody tr:nth-child(15n+3),tbody tr:nth-child(15n+4),tbody tr:nth-child(15n+5) { background:#f1f6fc }
+tbody tr:nth-child(15n+6),tbody tr:nth-child(15n+7),tbody tr:nth-child(15n+8),tbody tr:nth-child(15n+9),tbody tr:nth-child(15n+10) { background:#f0f8f6 }
+tbody tr:nth-child(15n+11),tbody tr:nth-child(15n+12),tbody tr:nth-child(15n+13),tbody tr:nth-child(15n+14),tbody tr:nth-child(15n+15) { background:#f6f2fa }
+tbody tr:nth-child(5n+6) td { border-top:1px solid #ccd9e7 }
+tbody tr:hover { background:#e5eef9 }
+.result-data-section:nth-child(3n+1)>h4 { color:#365783; border-left:3px solid #6e99c8; padding-left:10px }
+.result-data-section:nth-child(3n+2)>h4 { color:#326c63; border-left:3px solid #73c5b7; padding-left:10px }
+.result-data-section:nth-child(3n+3)>h4 { color:#705a8a; border-left:3px solid #ac99cd; padding-left:10px }
+.coverage-track>span { background:#6e99c8 }
+.coverage-table tr:nth-child(3n+2) .coverage-track>span { background:#73c5b7 }
+.coverage-table tr:nth-child(3n+3) .coverage-track>span { background:#ac99cd }
+.coverage>div:nth-child(3n+1) progress { accent-color:#6e99c8 }
+.coverage>div:nth-child(3n+2) progress { accent-color:#73c5b7 }
+.coverage>div:nth-child(3n+3) progress { accent-color:#ac99cd }
+.plan { background:#f3eff9; border-color:#e0d8ec; color:#705a8a }
+.research-trail { border-left:3px solid #6e99c8; background:#f4f8fd }
+.research-trail:has(.review-metrics) { border-left-color:#c49c4a; background:#fcf8ef }
+.question { background:#edf2fa; color:#2c323b }
+.execution-status { background:#f3eff9; border-color:#e0d8ec; color:#705a8a }
+.execution-status .execution-spinner { color:#76618f }
+.method { background:#f3eff9; border-color:#e0d8ec }
+.replay-banner { background:#fcf5e7; border-color:#eadfc9; color:#82612f }
+.phase { color:#52658d }
+.patent-composer-box:focus-within { border-color:#6e99c8; box-shadow:0 0 0 2px #6e99c81c }
+.settings-panel { border-top:3px solid #ac99cd; background:#fff }
+.settings-panel.embedding-settings { border-top-color:#73c5b7 }
+.claim-pair section:first-child blockquote { background:#eef4fb; border-left-color:#6e99c8 }
+.claim-pair section:last-child blockquote { background:#edf7f5; border-left-color:#73c5b7 }
+.claim-comparison article[data-relation="supported"] { border-top:3px solid #73c5b7 }
+.claim-comparison article[data-relation="partial"] { border-top:3px solid #c49c4a }
+.claim-comparison article[data-relation="not_found"] { border-top:3px solid #959595 }
+.cluster-topics p { border-left:3px solid var(--topic-color,#ac99cd); padding:8px 12px; background:#fafbfd }
+.node-detail { background:#eef4fb; border-color:#c4d5e9 }
+.cluster-svg>rect,.graph-svg>rect { fill:#fff }
+.cluster-svg>path { stroke:#8995a4 }
+.graph-svg { background:#fff }
+.graph-svg text { stroke:#fff }
+.graph-svg g:hover circle { stroke:#936bac }
+.assistant-scope,.phase { background:#f2f5fa }
+.parameter-editor textarea,.markdown pre,.markdown code { background:#f2f5fa }
+.search-box { border-color:var(--line) }
+td { border-bottom-color:#e1e6ee }
+.patent-title strong { color:var(--ink) }
+.cluster-legend button { background:#fff }
+.cluster-legend button.selected { background:#eef4fb; border-color:#6e99c8 }
+.recharts-bar-rectangle path { stroke:#526174; stroke-width:.45 }
+.cluster-legend button>span { outline:1px solid #52617455; outline-offset:-1px }
+.history-list>div:nth-child(3n+1) { border-left:3px solid #6e99c8 }
+.history-list>div:nth-child(3n+2) { border-left:3px solid #73c5b7 }
+.history-list>div:nth-child(3n+3) { border-left:3px solid #e3b7bc }

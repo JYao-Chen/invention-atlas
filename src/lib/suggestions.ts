@@ -1,4 +1,6 @@
 export const questions:Record<string,string>={
+ compare_claims:'选取两项原文完整且篇幅适中的专利，对照第1项权利要求，逐项列出技术要素的重合、差异和原文证据，不作侵权判断。',
+ audit_dataset:'审计当前数据集的字段缺失、日期格式、重复公开编号及权利要求原文定位，列出待复核项。',
  search_patents:'检索当前数据集中与数字身份认证相关的专利，列出代表专利和相关依据。',
  read_patent_details:'选择当前数据集中的一项专利，展示摘要、申请人、权利要求和原文来源。',
  get_dataset_summary:'检查当前数据集的时间范围、字段覆盖率和缺失项，说明哪些分析可以开展。',
@@ -16,13 +18,13 @@ export const questions:Record<string,string>={
  analyze_concentration:'计算这批专利的申请人集中度，解释CR3、CR5和HHI的含义。',
  analyze_tech_roadmap:'根据真实引证关系提取技术主路径，展示路径图及对应专利，不把引证解释为因果。',
  analyze_patent_valuation:'按引证指标筛选值得进一步复核的专利，展示指标依据，不输出商业估值。',
- analyze_tech_matrix:'从专利原文提取技术与效果，生成技术效果矩阵并保留原文证据。',
+ analyze_tech_matrix:'选取一项原文完整且篇幅适中的专利，完整读取摘要、权利要求和说明书，提取技术与效果并生成矩阵，保留原文证据。',
  analyze_citation_network:'展示这批专利的引证网络，分析共引和文献耦合，区分内部与外部引用。',
  analyze_family_geography:'分析已有真实同族信息的地域分布，说明同族范围与缺失覆盖。',
  audit_search_strategy:'比较blockchain与blockchain identity authentication两种检索策略，展示重合与独有命中。',
  monitor_patent_changes:'为blockchain检索建立数据变化监测基线；已有基线时报告新增和移除记录。',
  analyze_legal_status:'统计已有来源时点法律状态，标明未知记录、获取日期和第三方状态限制。',
- analyze_claim_elements:'选取一项代表专利，拆解权利要求的技术要素与依赖关系，逐项给出原文定位。',
+ analyze_claim_elements:'选取一项原文完整且篇幅适中的专利，拆解全部权利要求的技术要素与依赖关系，逐项给出原文定位。',
 };
 export function suggest(tools:{name:string;title:string;group:string;available:boolean}[],previous:string[]=[],random=Math.random){
  const candidates=tools.filter(t=>t.available&&questions[t.name]);

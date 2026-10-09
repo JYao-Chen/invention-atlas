@@ -13,6 +13,9 @@ scripts/*
 !scripts/index-demo.ts
 !scripts/enrich-public.ts
 !scripts/enrich-commercial-context.ts
+!scripts/verify-research.ts
+!scripts/evaluate-research.ts
+!scripts/verify-workbench.ts
 docs/local/
 *.sqlite*
 *.log

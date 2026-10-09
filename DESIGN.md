@@ -1,218 +1,72 @@
 ---
 name: Invention Atlas
-description: 灰白与石墨的专利查询界面，以表格、查询控件和可回查证据承载分析。
+description: 沿用 TallyBear 的暖白纸面、柔和操作色、圆角面板与可折叠导航。
 colors:
-  canvas: "#f4f5f3"
-  paper: "#fff"
-  ink: "#272c29"
-  muted: "#626963"
-  line: "#d9ddd8"
-  soft: "#eef0ed"
-  action: "#303632"
-  action-hover: "#171c19"
-  accent: "#3d6859"
-  selected: "#e8ede8"
-  green: "#36745a"
-  danger: "#a23e3d"
-  warning: "#775c26"
-  chart: "#737e74"
-  chart-line: "#556c59"
-  graph-node: "#667b69"
-  graph-external: "#acb5a9"
-  graph-edge: "#c4cdc1"
+  canvas: "#faf7f2"
+  paper: "#fffdfa"
+  ink: "#453d38"
+  muted: "#776c64"
+  line: "#e9e1d8"
+  action: "#365f58"
+  selected: "#eaf0eb"
+  method: "#f4eef6"
 typography:
-  body:
-    fontFamily: '"Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif'
-    fontSize: "14px"
-    lineHeight: 1.65
-  headline:
-    fontSize: "20px"
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: "0"
-  section:
-    fontSize: "19px"
-    fontWeight: 600
-    letterSpacing: "0"
-  title:
-    fontSize: "15px"
-    fontWeight: 600
-  label:
-    fontSize: "13px"
-    fontWeight: 400
-  table:
-    fontSize: "13px"
-  table-header:
-    fontSize: "12px"
-    fontWeight: 500
-  identifier:
-    fontFamily: 'ui-monospace, "Noto Sans Mono CJK SC", monospace'
-    fontSize: "12px"
-    lineHeight: 1.5
+  body: Geist, PingFang SC, Microsoft YaHei, sans-serif
+  heading: LXGW WenKai, PingFang SC, sans-serif
+  identifier: ui-monospace, monospace
 rounded:
-  control: "3px"
-spacing:
-  control-y: "7px"
-  control-x: "13px"
-  field-y: "9px"
-  field-x: "11px"
-  panel-y: "22px"
-  panel-x: "24px"
-  content-y: "28px"
-  content-x: "32px"
-components:
-  button-primary:
-    backgroundColor: "{colors.action}"
-    textColor: "{colors.paper}"
-    rounded: "{rounded.control}"
-    padding: "7px 13px"
-  button-primary-hover:
-    backgroundColor: "{colors.action-hover}"
-    textColor: "{colors.paper}"
-  button-secondary:
-    backgroundColor: "{colors.paper}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.control}"
-    padding: "7px 13px"
-  field:
-    backgroundColor: "{colors.paper}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.control}"
-    padding: "9px 11px"
-  navigation-active:
-    backgroundColor: "{colors.selected}"
-    textColor: "{colors.ink}"
-    padding: "8px 14px"
-  result-tab-selected:
-    backgroundColor: "{colors.selected}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.control}"
-    padding: "5px 11px"
-  result-panel:
-    backgroundColor: "{colors.paper}"
-    textColor: "{colors.ink}"
-    padding: "22px 24px"
+  panel: 18px
+  control: 10px
+  field: 9px
 ---
 
 # Design System: Invention Atlas
 
 ## Overview
 
-**Creative North Star: "查询工作台"**
+用户指定整体参考 TallyBear。界面复用其实际导航、配色、控件与字体模式，不再沿用之前的蓝白顶部导航设计。保留专利功能，不引入财务模块、小熊形象或营销插画。TallyBear 源码只读，适配代码在本项目维护。
 
-灰白底色与石墨文字构成安静、直接的专利工作界面。查询表单、工具目录、数据表与结果放在同一工作平面；低饱和绿色用于证据链接、选择与数据呈现。用户已明确选择此方向，替换旧深蓝侧栏和蓝色按钮。
-
-界面首先呈现记录或可填写的查询控件。助手默认收起，按需成为任务窗；内容的层次依靠文字大小、间距和细线建立。登录、历史、报告、设置和原文阅读沿用同一色彩与控件语言。
-
-**Key Characteristics:**
-
-- 灰白背景、石墨主操作与绿色证据链接。
-- 顶部五入口导航，平面表格与小圆角控件。
-- 查询范围使用普通表单，完整 JSON 参数折叠呈现。
-- 助手按需展开，窄屏成为独立任务窗。
+相关实现为 `AtlasNavigation.tsx`、`globals.css` 和 `tally-ui.css`。新增样式使用 Atlas 的组件作用域，不导入 TallyBear 的全局 aside/header 选择器，避免影响原文窗和助手。
 
 ## Colors
 
-颜色以低饱和灰绿为底，操作与证据各有明确角色。规范值以 frontmatter 为准，来源为 `src/app/globals.css` 与 `src/components/ResultView.tsx`。
+暖白背景 #faf7f2、近白内容 #fffdfa、褐灰正文 #453d38、说明 #776c64、米色边框 #e9e1d8，沿用 TallyBear 的基础色。主按钮 #365f58，次按钮及选中态 #eaf0eb；主按钮悬停 #665078。计划和方法采用柔和淡紫底。
 
-### Primary
-
-石墨操作色用于“运行分析”“发送”“保存配置”等主按钮；悬停变为更深的石墨色。绿色证据色用于公开编号、来源链接、焦点轮廓与选中图谱节点。
-
-### Secondary
-
-灰绿色柱图、深灰绿折线与图谱节点构成数据色系；外部节点更浅，普通关系边使用淡灰绿。完成、警告与失败分别使用 green、warning、danger，并同时保留文字状态。
-
-### Neutral
-
-canvas 是应用底色，paper 是表格、表单与结果面板底色。ink 承载正文，muted 承载来源、说明和日期；line 划分平面内容，soft 与 selected 表达悬停和选中。
-
-**The Evidence Color Rule.** 证据链接与图谱选择使用绿色；主操作保持石墨色。
+图表保留12色分类、主题对应关系和图谱节点类型配色，不把全部数据改成单一主题色。来源限制与状态仍有文字说明。
 
 ## Typography
 
-**Body Font:** Noto Sans CJK SC，依次回退到 Microsoft YaHei、Segoe UI、sans-serif。当前实现使用系统字体栈，没有导入网络展示字体。
-
-**Label/Mono Font:** 公开编号使用 ui-monospace、Noto Sans Mono CJK SC、monospace；JSON 参数使用 ui-monospace、monospace。
-
-### Hierarchy
-
-- **Headline:** 页面标题使用 headline；手机缩小到 17px。
-- **Section:** 普通章节使用 section；查询工具标题为 17px，结果标题为 16px。
-- **Body:** 正文使用 body；报告与原文正文行高为 1.85，原文段落最大宽度为 78ch。
-- **Label:** 表单标签与表格正文为 13px；辅助信息与表头为 12px。
-- **Identifier:** 公开编号使用 identifier；表格数字使用等宽数字特性。
+正文使用本地 Geist 和中文系统字体；品牌和标题使用本地 LXGW WenKai。字体及授权文件与 TallyBear 使用同一版本，分别保留 Geist-LICENSE.txt 和 WenKai-OFL.txt。不请求第三方字体服务。公开编号与 JSON 参数保留等宽字体，数字保留等宽数字特性。
 
 ## Layout
 
-桌面为全高纵向应用框架：64px 顶部导航、最小 74px 数据上下文栏，下方内容独立滚动。内容常规内边距为 28px 32px 40px，主要内容最大宽度 1360px。导航含数据与证据、查询工作台、对话历史、报告库、模型与设置五个入口。
+桌面为236px左侧导航和弹性工作区；731–1050px导航为205px。侧栏可折叠为84px图标栏，按钮保留可读的aria-label及title，折叠状态保存在本应用独立的localStorage键中。数据、查询、历史、报告、设置五个入口不变，既有助手增加直接入口。
 
-查询工具框内部为 240px 工具目录与弹性参数区，参数区最大宽度 950px，查询字段最大宽度 720px。范围表单默认两列；检索词占满整行。结果面板纵向间隔 28px。表格允许局部横向滚动，普通表格最小宽度 640px，结果长文本列保留固定阅读宽度，不压缩成不可读的窄列。
+730px及以下隐藏侧栏，改为72px横向底部导航，并预留安全区和内容高度。手机保留全部五个入口，退出登录置于上下文栏。导航不会清空任务或历史。
 
-助手默认隐藏，展开时桌面宽 380px。1700px 及以上内容左右内边距增至 48px，助手增至 420px。1200px 及以下内容内边距为 24px，助手为 340px，工具目录为 205px，范围字段变为一列，覆盖率变两列。
-
-900px 及以下隐藏账号文字；助手展开后占满工作区并隐藏主内容。此宽度的覆盖率恢复三列，范围字段恢复两列。600px 及以下导航分为品牌行与五入口行，总高 101px；内容内边距为 21px 16px 32px，顶部新对话按钮隐藏，助手入口保留。工具目录在参数上方，最大高 185px；范围字段与覆盖率均为一列。列表标题与搜索换行，历史及报告操作换行；一般按钮最小高 40px，局部导航和工具按钮沿用各自紧凑高度。图谱高从 380px 变为 310px。原文窗从最大 900px / 95vw 变为手机全宽。
+助手继续占满工作区，不回到右侧小框。输入框自动增高、可展开，手机回车换行；底部导航不覆盖输入区。原文阅读保持独立覆盖层。
 
 ## Elevation & Depth
 
-主界面平面呈现，不给工具框、结果面板、表格或登录表单添加投影。白色内容与灰白底色通过细边框分离。原文阅读窗是唯一具有侧向投影的覆盖层：`-10px 0 28px #25322a1a`；遮罩为 `#27312b66`。
-
-助手展开使用 180ms ease-out 的裁切揭示，控件背景与边框使用 140ms 过渡。系统请求减少动画时禁用动画和过渡。
-
-**The Flat Workspace Rule.** 常驻内容使用底色与细线划分，投影只属于原文覆盖层。
+沿用 TallyBear 的近白面板与极轻投影 `0 3px 20px #453d3806`。设置、结果、工具目录及登录容器采用相同语言。原文窗保留覆盖层投影。减少动画偏好继续生效。
 
 ## Shapes
 
-输入框、普通按钮与图表提示框采用小圆角（3px）；工具、结果、表格及设置面板为直角边框。状态点为圆形（6px），柱图仅顶部两角圆润（3px）。图标为简洁线描，与文字同行，不成为装饰性视觉中心。
+面板18px圆角，手机16px，按钮10px，输入框9px，导航选项12px，登录表单24px。线描图标复用现有lucide-react，不增加另一套图标库。图表和专利原文不添加卡通装饰。
 
 ## Components
 
-### Buttons
-
-主按钮为石墨底白字，次按钮为白底细灰边，通常最小高 36px。悬停改变背景与边框，按下有更深状态；禁用时透明度为 0.5。综合分析按钮虽然保留调用端 primary 类，在查询介绍区域实际呈现白底次操作。
-
-### Inputs / Fields
-
-白底、灰绿细边与小圆角，内边距为 field。标签与控件间隔 6px；辅助说明位于字段下方。焦点使用 2px 绿色轮廓、3px 外偏移。完整参数默认折叠，展开后以 12px 等宽字体呈现 JSON。
-
-### Navigation
-
-白色顶部导航采用紧凑文字按钮。默认为 muted，悬停为 soft，当前入口为 selected 并使用 500 字重。手机保持全部五个入口，不切换到全局侧栏。
-
-### Result Tabs
-
-图表、图谱、数据表和下载处于同一工具条。选中标签为淡灰绿底与较深灰绿边；工具条允许换行。结果标题旁显示状态点，右侧保留文字状态。
-
-### Cards / Containers
-
-结果面板为白底、细边、直角、panel 内边距。数据来源说明通过上下分隔线融入文档平面；历史和报告是横向记录列表，不是卡片画廊。登录表单与设置区也使用白色直角边框。
-
-### Tables and Evidence
-
-表头为淡灰绿底，正文行用淡细线划分，悬停浅灰绿。专利编号与证据按钮为绿色文字；点击打开原文窗。长文本在单元格内部滚动，整表在容器内部横向滚动。方法与来源置于可展开的浅灰绿说明区。
-
-### Charts and Graph
-
-柱图为 chart，折线为 chart-line，坐标文字保持紧凑（10–11px）。图谱普通节点为 graph-node，外部节点为 graph-external；选择和查找高亮使用 accent。节点支持键盘，图谱上方保留查找、缩放、复位与导出控件，图下注明预览范围。
-
-### Assistant and Original Text
-
-助手通过顶部入口、新对话或综合分析展开；作用域、计划、进度、回答与输入区依次呈现。原文窗为独立白色阅读面，保留返回工作台与公开文献入口，公开编号、字段、摘要、权利要求及可展开全文按阅读顺序排列。
+- 主次按钮、侧栏选中态、表单和设置面板按 TallyBear 实际样式适配。
+- 推荐问题使用近白圆角面板，不再添加彩色细侧线。
+- 图表、图谱、数据表和下载继续位于同一结果工具条。
+- 进度保持紧凑状态行，详情按需展开，不恢复横向大进度条。
+- 数据概况为独立指标、实际年份与两列覆盖率；异构工具结果继续分表，真实缺失保留“—”。
+- 表格和原文中的长内容局部滚动，不靠截断丢弃数据。
 
 ## Do's and Don'ts
 
-### Do:
-
-- Do 使用顶部五入口导航、灰白内容平面和石墨主操作。
-- Do 使用绿色链接让公开编号与来源可回查。
-- Do 保留普通查询表单、折叠完整参数和局部可滚动表格。
-- Do 在窄屏把已展开助手切换为独立任务窗。
-- Do 用文字同时表达完成、数据不足、失败与历史运行状态。
-
-### Don't:
-
-- Don't 恢复旧深蓝侧栏、蓝色主按钮或营销主视觉。
-- Don't 给常驻内容添加投影、渐变或装饰性图片。
-- Don't 将工具目录扩展为全局导航。
-- Don't 把助手固定为默认常驻栏。
-- Don't 用颜色取代来源说明、数据限制或状态文字。
+- 保留真实数据、24项工具、模型配置、停止任务、历史恢复及报告导出。
+- 保留字体许可与MIT代码来源说明，不修改TallyBear的源码或配置。
+- 不恢复顶部五入口导航与蓝白主题；本轮用户指定的TallyBear参考优先。
+- 不带入小熊、财务组件、主题切换或与专利任务无关的功能。
+- 不以颜色代替来源、状态与数据限制，不伪造实时结果。

@@ -1,0 +1,98 @@
+/* TallyBear's MIT-licensed shell and control patterns, scoped to Atlas. */
+@font-face { font-family:Geist; src:url('/fonts/Geist-Variable.woff2') format('woff2'); font-display:swap }
+:root { color-scheme:light }
+.research-trail { margin:12px 0; padding:12px 16px; border:1px solid var(--line); border-radius:12px; background:var(--panel,#fff); font-size:13px }
+.research-trail summary { cursor:pointer; color:var(--muted) }
+.research-trail p,.research-trail li { overflow-wrap:anywhere }
+.research-trail form>label,.research-trail details label { display:block; margin:12px 0 }
+.research-trail input,.research-trail select { width:100%; margin-top:6px }
+.review-metrics { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 16px; margin:16px 0; font-size:12px }
+.review-metrics dd { margin:0; font-variant-numeric:tabular-nums }
+.review-row { padding:12px 0; border-bottom:1px solid var(--line) }
+.review-row blockquote { max-height:160px; overflow:auto; overflow-wrap:anywhere; margin:12px 0; padding:10px; background:var(--selected); font:12px/1.7 Geist,sans-serif }
+.research-trail textarea,.research-trail pre,.research-settings textarea { width:100%; max-width:100%; box-sizing:border-box; font:12px/1.6 monospace; white-space:pre-wrap; overflow-wrap:anywhere }
+.research-ids { display:flex; flex-wrap:wrap; gap:8px; padding:12px 0; max-height:220px; overflow:auto }
+.research-settings details { margin:16px 0 }
+.research-settings label { display:block; margin:12px 0 }
+.research-settings input[type=checkbox] { width:auto; margin-right:8px }
+.claim-comparison article { margin:16px 0; padding:16px; border:1px solid var(--line); border-radius:12px }
+.claim-comparison article>header { display:flex; gap:12px; justify-content:space-between; align-items:flex-start; flex-wrap:wrap }
+.claim-comparison article>header span { font-size:12px; color:var(--muted) }
+.claim-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; margin-top:14px }
+.claim-pair section { min-width:0 }
+.claim-pair blockquote { margin:12px 0; padding:12px; background:var(--selected); border-left:3px solid var(--accent); font:13px/1.7 Geist,sans-serif; overflow-wrap:anywhere; max-height:280px; overflow:auto }
+@media(max-width:730px) { .claim-pair { grid-template-columns:1fr } }
+.app-shell { flex-direction:row }
+.work-area { min-width:0; flex:1 }
+.atlas-sidebar { display:flex; flex-direction:column; flex-shrink:0; width:236px; height:100dvh; padding:24px 16px; overflow-y:auto; border-right:1px solid var(--line); background:#fcf9f5 }
+.atlas-sidebar-top { display:flex; flex-wrap:wrap; align-items:center; gap:12px }
+.atlas-brand { display:flex; align-items:center; gap:10px; width:100%; text-decoration:none; color:var(--ink) }
+.atlas-brand>svg { flex:none; color:var(--accent) }
+.atlas-brand strong { display:block; font-family:'LXGW WenKai',sans-serif; font-size:23px; line-height:1.3 }
+.atlas-brand small { display:block; color:var(--muted); font-size:11px; margin-top:6px }
+.atlas-sidebar-toggle { margin-left:auto; color:var(--muted); background:transparent; border:1px solid var(--line); padding:8px; min-width:40px; min-height:40px; border-radius:10px }
+.atlas-sidebar>.app-nav { display:grid; align-content:start; gap:8px; height:auto; margin-top:24px }
+.atlas-sidebar>.app-nav button { display:flex; justify-content:flex-start; gap:15px; color:var(--muted); background:transparent; padding:14px 16px; min-height:48px; border-radius:12px; font-size:14px; white-space:nowrap; border:0 }
+.atlas-sidebar>.app-nav button:hover { background:#f4ede5 }
+.atlas-sidebar>.app-nav button.active { background:var(--selected); color:var(--ink); font-weight:600; box-shadow:none }
+.atlas-sidebar>.app-nav svg { flex:none }
+.atlas-sidebar-account { margin-top:auto; padding-top:32px; color:var(--muted); font-size:12px }
+.atlas-sidebar-account>span { display:block; padding:8px 16px }
+.atlas-sidebar-account button { background:transparent; color:var(--muted); border:0; gap:12px; padding:10px 16px }
+.sidebar-collapsed .atlas-sidebar { width:84px; padding:24px 12px }
+.sidebar-collapsed .atlas-brand { justify-content:center }
+.sidebar-collapsed .atlas-brand span,.sidebar-collapsed .atlas-sidebar nav button span,.sidebar-collapsed .atlas-sidebar-account span { display:none }
+.sidebar-collapsed .atlas-sidebar-toggle { margin-inline:auto }
+.sidebar-collapsed .atlas-sidebar nav button,.sidebar-collapsed .atlas-sidebar-account button { padding:14px; justify-content:center; width:100% }
+.atlas-mobile-nav,.mobile-account-action { display:none }
+.topbar { background:var(--canvas); min-height:82px; padding:16px 36px }
+.topbar h1 { font-size:26px }
+.conversation-mode .topbar h1 { font-size:23px }
+button,.button { border-radius:10px; min-height:44px; padding:10px 16px }
+button:hover,.button:hover { background:#f4ede5; border-color:var(--line) }
+.primary { background:var(--action); color:white; border-color:var(--action) }
+.primary:hover { background:#665078; border-color:#665078 }
+input,textarea,select { border-radius:9px; padding:11px 13px; min-height:44px; background:white }
+.top-actions button { min-height:40px }
+.settings-actions button:not(.primary),.top-actions button,.result-tabs button { background:var(--selected); color:var(--ink); border-color:transparent }
+.settings-actions button:not(.primary):hover,.top-actions button:hover,.result-tabs button:hover { background:#f4ede5 }
+.result-tabs button.selected { background:#ede5f3; color:#63506d; border-color:transparent }
+.tool-picker { border:0; box-shadow:0 3px 20px #453d3806; border-radius:18px }
+.tool-groups button { border-radius:10px }
+.tool-groups button.active { background:var(--selected); color:var(--ink); box-shadow:none }
+.tool-groups { background:#fcf9f5 }
+.table-scroll { border-radius:12px }
+.patent-title,.text-link { min-height:24px; padding:0; background:transparent }
+.suggested-questions button[data-group] { border:0; border-radius:14px; padding:16px; background:var(--paper); box-shadow:0 3px 20px #453d3806 }
+.suggested-questions button[data-group] strong { color:var(--ink) }
+.suggested-questions button[data-group]:hover { background:var(--selected) }
+.patent-composer-box { border-radius:18px; border-color:var(--line) }
+.patent-composer-box:focus-within { box-shadow:0 0 0 2px #365f5810 }
+.patent-composer textarea { min-height:0 }
+.question { background:var(--selected); color:var(--ink); border-color:transparent }
+.conversation-mode .question { border-radius:16px 16px 4px 16px }
+.method { border:0; border-radius:12px }
+.login form { border:0; border-radius:24px; box-shadow:0 3px 20px #453d3806 }
+.report-narrative { border:0; border-radius:18px; box-shadow:0 3px 20px #453d3806 }
+.execution-status summary { padding:0 }
+@media(max-width:1050px) and (min-width:731px) { .atlas-sidebar { width:205px; padding:20px 12px } .atlas-brand strong { font-size:21px } .atlas-sidebar>.app-nav button { padding:14px 12px; gap:10px } }
+@media(max-width:730px) {
+ .app-shell { padding-bottom:calc(72px + env(safe-area-inset-bottom)) }
+ .atlas-sidebar { display:none }
+ .atlas-mobile-nav { position:fixed; z-index:10; bottom:0; left:0; right:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); height:calc(72px + env(safe-area-inset-bottom)); padding:7px 8px calc(7px + env(safe-area-inset-bottom)); background:#fcf9f5; border-top:1px solid var(--line) }
+ .atlas-mobile-nav button { display:flex; flex-direction:column; gap:3px; min-width:0; border:0; border-radius:12px; padding:7px 2px; background:transparent; color:var(--muted); font-size:11px }
+ .atlas-mobile-nav button.active { background:var(--selected); color:var(--ink); font-weight:600 }
+ .mobile-account-action { display:inline-flex }
+ .topbar,.conversation-mode .topbar { min-height:72px; padding:12px 16px }
+ .topbar h1,.conversation-mode .topbar h1 { font-size:21px }
+ .top-actions { gap:6px }
+ .top-actions button { padding:8px 10px; min-height:40px }
+ .top-actions>button:first-child { display:none }
+ .content { padding:18px 14px 28px }
+ .settings-panel,.result-panel { padding:20px 16px; border-radius:16px }
+ input,select,textarea { font-size:16px }
+ .patent-composer { padding:8px 12px }
+ .patent-composer textarea { font-size:16px }
+ .assistant-foot { margin-bottom:8px }
+ .graph-toolbar input { width:100% }
+}
