@@ -58,9 +58,10 @@ async function handle(request:Request,{params}:{params:Promise<{path:string[]}>}
  }
  if(resource==='runs'){
   if(id&&action==='followups'&&method==='POST'){
-   if(!request.headers.get('accept')?.includes('text/event-stream'))return NextResponse.json({questions:await followups(id)});
+   const refresh=request.headers.get('content-type')?.includes('application/json')?Boolean((await request.json()).refresh):false;
+   if(!request.headers.get('accept')?.includes('text/event-stream'))return NextResponse.json({questions:await followups(id,undefined,refresh)});
    const encoder=new TextEncoder();let closed=false;
-   const stream=new ReadableStream({start(output){const send=(data:unknown)=>{if(!closed)output.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));};void followups(id,questions=>send({questions})).then(questions=>send({questions,done:true})).catch(()=>send({done:true,error:'追问生成未完成'})).finally(()=>{if(!closed){closed=true;output.close();}});},cancel(){closed=true;}});
+   const stream=new ReadableStream({start(output){const send=(data:unknown)=>{if(!closed)output.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));};void followups(id,questions=>send({questions}),refresh).then(questions=>send({questions,done:true})).catch(()=>send({done:true,error:'追问生成未完成'})).finally(()=>{if(!closed){closed=true;output.close();}});},cancel(){closed=true;}});
    return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-cache','X-Accel-Buffering':'no'}});
   }
   if(method==='POST'&&!id){const body=await request.json();const question=String(body.question||'').trim();if(!question||question.length>12000)throw new Error('问题应为1至12000字符');if(runs(body.conversationId).some(r=>isActive(r.id)))throw new Error('该对话已有任务在运行');if(body.mode==='tool'&&(!Array.isArray(body.steps)||body.steps.length!==1))throw new Error('直接工具任务必须指定一项工具');const r=startRun(body.conversationId,body.datasetId,question,body.steps,body.mode==='tool');const c=conversations().find(c=>c.id===body.conversationId);if(c?.title==='新对话')db.prepare('UPDATE conversations SET title=? WHERE id=?').run(question.slice(0,40),c.id);return NextResponse.json(r,{status:202});}

@@ -168,6 +168,8 @@ td { border-bottom-color:#e1e6ee }
 .followup-questions:empty { display:none }
 .followup-questions button { text-align:left; justify-content:space-between; max-width:100%; white-space:normal; gap:12px; padding:8px 12px; border:0; background:#edf3fa; color:#426394; font-size:13px; border-radius:12px }
 .followup-questions button svg { flex:none }
+.followup-heading { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:520px; gap:12px; color:var(--muted) }
+.followup-heading .followup-refresh { background:transparent; padding:4px 7px; font-size:12px; min-height:28px }
 @media(max-width:730px){.assistant .chat-jump{right:16px;bottom:80px}.followup-questions button{font-size:14px}}
 .help-mobile-chapters { display:none }
 .help-reading-section { scroll-margin-top:20px }

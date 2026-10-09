@@ -12,9 +12,9 @@ export function questionLines(question:string,onQuestion:(value:string)=>void){
 }
 type Job={questions:string[];listeners:Set<(questions:string[])=>void>;promise:Promise<string[]>};
 const pending=new Map<string,Job>();
-export async function followups(id:string,receive?:(questions:string[])=>void):Promise<string[]>{
+export async function followups(id:string,receive?:(questions:string[])=>void,refresh=false):Promise<string[]>{
  const saved=run(id);if(!saved)throw new Error('运行不存在');
- if(saved.followups?.length===5){receive?.(saved.followups);return saved.followups;}
+ if(!refresh&&saved.followups?.length===5){receive?.(saved.followups);return saved.followups;}
  if(!['completed','partial'].includes(saved.status)||!saved.answer.trim())return [];
  let job=pending.get(id);
  if(!job){
@@ -25,7 +25,7 @@ export async function followups(id:string,receive?:(questions:string[])=>void):P
    const history=runs(saved.conversationId).filter(r=>r.createdAt<saved.createdAt).slice(-2).map(r=>({question:r.question,answer:r.answer.slice(0,1200)}));
    const parser=questionLines(saved.question,q=>{if(currentJob.questions.length>=5||currentJob.questions.includes(q))return;currentJob.questions.push(q);for(const listener of currentJob.listeners)listener([...currentJob.questions]);});
    try{
-    await chat('根据专利研究对话生成5个具体、简短、可直接发送的中文追问。严格输出JSONL，每行一个{"question":"问题"}，共5行，生成一条立即换行。不输出数组、编号、解释或Markdown。围绕本轮问题和回答继续研究，不重复已回答问题。分析建议只使用给定可用工具，不提全球实时检索、商业价格、侵权认定或不存在的资料。编号和主体只能来自给定内容；建议继续当前研究范围。功能咨询可推荐关联方法咨询。',JSON.stringify({history,question:saved.question,answer:saved.answer.slice(0,7000),kind:saved.kind,scope:saved.scope?{mode:saved.scope.mode,query:saved.scope.query,count:saved.scope.patentIds.length}:undefined,tools,results:saved.results.map(r=>({tool:r.tool,status:r.status,summary:r.summary}))}),{maxTokens:800,signal:AbortSignal.timeout(20000),onDelta:text=>parser.push(text)});
+    await chat('根据专利研究对话生成5个具体、简短、可直接发送的中文追问。严格输出JSONL，每行一个{"question":"问题"}，共5行，生成一条立即换行。不输出数组、编号、解释或Markdown。围绕本轮问题和回答继续研究，不重复已回答问题。每个追问对应明确功能，不混淆年度关键词与关键词突现。分析建议只使用给定可用工具，不提全球实时检索、商业价格、侵权认定或不存在的资料。工具不能补齐缺失引证、同族或状态；检索策略比较不能确认高被引遗漏；公开局分布不能推断跨国权利布局；法律状态仅描述已有资料子集，不能计算全库有效率。字段覆盖率不能当作缺失率。不要主动引用百分比。编号和主体只能来自给定内容；建议继续当前研究范围。功能咨询可推荐关联方法咨询。重新生成时提供不同研究角度，避免上一批原句。',JSON.stringify({previous:refresh?saved.followups:undefined,history,question:saved.question,answer:saved.answer.slice(0,7000),kind:saved.kind,scope:saved.scope?{mode:saved.scope.mode,query:saved.scope.query,count:saved.scope.patentIds.length}:undefined,tools,results:saved.results.map(r=>({tool:r.tool,status:r.status,summary:r.summary}))}),{maxTokens:800,signal:AbortSignal.timeout(20000),onDelta:text=>parser.push(text)});
    }finally{
     parser.finish();const current=run(id);if(current&&current.status!=='running'&&current.answer===saved.answer&&currentJob.questions.length){current.followups=[...currentJob.questions];saveRun(current);}pending.delete(id);
    }
