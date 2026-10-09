@@ -6,7 +6,7 @@ process.loadEnvFile('.env.local');
 const base=process.env.VERIFY_BASE||'http://127.0.0.1:3018',out=resolve(process.env.VERIFY_OUT||'/home/yao/artifacts/invention-atlas/acceptance-20261009');
 mkdirSync(out,{recursive:true});
 let cookie='';
-async function api(path:string,body?:unknown){const r=await fetch(base+'/api/'+path,{method:body?'POST':'GET',headers:{cookie,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});if(path==='login')cookie=(r.headers.get('set-cookie')||'').split(';')[0];const data=await r.json();if(!r.ok)throw Error(path+': '+data.error);return data;}
+async function api(path:string,body?:unknown){const r=await fetch(base+'/api/'+path,{method:body?'POST':'GET',headers:{cookie,'Connection':'close',...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});if(path==='login')cookie=(r.headers.get('set-cookie')||'').split(';')[0];const data=await r.json();if(!r.ok)throw Error(path+': '+data.error);return data;}
 await api('login',{username:process.env.PATENT_USERNAME||'jyao',password:process.env.PATENT_PASSWORD});
 const ds=await api('datasets'),datasetId=ds.active;const catalog=(await api('tools?dataset='+datasetId)).tools as {name:string;title:string;available:boolean;defaultParams:Params}[];
 type Check={mode:string;tool:string;question:string;runId?:string;status:string;error?:string;results?:{tool:string;status:string;rows:number;summary:string}[];deltas?:number;milliseconds:number};
@@ -22,5 +22,5 @@ async function check(tool:typeof catalog[number],mode:'tool'|'recommendation'){
 }
 const filter=(process.env.VERIFY_TOOLS||'').split(',').filter(Boolean),selected=catalog.filter(t=>!filter.length||filter.includes(t.name));
 const modes=(process.env.VERIFY_MODES||'tool,recommendation').split(',') as ('tool'|'recommendation')[];
-for(const mode of modes){let index=0;await Promise.all(Array.from({length:3},async()=>{while(index<selected.length){const tool=selected[index++];await check(tool,mode);}}));}
+for(const mode of modes){let index=0;await Promise.all(Array.from({length:Number(process.env.VERIFY_CONCURRENCY)||1},async()=>{while(index<selected.length){const tool=selected[index++];await check(tool,mode);}}));}
 const summary={datasetId,recordCount:ds.datasets.find((d:{id:string})=>d.id===datasetId)?.count,total:checks.length,passed:checks.filter(x=>x.status==='passed').length,failed:checks.filter(x=>x.status!=='passed'),checks};writeFileSync(resolve(out,'summary.json'),JSON.stringify(summary,null,2));console.log(JSON.stringify({total:summary.total,passed:summary.passed,failed:summary.failed.length}));process.exitCode=summary.failed.length?1:0;

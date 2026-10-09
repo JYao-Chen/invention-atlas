@@ -61,7 +61,7 @@ npx tsx scripts/prepare-help.ts
 
 截图放在 `public/help/`，应用与README共用，不复制另一套资源。电脑和手机文件名分别为 `desktop-*` 与 `mobile-*`。点击大图使用静态资源链接。
 
-`scripts/capture-help.ts`使用可选的Playwright安装。准备一个有专利及成功关键词分析历史的本地实例，配置 `.env.local` 登录凭证，再运行。没有安装Playwright时可在独立工具环境安装，并用 `PLAYWRIGHT_MODULE` 指向其模块路径；`CHROME_PATH`可指定现有Chromium，`ATLAS_CHECK_URL`可切换验证实例。
+`scripts/capture-help.ts`使用可选的Playwright安装。准备一个有专利及成功关键词分析历史的本地实例，配置 `.env.local` 登录凭证，再运行。没有安装Playwright时可在独立工具环境安装，并用 `PLAYWRIGHT_MODULE` 指向其模块路径；`CHROME_PATH`可指定现有Chromium，`ATLAS_CHECK_URL`可切换验证实例。工具章节的截图来自 `scripts/capture-analysis-manual.mjs` 读取的实际验收运行；截图来源清单记录运行ID、结果ID、数据集及参数，不重新执行分析。维护正文中的 `sections`，图片随相关操作小节显示。
 
 ```sh
 npx tsx scripts/capture-help.ts

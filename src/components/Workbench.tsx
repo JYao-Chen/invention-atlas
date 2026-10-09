@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState,useRef} from 'react';
-import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload,Files} from 'lucide-react';
+import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params} from '@/lib/types';
@@ -11,7 +11,6 @@ import PatentComposer from './PatentComposer';
 import PatentNarrative from './PatentNarrative';
 import AtlasNavigation,{atlasPages} from './AtlasNavigation';
 import ResearchTrail from './ResearchTrail';
-import RunReview from './RunReview';
 import DataResearchPanel from './DataResearchPanel';
 import SourceAcquisition from './SourceAcquisition';
 import ToolParameters from './ToolParameters';
@@ -50,7 +49,7 @@ export default function Workbench(){
  useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElement;const dialog=document.querySelector<HTMLElement>('.patent-detail');dialog?.querySelector<HTMLElement>('button')?.focus();const handle=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPatent(undefined);return;}if(event.key==='Tab'&&dialog){const controls=[...dialog.querySelectorAll<HTMLElement>('button,a[href],summary,[tabindex="0"]')];const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};document.addEventListener('keydown',handle);return()=>{document.removeEventListener('keydown',handle);opener?.focus();};},[Boolean(patent)]);
  async function changeDataset(id:string){stream.current?.abort();await api('datasets',{id},'PATCH');sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setResults([]);setReport(undefined);await loadData(id);}
  async function openPatent(id:string,datasetId=meta?.id){try{setPatent(await api(`patents/${id}?dataset=${datasetId}`));}catch(e){setError((e as Error).message);}}
- async function openConversation(c:Conversation,openAssistant=true){stream.current?.abort();setBusy(false);await loadData(c.datasetId);const detail=await api('conversations/'+c.id);sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setRestored(true);setTurns(detail.runs);setReport(undefined);setResults(detail.runs.flatMap((r:Run)=>r.results));if(openAssistant){setView('analysis');setMobileFocus(true);}const pending=detail.runs.find((r:Run)=>r.status==='running');if(pending)await follow(pending.id);}
+ async function openConversation(c:Conversation,openAssistant=true){stream.current?.abort();setBusy(false);if(openAssistant){setView('analysis');setMobileFocus(true);}try{await loadData(c.datasetId);const detail=await api('conversations/'+c.id);sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setRestored(true);setTurns(detail.runs);setReport(undefined);setResults(detail.runs.flatMap((r:Run)=>r.results));const pending=detail.runs.find((r:Run)=>r.status==='running');if(pending)await follow(pending.id);}catch(e){setError('打开对话失败：'+(e as Error).message);}}
  function newChat(){nearBottom.current=true;setShowLatest(false);if(!meta)void loadData();stream.current?.abort();sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setReport(undefined);setResults([]);setText('');setError('');setBusy(false);setPhase('');setMobileFocus(true);}
  async function follow(id:string){stream.current?.abort();const controller=new AbortController();stream.current=controller;currentRun.current=id;setBusy(true);setTurns(value=>value.map(r=>r.id===id?{...r,answer:''}:r));try{
   const response=await fetch('/api/runs/'+id+'/events',{signal:controller.signal});if(!response.ok||!response.body)throw new Error('无法读取任务进度');const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';
@@ -76,7 +75,7 @@ export default function Workbench(){
  if(logged===null)return <div className="boot">正在打开专利分析工作台…</div>;
  if(!logged)return <main className="login">
 <div className="login-intro">
-<Files size={27}/>
+<img className="login-logo" src="/brand/invention-atlas-mark.png" width={80} height={80} alt="Invention Atlas Logo"/>
 <h1>Invention Atlas</h1>
 <p>Patent analysis with traceable evidence</p>
 </div>
@@ -95,7 +94,7 @@ export default function Workbench(){
  const visible=report?report.run.results:results;const shownTurns=report?[report.run]:turns;const currentMeta=report?(report.run.datasetSnapshot||catalog.find(d=>d.id===report.run.datasetId)):meta;
  let scopeParams:Params={};try{const value=JSON.parse(parameters);if(value&&typeof value==='object'&&!Array.isArray(value))scopeParams=value;}catch{}
  function changeParam(key:keyof Params,value:string){try{const next=JSON.parse(parameters);if(!value.trim())delete next[key];else next[key]=key==='patent_numbers'?value.split(',').map(v=>v.trim()).filter(Boolean):['year_start','year_end','top_k','k'].includes(key)?Number(value):value;setParameters(JSON.stringify(next,null,2));}catch{setError('请先修正完整参数中的 JSON 格式。');}}
- const activeTask=turns.find(r=>r.id===currentRun.current);const progressTitle=activeTask?.progress?.tool==='report'?'生成报告':tools.find(t=>t.name===activeTask?.progress?.tool)?.title||'执行分析任务';
+ const activeTask=turns.find(r=>r.id===currentRun.current);const progressTitle=activeTask?.kind==='help'?'查阅功能说明':activeTask?.progress?.tool==='report'?'生成报告':tools.find(t=>t.name===activeTask?.progress?.tool)?.title||'执行分析任务';
  return <div className={`app-shell ${sidebarCollapsed?'sidebar-collapsed':''}`}>
 <AtlasNavigation page={view} assistant={mobileFocus} collapsed={sidebarCollapsed} onToggle={toggleSidebar} onNavigate={key=>{setView(key);setMobileFocus(false);setReport(undefined);if(key!=='help')history.replaceState(null,'',location.pathname);}} onAssistant={()=>{setMobileFocus(true);}} username={settings?.username||'jyao'} onLogout={()=>void logout()}/>
 
@@ -106,12 +105,13 @@ export default function Workbench(){
 <span className="dataset-caption">{currentMeta?.name||'尚未导入数据'}</span>
 </div>
 <div className="top-actions">
-<button onClick={()=>{newChat();setView('analysis');}}>
+{mobileFocus&&<button aria-label="对话历史" onClick={()=>{setView('history');setMobileFocus(false);setReport(undefined);}}><MessagesSquare size={16}/><span className="mobile-action-label">对话历史</span></button>}
+<button aria-label="新对话" onClick={()=>{newChat();setView('analysis');}}>
 <Plus size={15}/>
-新对话</button>
+<span className="mobile-action-label">新对话</span></button>
 <button className="assistant-toggle" aria-label={mobileFocus?'收起助手':'打开助手'} aria-expanded={mobileFocus} aria-controls="analysis-assistant" onClick={()=>setMobileFocus(!mobileFocus)}>
 <PanelRight size={16}/>
-{mobileFocus?'返回工作区':'助手'}</button>
+<span className="mobile-action-label">{mobileFocus?'返回工作区':'助手'}</span></button>
 <button className="mobile-account-action" aria-label="退出登录" onClick={()=>void logout()}>
 <LogOut size={16}/>
 </button>
@@ -125,7 +125,7 @@ export default function Workbench(){
 <X size={15}/>
 </button>
 </div>}
- {view==='help'&&<HelpManual onOpen={(target,tool)=>{setReport(undefined);if(target==='assistant'){setView('analysis');setMobileFocus(true);}else{setView(target);setMobileFocus(false);}if(tool){setSelectedTool(tool);setParameters(JSON.stringify(defaults(tool,records[0]?.id)));}history.replaceState(null,'',location.pathname);}} onDemo={question=>{setView('analysis');setMobileFocus(true);setText(question);history.replaceState(null,'',location.pathname);}}/>}
+ {view==='help'&&<HelpManual toolsReady={tools.length>0} onOpen={(target,tool)=>{setReport(undefined);if(target==='assistant'){setView('analysis');setMobileFocus(true);}else{setView(target);setMobileFocus(false);}if(tool){setSelectedTool(tool);setParameters(JSON.stringify(tools.find(t=>t.name===tool)?.defaultParams||defaults(tool,records[0]?.id)));}history.replaceState(null,'',location.pathname);}} onDemo={question=>{setView('analysis');setMobileFocus(true);setText(question);history.replaceState(null,'',location.pathname);}}/>}
  {view==='data'&&<>
 <section className="data-header">
 <div>
@@ -263,8 +263,8 @@ export default function Workbench(){
 新对话</button>
 </div>
 <div className="history-list">{conversations.slice((visibleHistoryPage-1)*10,visibleHistoryPage*10).map(c=>
-<div key={c.id}>
-<button className="history-open" aria-label={'打开对话：'+c.title} onClick={()=>openConversation(c)}>
+<div key={c.id} className="history-row" onClick={e=>{if(!(e.target as HTMLElement).closest('button'))void openConversation(c);}}>
+<button className="history-open" aria-label={'打开对话：'+c.title} onClick={()=>void openConversation(c)}>
 <MessagesSquare size={20}/>
 <span>
 <strong>{c.title}</strong>
@@ -348,6 +348,7 @@ export default function Workbench(){
 <MessagesSquare size={19}/>
 <h2>分析助手</h2>
 </div>
+<button onClick={()=>{setView('history');setMobileFocus(false);setReport(undefined);}} aria-label="对话历史"><MessagesSquare size={16}/>对话历史</button>
 <button onClick={newChat} aria-label="新对话">
 <Plus size={16}/>
 新对话</button>
@@ -373,8 +374,8 @@ export default function Workbench(){
 </li>)}</ol>
 </details>}
 <ResearchTrail run={r} onPatent={openPatent}/>
-<PatentNarrative text={r.answer||(r.status==='running'?'正在执行分析，工具结果会逐项出现在这里。':r.results.length?'':'本次没有生成结果。')} results={r.results} onPatent={(id,datasetId)=>openPatent(id,datasetId)}/>
-<RunReview run={r} onPatent={openPatent}/>
+<PatentNarrative text={r.answer||(r.status==='running'?r.kind==='help'?'正在查阅功能说明。':'正在执行分析，工具结果会逐项出现在这里。':r.results.length?'':'本次没有生成结果。')} results={r.results} onPatent={(id,datasetId)=>openPatent(id,datasetId)}/>
+{r.kind==='help'&&<small className="graph-note">功能说明 · 依据使用说明回答，未执行数据分析</small>}
 {r.error&&<p className="error">{r.error}</p>}<div className="turn-actions">
 <span>{r.status==='completed'?'已完成':r.status==='partial'?'部分完成':r.status==='running'?'进行中':r.status==='cancelled'?'已停止':r.status==='interrupted'?'运行中断':'失败'}</span>{!report&&r.status!=='running'&&<>
 <button disabled={busy||!meta} onClick={()=>send(r.question)}>重新运行问题</button>{r.results.length>0&&<button onClick={()=>save(r)}>保存报告</button>}{r.results.some(result=>result.status==='completed')&&<button disabled={busy} onClick={()=>retry(r)}>重新生成报告</button>}</>

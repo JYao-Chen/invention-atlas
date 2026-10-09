@@ -25,7 +25,7 @@ for(const [device,width] of [['desktop',1440],['mobile',390]] as const){
  await page.locator('.content .word-cloud svg text').first().waitFor();
  await page.locator('.content .word-cloud').first().scrollIntoViewIfNeeded();await capture('cloud');
  await page.getByRole('button',{name:'打开助手',exact:true}).click();await page.locator('.assistant.is-open').waitFor();await capture('assistant');
- await nav.getByRole('button',{name:'对话历史',exact:true}).click();await capture('history');
+ await page.locator('.top-actions').getByRole('button',{name:'对话历史',exact:true}).click();await page.locator('.history-row').first().waitFor();await capture('history');
  if(errors.length)throw Error(errors.join('\n'));
  await page.close();
 }
