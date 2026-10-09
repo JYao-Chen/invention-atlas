@@ -1,0 +1,4 @@
+import type {Metadata} from 'next';
+import './globals.css';
+export const metadata:Metadata={title:'Invention Atlas · Patent analysis with traceable evidence',description:'专利检索、原文阅读与分析报告'};
+export default function Layout({children}:{children:React.ReactNode}){return <html lang="zh-CN"><body><script id="design-contract" type="application/json" dangerouslySetInnerHTML={{__html:JSON.stringify({thesis:'用户选定查询工作台：查询控件与结果同页，助手按需展开',world:'灰白底、石墨文字与按钮、低饱和绿色证据链接；平面表格、小圆角控件、中文工作字体',story:'确认数据范围、填写查询与过滤条件、执行工具、回查原文、保存报告',viewport:'64px顶部导航，74px上下文栏；全宽记录或工具目录加查询范围；助手默认隐藏',form:'查询工作台 / candidate 5 / 60513243 / user-pinned text direction, code-led execution',finish:'unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance'})}}/>{children}</body></html>;}

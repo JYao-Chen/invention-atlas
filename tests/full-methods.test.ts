@@ -1,0 +1,22 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+process.env.PATENT_DATA_DIR=mkdtempSync(join(tmpdir(),'patent-methods-'));
+const {normalize}=await import('../src/server/importers');
+const {lexical,kleinbergBursts,lifecycleFit,keywordWeights}=await import('../src/server/algorithms');
+const {extractClaimElements}=await import('../src/server/claim-analysis');
+const make=(id:string,title:string,year=2020)=>normalize({id,title,publication_date:`${year}-01-01`},'UNIT TEST ONLY');
+test('BM25 matches numerical formula and zero relevance stays empty',()=>{const records=[make('A','sensor sensor'),make('B','sensor camera')];const r=lexical(records,'sensor');const idf=Math.log(1+.5/2.5);assert.ok(Math.abs(r[0].score-idf*2*2.2/(2+1.2))<1e-12);assert.equal(r[0].p.id,'A');assert.equal(lexical(records,'nothing').length,0);});
+test('Kleinberg detects a planted interval but not a stationary word',()=>{const records=Array.from({length:10},(_,y)=>Array.from({length:100},(_,i)=>make(`${y}-${i}`,(y===5||y===6?i<90:i<1)?'emerging stable':'standard stable',2010+y))).flat();const bursts=kleinbergBursts(records);assert.ok(bursts.some(r=>r.word==='emerging'&&r.start_year==='2015'&&r.end_year==='2016'));assert.ok(!bursts.some(r=>r.word==='stable'));assert.ok(bursts.every(r=>Number.isFinite(Number(r.burst))));});
+test('TF-IDF annual reference preserves TF and document counts',()=>{const r=keywordWeights([make('A','sensor sensor unique')],[make('A','sensor sensor unique'),make('B','sensor')]);assert.equal(r.find(r=>r.word==='sensor')!.tf,2);assert.equal(r.find(r=>r.word==='unique')!.documents,1);});
+test('actual nonlinear lifecycle fitting exposes residuals and insufficient years',()=>{const records=Array.from({length:10},(_,i)=>Array.from({length:[2,3,5,10,20,20,10,5,3,2][i]},(_,j)=>make(`${i}-${j}`,'patent',2010+i))).flat();const r=lifecycleFit(records);assert.ok(r.fit);assert.ok(r.fit!.r_squared>.95);assert.ok(r.points.every(p=>'residual' in p));assert.equal(lifecycleFit(records.filter(p=>p.publicationDate<'2015')).fit,null);});
+test('all claims including fourth are extracted, selective scope and durable empty checkpoints work',async()=>{
+ const p={...make('US123B1','Test'),claims:Array.from({length:4},(_,i)=>({number:i+1,text:`A sensor ${i} measures temperature.`}))};let calls=0;
+ const request=async()=>{calls++;return JSON.stringify({elements:[{element:'测量部件',role:'部件',evidence_start:1,evidence_end:1}]});};
+ const r=await extractClaimElements('claims-test',[p],undefined,undefined,undefined,request);assert.deepEqual(r.map(r=>r.claim),[1,2,3,4]);assert.ok(r.every(r=>p.claims.find(c=>c.number===r.claim)!.text.includes(String(r.quote))));
+ await extractClaimElements('claims-test',[p],undefined,undefined,undefined,request);assert.equal(calls,4);
+ const selected=await extractClaimElements('claims-test',[p],[4],undefined,undefined,request);assert.deepEqual(selected.map(r=>r.claim),[4]);assert.equal(calls,4);
+ await assert.rejects(()=>extractClaimElements('bad-number',[p],[1],undefined,undefined,async()=>JSON.stringify({elements:[{element:'bad',evidence_start:999,evidence_end:999}]})),/证据编号错误/);
+});
