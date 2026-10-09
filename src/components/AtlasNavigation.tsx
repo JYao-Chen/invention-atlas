@@ -24,7 +24,7 @@ export default function AtlasNavigation({page,assistant,collapsed,onToggle,onNav
 
 <span>
 <strong>Invention Atlas</strong>
-<small>专利分析与原文</small>
+<small>专利分析平台</small>
 </span>
 </a>
 <button className="atlas-sidebar-toggle" aria-label={collapsed?'展开侧栏':'折叠侧栏'} aria-expanded={!collapsed} aria-controls="atlas-primary-navigation" onClick={onToggle}>{collapsed?<PanelLeftOpen size={19}/>
