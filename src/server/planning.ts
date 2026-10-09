@@ -2,10 +2,11 @@ import {z} from 'zod';
 import type {Params,Patent} from '@/lib/types';
 import {questions} from '@/lib/suggestions';
 import {TOOL_DEFS,paramsSchema} from './tools';
+import {descriptionChars} from './db';
 
 export function examplePatent(records:Patent[]){
  // Choose a complete, short document for the explicitly single-patent examples.
- return records.filter(p=>p.title&&p.abstract&&p.claims.length&&p.description).sort((a,b)=>(a.description.length+a.claims.reduce((n,c)=>n+c.text.length,0))-(b.description.length+b.claims.reduce((n,c)=>n+c.text.length,0))||a.id.localeCompare(b.id))[0];
+ return records.filter(p=>p.title&&p.abstract&&p.claims.length&&descriptionChars(p)).sort((a,b)=>(descriptionChars(a)+a.claims.reduce((n,c)=>n+c.text.length,0))-(descriptionChars(b)+b.claims.reduce((n,c)=>n+c.text.length,0))||a.id.localeCompare(b.id))[0];
 }
 export function toolDefaults(tool:string,records:Patent[]):Params{
  if(tool==='compare_claims'){const first=examplePatent(records);const second=examplePatent(records.filter(p=>p.id!==first?.id));return {patent_numbers:[first,second].filter((p):p is Patent=>Boolean(p)).map(p=>p.id),claim_numbers:[1]};}
@@ -18,7 +19,7 @@ export function toolDefaults(tool:string,records:Patent[]):Params{
 }
 export function recommendedTool(question:string){return Object.entries(questions).find(([,text])=>text===question.trim())?.[0];}
 export function completeRecommendedStep(step:{tool:string;params?:Params},question:string,records:Patent[]){
- return {tool:step.tool,params:recommendedTool(question)===step.tool?{...step.params,...toolDefaults(step.tool,records)}:step.params||{}};
+ return {tool:step.tool,params:recommendedTool(question)===step.tool?toolDefaults(step.tool,records):step.params||{}};
 }
 export function requiredParameters(tool:string){
  if(tool==='search_patents')return ['query'];

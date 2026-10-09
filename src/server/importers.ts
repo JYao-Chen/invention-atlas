@@ -57,6 +57,6 @@ export function importText(body:string,format:string,origin:string):Patent[]{
  throw new Error('不支持的导入格式');
 }
 export function datasetMeta(name:string,records:Patent[],source:string,sampling:string):Dataset{
- const coverage=Object.fromEntries(['title','abstract','applicants','publicationDate','ipc','cpc','claims','description','citations','familyId','familyMembers','legalStatus'].map(key=>[key,records.length?records.filter(p=>{const v=p[key as keyof Patent];return Array.isArray(v)?v.length>0:Boolean(v);}).length/records.length:0]));
+ const coverage=Object.fromEntries(['title','abstract','applicants','publicationDate','ipc','cpc','claims','description','citations','familyId','familyMembers','legalStatus'].map(key=>[key,records.length?records.filter(p=>{const v=p[key as keyof Patent];return key==='description'&&'deferredText' in p?Boolean((p as import('@/lib/types').AnalysisPatent).deferredText?.descriptionChars):Array.isArray(v)?v.length>0:Boolean(v);}).length/records.length:0]));
  return {id:randomUUID(),name,createdAt:new Date().toISOString(),count:records.length,source,sampling,coverage,years:[...new Set(records.map(p=>p.publicationDate.slice(0,4)).filter(Boolean))].sort(),warnings:['当前数据仅代表导入语料，不能据此推断整个行业的专利总量。',...(!coverage.legalStatus?['缺少来源时点法律状态，不代表目前有效或失效。']:[]),...(!coverage.familyMembers?['只有同族标识，缺少完整同族成员和各国权利状态。']:[])],indexed:records.filter(p=>p.embedding?.length).length};
 }

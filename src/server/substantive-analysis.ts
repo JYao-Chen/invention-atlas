@@ -2,7 +2,7 @@ import type {Patent,Graph,Row} from '@/lib/types';
 import {citationGraph,pagerank} from './algorithms';
 import {chat,jsonResponse} from './model';
 import {modelConfig} from './config';
-import {db} from './db';
+import {db,fullPatent} from './db';
 
 // SPC counts every source-to-sink path through an edge, without enumerating paths.
 // References: Batagelj, Efficient Algorithms for Citation Network Analysis (2003).
@@ -68,8 +68,8 @@ const modelExtract:EffectExtractor=async(text,signal)=>{
 };
 export async function extractEffects(datasetId:string,records:Patent[],signal?:AbortSignal,extract:EffectExtractor=modelExtract,onProgress?:(done:number,total:number)=>void,options:{cache?:boolean;onCheckpoint?:(done:number,total:number,reused:number)=>void}={}){
  db.exec('CREATE TABLE IF NOT EXISTS effect_checkpoints(dataset_id TEXT,patent_id TEXT,method TEXT,section TEXT,chunk_start INTEGER,payload TEXT,PRIMARY KEY(dataset_id,patent_id,method,section,chunk_start))');
- const method='full-text-evidence-v3:'+modelConfig().model,cache=options.cache??extract===modelExtract,results:Row[][]=Array.from({length:records.length},()=>[]),totalChunks=records.reduce((s,p)=>s+sourceChunks(p).length,0);let cursor=0,done=0,completedChunks=0,reused=0,stopped=false;
- const worker=async()=>{while(!stopped){const index=cursor++;if(index>=records.length)return;const p=records[index];try{
+ const method='full-text-evidence-v3:'+modelConfig().model,cache=options.cache??extract===modelExtract,results:Row[][]=Array.from({length:records.length},()=>[]),totalChunks=records.reduce((s,p)=>s+sourceChunks(fullPatent(datasetId,p)).length,0);let cursor=0,done=0,completedChunks=0,reused=0,stopped=false;
+ const worker=async()=>{while(!stopped){const index=cursor++;if(index>=records.length)return;const p=fullPatent(datasetId,records[index]);try{
   signal?.throwIfAborted();const rows:Row[]=[],seen=new Set<string>();for(const chunk of sourceChunks(p)){
     if(stopped)return;signal?.throwIfAborted();
     const cached=cache?db.prepare('SELECT payload FROM effect_checkpoints WHERE dataset_id=? AND patent_id=? AND method=? AND section=? AND chunk_start=?').get(datasetId,p.id,method,chunk.section,chunk.start) as {payload:string}|undefined:undefined;

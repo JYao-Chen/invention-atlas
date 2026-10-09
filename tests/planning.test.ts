@@ -18,3 +18,9 @@ test('missing monitor and read parameters fail before execution; arbitrary quest
  assert.deepEqual(toolDefaults('analyze_tech_matrix',records).patent_numbers,['REAL-SHORT']);
  assert.equal(stepSchema.safeParse({tool:'audit_search_strategy',params:{strategies:[{name:'a',query:''},{name:'b',query:'x'}]}}).success,false);
 });
+test('built-in dataset questions cannot gain model-invented year or applicant filters',()=>{
+ for(const tool of ['analyze_yearly_keywords','analyze_competitor_evolution','generate_wordcloud']){
+  assert.deepEqual(completeRecommendedStep({tool,params:{year_start:2024,year_end:2024,applicant:'invented',top_k:1}},questions[tool],records).params,toolDefaults(tool,records));
+ }
+ assert.equal(completeRecommendedStep({tool:'analyze_yearly_keywords',params:{year_start:2024}},'只分析2024年',records).params.year_start,2024);
+});

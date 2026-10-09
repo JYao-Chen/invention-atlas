@@ -3,13 +3,14 @@ import {DatabaseSync} from 'node:sqlite';
 import {mkdirSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import type {Dataset,Patent,Run,Conversation,AnalysisResult} from '@/lib/types';
+import type {Dataset,Patent,AnalysisPatent,Run,Conversation,AnalysisResult} from '@/lib/types';
 
 export const dataRoot=resolve(process.env.PATENT_DATA_DIR||'data');
 mkdirSync(dataRoot,{recursive:true});
 const globalDb=globalThis as unknown as {patentDb?:DatabaseSync};
 export const db=globalDb.patentDb||new DatabaseSync(resolve(dataRoot,'patents.sqlite'));
 globalDb.patentDb=db;
+function projection(payload:string){return `json_set(json_remove(${payload},'$.rawText','$.description','$.locations'),'$.rawText','','$.description','','$.locations',json('{}'),'$.deferredText',json_object('descriptionChars',length(json_extract(${payload},'$.description'))))`;}
 db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS datasets(id TEXT PRIMARY KEY,payload TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS patents(dataset_id TEXT NOT NULL,id TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(dataset_id,id));
@@ -21,11 +22,42 @@ CREATE TABLE IF NOT EXISTS monitors(key TEXT PRIMARY KEY,payload TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,expires_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS results(id TEXT PRIMARY KEY,payload TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS patent_analysis(dataset_id TEXT NOT NULL,id TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(dataset_id,id));
+CREATE TRIGGER IF NOT EXISTS patent_analysis_insert AFTER INSERT ON patents BEGIN
+ INSERT OR REPLACE INTO patent_analysis VALUES(NEW.dataset_id,NEW.id,${projection('NEW.payload')}); END;
+CREATE TRIGGER IF NOT EXISTS patent_analysis_update AFTER UPDATE ON patents BEGIN
+ DELETE FROM patent_analysis WHERE dataset_id=OLD.dataset_id AND id=OLD.id;
+ INSERT OR REPLACE INTO patent_analysis VALUES(NEW.dataset_id,NEW.id,${projection('NEW.payload')}); END;
+CREATE TRIGGER IF NOT EXISTS patent_analysis_delete AFTER DELETE ON patents BEGIN
+ DELETE FROM patent_analysis WHERE dataset_id=OLD.dataset_id AND id=OLD.id; END;
 `);
 export function setting(key:string,value?:string){if(value!==undefined)db.prepare('INSERT OR REPLACE INTO settings VALUES(?,?)').run(key,value);return (db.prepare('SELECT value FROM settings WHERE key=?').get(key) as {value:string}|undefined)?.value;}
 export function datasets():Dataset[]{return (db.prepare('SELECT payload FROM datasets ORDER BY rowid DESC').all() as {payload:string}[]).map(r=>JSON.parse(r.payload));}
 export function dataset(id?:string):Dataset|undefined{return datasets().find(d=>d.id===(id||setting('active_dataset')))||(!id?datasets()[0]:undefined);}
-export function patents(id:string):Patent[]{return (db.prepare('SELECT payload FROM patents WHERE dataset_id=? ORDER BY id').all(id) as {payload:string}[]).map(r=>JSON.parse(r.payload));}
+export function patents(id:string):Patent[]{const records:Patent[]=[];for(const row of db.prepare('SELECT payload FROM patents WHERE dataset_id=? ORDER BY id').iterate(id))records.push(JSON.parse(row.payload as string));return records;}
+export function patent(datasetId:string,id:string):Patent|undefined{const row=db.prepare('SELECT payload FROM patents WHERE dataset_id=? AND id=?').get(datasetId,id);return row?JSON.parse(row.payload as string):undefined;}
+export function analysisPatents(id:string):AnalysisPatent[]{
+ const records:AnalysisPatent[]=[];
+ ensureAnalysis(id);
+ const query=db.prepare('SELECT payload FROM patent_analysis WHERE dataset_id=? ORDER BY id');
+ for(const row of query.iterate(id))records.push(JSON.parse(row.payload as string));
+ return records;
+}
+function ensureAnalysis(id:string){
+ // Existing datasets are projected once. Triggers keep later imports, edits and vector writes in sync.
+ db.prepare(`INSERT OR IGNORE INTO patent_analysis SELECT dataset_id,id,${projection('payload')} FROM patents p WHERE dataset_id=? AND NOT EXISTS(SELECT 1 FROM patent_analysis a WHERE a.dataset_id=p.dataset_id AND a.id=p.id)`).run(id);
+}
+export function fullPatent(datasetId:string,p:AnalysisPatent):Patent{if(!p.deferredText)return p;const original=patent(datasetId,p.id);if(!original)throw new Error('原始专利记录不存在：'+p.id);return {...original,applicants:p.applicants};}
+export function descriptionChars(p:AnalysisPatent){return p.deferredText?.descriptionChars??p.description.length;}
+export function hasField(p:AnalysisPatent,key:string){if(key==='description')return descriptionChars(p)>0;const value=p[key as keyof Patent];return Array.isArray(value)?value.length>0:Boolean(value);}
+export function patentPage(datasetId:string,query:string,page:number){
+ ensureAnalysis(datasetId);
+ const where="dataset_id=? AND (?='' OR instr(lower(id||' '||json_extract(payload,'$.title')||' '||coalesce((SELECT group_concat(value,' ') FROM json_each(payload,'$.applicants')),'')),?)>0)";
+ const args=[datasetId,query.toLowerCase(),query.toLowerCase()];
+ const total=Number(db.prepare('SELECT COUNT(*) n FROM patent_analysis WHERE '+where).get(...args)!.n);
+ const rows=db.prepare(`SELECT json_set(json_remove(payload,'$.embedding','$.rawText','$.description','$.claims','$.deferredText'),'$.claimCount',json_array_length(json_extract(payload,'$.claims')),'$.descriptionChars',json_extract(payload,'$.deferredText.descriptionChars')) payload FROM patent_analysis WHERE ${where} ORDER BY id LIMIT 20 OFFSET ?`).all(...args,(page-1)*20);
+ return {total,page,records:rows.map(row=>JSON.parse(row.payload as string))};
+}
 export function saveDataset(meta:Dataset,records:Patent[]){db.exec('BEGIN');try{db.prepare('INSERT INTO datasets VALUES(?,?)').run(meta.id,JSON.stringify(meta));const q=db.prepare('INSERT INTO patents VALUES(?,?,?)');for(const p of records)q.run(meta.id,p.id,JSON.stringify(p));setting('active_dataset',meta.id);db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}}
 export function updateDataset(meta:Dataset){db.prepare('UPDATE datasets SET payload=? WHERE id=?').run(JSON.stringify(meta),meta.id);}
 export function savePatent(datasetId:string,p:Patent){db.prepare('UPDATE patents SET payload=? WHERE dataset_id=? AND id=?').run(JSON.stringify(p),datasetId,p.id);}

@@ -2,10 +2,12 @@ import {Annotation,StateGraph,START,END} from '@langchain/langgraph';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import type {Run,Patent,Params,AnalysisResult} from '@/lib/types';
-import {dataset,patents,saveRun,event,run,runs,saveResult,conversations,setting} from './db';
+import {dataset,analysisPatents,descriptionChars,saveRun,event,run,runs,saveResult,conversations,setting} from './db';
 import {chat,jsonResponse} from './model';
 import {nameClusterTopics} from './cluster-topics';
 import {modelConfig} from './config';
+import {reportResult,reportDataset} from './report-input';
+import {manualChapters,answerManual} from './manual-answer';
 import {stepSchema,toolDefaults,recommendedTool,completeRecommendedStep,requiredParameters,examplePatent} from './planning';
 import {TOOL_DEFS,executeTool,capability} from './tools';
 import {selectedRecords,searchIds,auditExecution,entityRulesSchema} from './research';
@@ -26,25 +28,27 @@ async function planned(question:string,records:Patent[],signal:AbortSignal,conve
  const required:string[]=explicitTools(question);if(recommended)required.push(recommended);if(question===DEMO_PROMPT)required.push(...DEMO_TOOLS);
  const parse=(raw:string)=>{const candidate=jsonResponse<{scope?:{mode:string;counting?:string};steps:{tool:string;params?:Params}[]}>(raw);if(!Array.isArray(candidate.steps))return planSchema.parse(candidate);if(recommended)candidate.scope={...candidate.scope,mode:recommended==='search_patents'?'search':'dataset'};for(const tool of required)if(!candidate.steps.some(s=>s.tool===tool))candidate.steps.push({tool,params:toolDefaults(tool,records)});for(const step of candidate.steps)if(['read_patent_details','compare_claims'].includes(step.tool)&&!step.params?.patent_numbers?.length)step.params={...step.params,...toolDefaults(step.tool,records)};const parsed=planSchema.parse({...candidate,steps:candidate.steps.map(s=>completeRecommendedStep(s,question,records))});if(parsed.scope.mode==='search'&&!parsed.steps.some(s=>s.tool==='search_patents'))throw new Error('领域范围必须先检索');return parsed;};
  const sample=examplePatent(records);
- const context=JSON.stringify({question,history,record_count:records.length,recommended_task:recommended?{tool:recommended,params:toolDefaults(recommended,records)}:undefined,readable_example:sample?{id:sample.id,title:sample.title,claims:sample.claims.length,description_chars:sample.description.length}:undefined,tools:catalog});
+ const context=JSON.stringify({question,history,record_count:records.length,recommended_task:recommended?{tool:recommended,params:toolDefaults(recommended,records)}:undefined,readable_example:sample?{id:sample.id,title:sample.title,claims:sample.claims.length,description_chars:descriptionChars(sample)}:undefined,tools:catalog});
  let raw=await chat(instruction,context,{json:true,signal});let plan:z.infer<typeof planSchema>;
  try{plan=parse(raw);}catch(error){if(signal.aborted)throw error;raw=await chat(instruction,context+'\n上次计划未通过参数校验，请只修正计划参数并返回完整计划。上次计划：'+raw+'\n校验错误：'+String(error),{json:true,signal});plan=parse(raw);}
  return plan;
 }
 function sourceBundle(results:AnalysisResult[],records:Patent[]){
- const compact=(value:unknown):unknown=>typeof value==='string'?value.slice(0,2000):Array.isArray(value)?value.slice(0,12).map(compact):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([key,v])=>[key,compact(v)])):value;
  const selected=results.flatMap(r=>r.rows.slice(0,8).flatMap(row=>[row.patent,row.representative,...(Array.isArray(row.representatives)?row.representatives:[])])).filter((id):id is string=>typeof id==='string');
  const ids=[...new Set([...selected,...results.flatMap(r=>r.evidence)])].slice(0,40);
- return {results:results.map(r=>({id:r.id,tool:r.tool,title:r.title,status:r.status,summary:r.summary,method:r.method,warnings:r.warnings,rows:compact(r.rows.slice(0,30)),rowCount:r.rows.length,graph:r.graph?{nodes:r.graph.nodes.length,edges:r.graph.edges.length}:undefined})),sources:records.filter(p=>ids.includes(p.id)).map(p=>({id:p.id,title:p.title,url:p.sourceUrl,applicants:p.applicants,publicationDate:p.publicationDate,ipc:p.ipc,cpc:p.cpc,abstract:p.abstract.slice(0,1000)}))};
+ return {results:results.map(reportResult),sources:records.filter(p=>ids.includes(p.id)).map(p=>({id:p.id,title:p.title,url:p.sourceUrl,applicants:p.applicants,publicationDate:p.publicationDate,ipc:p.ipc,cpc:p.cpc,abstract:p.abstract.slice(0,1000)}))};
 }
 export async function generateReport(r:Run,records:Patent[],signal:AbortSignal){
- const bundle={...sourceBundle(r.results,records),datasetSnapshot:r.datasetSnapshot||dataset(r.datasetId),researchScope:r.scope,searchReviews:r.reviews,executionAudit:r.audit};r.answer='';saveRun(r);
+ const bundle={...sourceBundle(r.results,records),presentationInstruction:'按presentation的groups判断实际覆盖。omittedRows和shortenedTextPaths只表示报告预览省略，禁止写成工具失败或原数据缺失；不得从预览计算完整总体统计。覆盖不全时引用完整图表，不推算未提供的值。coverage是比例，报告写百分数时必须使用coveragePercent。数据集信息以datasetSnapshot为准。',datasetSnapshot:reportDataset(r.datasetSnapshot||dataset(r.datasetId)),researchScope:r.scope,searchReviews:r.reviews,executionAudit:r.audit};r.answer='';saveRun(r);
  await chat('你是中文专利分析助手。用清晰Markdown直接回答问题，包含主要发现、方法和数据限制。只引用给定工具结果和来源元数据，数字来自工具结果，不自行推算企业类别数量或市场规模。不能从公开编号猜测年份、申请人或分类。样本集中度只能说明样本内分布，不能作垄断或实际市场竞争结论。为主题提供简短中文辅助名称并保留原关键词，明确命名属于模型辅助解释。用公开编号链接引用代表专利；法律判断、技术继承因果、交易价格与市场份额均不能从这些工具推断。不可声称抽样语料覆盖整个行业。报告用自然语言与小表格，不输出JSON、不复述全部工具数据。在说明对应发现的段落后插入[[chart:工具结果id]]，页面会嵌入该真实结果的交互图表。只使用给定结果id，每个id最多一次，不构造新数据或外部图片。Google来源状态是第三方推定，Active不能表述为经官方确认有效；as_of是获取时点而非事件日期。reportedAmount若为知识产权组合交易，不得当作单项专利价格、不得按专利数量分摊。缺失或失败步骤必须说明。措辞按研究记录写，直接给出观察和依据。标题说明具体内容，不写宣传口号，不称自己为专家。避免“不是而是”的翻案句、空转总结、连续重复的句式和无依据的显著增长；保留真实数字、来源及限定词。不要用“首先其次最后”机械组织全文，不给每个小标题加序号。',JSON.stringify({question:r.question,dataset:dataset(r.datasetId),...bundle}),{signal,onDelta:text=>{r.answer+=text;event(r.id,'text-delta',{text});saveRun(r);}});
 }
 export function startRun(conversationId:string,datasetId:string,question:string,forced?:{tool:string;params:Params}[],toolOnly=false){
  if(forced)forced=z.array(stepSchema).min(1).max(30).parse(forced);
  const meta=dataset(datasetId);if(!meta)throw new Error('数据集不存在');const conversation=conversations().find(c=>c.id===conversationId);if(!conversation||conversation.datasetId!==datasetId)throw new Error('对话不存在或数据集不匹配');
- const records=patents(datasetId);const controller=new AbortController();const r:Run={id:randomUUID(),conversationId,datasetId,datasetSnapshot:meta,question,status:'running',plan:[],results:[],answer:'',error:'',model:modelConfig().model,createdAt:new Date().toISOString()};saveRun(r);active.set(r.id,controller);event(r.id,'status',{phase:'Planner',message:'正在制定工具计划'});
+ const controller=new AbortController();const r:Run={id:randomUUID(),conversationId,datasetId,datasetSnapshot:meta,question,status:'running',plan:[],results:[],answer:'',error:'',model:modelConfig().model,createdAt:new Date().toISOString()};saveRun(r);active.set(r.id,controller);
+ const manual=!forced&&!toolOnly?manualChapters(question):[];
+ if(manual.length){void answerManual(r,manual,controller.signal).then(()=>{r.status='completed';}).catch(e=>{r.status=controller.signal.aborted?'cancelled':'failed';r.error=(e as Error).message;event(r.id,'error',{message:r.error});}).finally(()=>{saveRun(r);event(r.id,'done',{status:r.status});active.delete(r.id);});return r;}
+ const records=analysisPatents(datasetId);event(r.id,'status',{phase:'Planner',message:'正在制定工具计划'});
  const entityRules=entityRulesSchema.parse(JSON.parse(setting('entities:'+datasetId)||'[]'));
  const prior=runs(conversationId).filter(x=>x.id!==r.id&&x.scope&&x.status!=='running').at(-1);
  const updateProgress=(progress:NonNullable<Run['progress']>)=>{r.progress=progress;saveRun(r);event(r.id,'progress',progress);};
@@ -72,4 +76,4 @@ export function startRun(conversationId:string,datasetId:string,question:string,
  .addEdge(START,'Planner').addEdge('Planner','Search').addEdge('Search','ResearchReview').addEdge('ResearchReview','Analysis').addEdge('Analysis','Claim').addEdge('Claim','Comparison').addEdge('Comparison','Citation').addEdge('Citation','Audit').addEdge('Audit','Report').addEdge('Report',END).compile();
  void graph.invoke({},{signal:controller.signal}).then(()=>{r.status=r.results.some(x=>x.status!=='completed')?'partial':'completed';saveRun(r);event(r.id,'done',{status:r.status});}).catch(e=>{r.status=controller.signal.aborted?'cancelled':r.results.some(x=>x.status==='completed')?'partial':'failed';r.error=(e as Error).message;saveRun(r);event(r.id,'error',{message:r.error});event(r.id,'done',{status:r.status});}).finally(()=>active.delete(r.id));return r;
 }
-export async function retryReport(id:string){const r=run(id);if(!r)throw new Error('运行不存在');if(isActive(id))throw new Error('该任务仍在运行');if(!r.results.some(result=>result.status==='completed'))throw new Error('没有可用于报告的工具结果');const controller=new AbortController();active.set(id,controller);r.status='running';r.error='';saveRun(r);event(id,'text-reset',{});void generateReport(r,patents(r.datasetId),controller.signal).then(()=>{r.status=r.results.some(x=>x.status!=='completed')?'partial':'completed';}).catch(e=>{r.status=controller.signal.aborted?'cancelled':'partial';r.error=(e as Error).message;event(id,'error',{message:r.error});}).finally(()=>{saveRun(r);event(id,'done',{status:r.status});active.delete(id);});return r;}
+export async function retryReport(id:string){const r=run(id);if(!r)throw new Error('运行不存在');if(isActive(id))throw new Error('该任务仍在运行');if(!r.results.some(result=>result.status==='completed'))throw new Error('没有可用于报告的工具结果');const controller=new AbortController();active.set(id,controller);r.status='running';r.error='';saveRun(r);event(id,'text-reset',{});void generateReport(r,analysisPatents(r.datasetId),controller.signal).then(()=>{r.status=r.results.some(x=>x.status!=='completed')?'partial':'completed';}).catch(e=>{r.status=controller.signal.aborted?'cancelled':'partial';r.error=(e as Error).message;event(id,'error',{message:r.error});}).finally(()=>{saveRun(r);event(id,'done',{status:r.status});active.delete(id);});return r;}

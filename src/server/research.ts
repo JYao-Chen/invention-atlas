@@ -11,7 +11,7 @@ export function governedRecords(records:Patent[],rules:EntityRule[],counting:Par
 export function selectedRecords(records:Patent[],ids:string[]){const set=new Set(ids);return records.filter(p=>set.has(p.id));}
 export function searchIds(results:AnalysisResult[]){return [...new Set(results.filter(r=>r.tool==='search_patents'&&r.status==='completed').flatMap(r=>r.rows.map(row=>String(row.patent))))];}
 export function auditExecution(plan:Run['plan'],results:AnalysisResult[]):ResearchAudit{const params=(p:Params)=>JSON.stringify(Object.entries(p).sort(([a],[b])=>a.localeCompare(b)));return plan.map(step=>{const result=results.find(r=>r.tool===step.tool&&params(r.params)===params(step.params));return {tool:step.tool,status:result?.status||'missing',reason:result?.summary||'计划中的工具未执行'};});}
-export function datasetAudit(records:Patent[]){
+export function datasetAudit(records:Iterable<Patent>){
  const ids=new Set<string>(),rows:Record<string,unknown>[]=[];
  for(const p of records){if(ids.has(p.id))rows.push({patent:p.id,issue:'重复公开编号',field:'id'});ids.add(p.id);
   for(const key of ['title','abstract','applicants','publicationDate','ipc','claims','description','citations','familyId','familyMembers','legalStatus','legalAsOf'] as const){const v=p[key];if(!v||Array.isArray(v)&&!v.length)rows.push({patent:p.id,issue:'缺失字段',field:key});}
