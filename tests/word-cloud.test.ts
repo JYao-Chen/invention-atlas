@@ -1,0 +1,7 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {cloudLayout} from '../src/lib/word-cloud';
+const measure=(word:string,size:number)=>word.length*size*.6;
+test('chosen display count is not capped at sixty',()=>{const rows=Array.from({length:90},(_,i)=>({word:'word'+i,tf:90-i}));for(const count of [5,30,90]){const result=cloudLayout(rows,'tf',900,800,measure,count);assert.equal(result.total,count);assert.equal(result.words.length,count);}});
+test('word cloud excludes missing and nonpositive metrics and merges repeated words',()=>{const result=cloudLayout([{word:'ledger',tf:10},{word:'ledger',tf:3},{word:'network',tf:2},{word:'invalid',tf:-1},{word:'missing'}],'tf',600,400,measure);assert.equal(result.total,2);assert.equal(result.words.find(w=>w.word==='ledger')?.value,13);assert.ok(result.words[0].size>result.words[1].size);});
+test('cloud layout is deterministic, bounded, and has no overlapping labels at mobile and desktop widths',()=>{for(const width of [280,900]){const rows=Array.from({length:60},(_,i)=>({word:'keyword'+i,tfidf:60-i})),a=cloudLayout(rows,'tfidf',width,400,measure);assert.deepEqual(a,cloudLayout(rows,'tfidf',width,400,measure));assert.ok(a.words.length>10);for(const p of a.words){assert.ok(p.x>=0&&p.y>=0&&p.x+p.width<=width&&p.y+p.height<=400);for(const q of a.words.filter(q=>q!==p))assert.ok(p.x>=q.x+q.width||p.x+p.width<=q.x||p.y>=q.y+q.height||p.y+p.height<=q.y);}}});

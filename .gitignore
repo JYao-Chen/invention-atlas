@@ -16,6 +16,8 @@ scripts/*
 !scripts/verify-research.ts
 !scripts/evaluate-research.ts
 !scripts/verify-workbench.ts
+!scripts/prepare-help.ts
+!scripts/capture-help.ts
 docs/local/
 *.sqlite*
 *.log

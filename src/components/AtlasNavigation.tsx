@@ -1,10 +1,10 @@
 'use client';
-import {Database,Search,MessagesSquare,FileText,Settings,Files,PanelLeftOpen,PanelLeftClose,LogOut} from 'lucide-react';
+import {Database,Search,MessagesSquare,FileText,Settings,Files,PanelLeftOpen,PanelLeftClose,LogOut,BookOpen} from 'lucide-react';
 
-export const atlasPages={data:'数据与证据',analysis:'查询工作台',history:'对话历史',reports:'报告库',settings:'模型与设置'};
+export const atlasPages={data:'数据与证据',analysis:'查询工作台',history:'对话历史',reports:'报告库',settings:'模型与设置',help:'使用说明'};
 type Page=keyof typeof atlasPages;
-const icons={data:Database,analysis:Search,history:MessagesSquare,reports:FileText,settings:Settings};
-const shortLabels={data:'数据',analysis:'查询',history:'对话',reports:'报告',settings:'设置'};
+const icons={data:Database,analysis:Search,history:MessagesSquare,reports:FileText,settings:Settings,help:BookOpen};
+const shortLabels={data:'数据',analysis:'查询',history:'对话',reports:'报告',settings:'设置',help:'说明'};
 
 // Adapted from TallyBear's navigation rail; no financial or mascot components.
 export default function AtlasNavigation({page,assistant,collapsed,onToggle,onNavigate,onAssistant,username,onLogout}:{page:Page;assistant:boolean;collapsed:boolean;onToggle:()=>void;onNavigate:(page:Page)=>void;onAssistant:()=>void;username:string;onLogout:()=>void}){
