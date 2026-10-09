@@ -141,6 +141,10 @@ td { border-bottom-color:#e1e6ee }
 .dataset-delete { margin-top:16px; color:#9a4850; background:transparent; border-color:transparent }
 .dataset-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:0 0 20px }
 .dataset-actions .dataset-delete { margin-top:0 }
+.dataset-management { width:100% }
+.dataset-management summary { width:fit-content; cursor:pointer; color:var(--muted); padding:8px 0 }
+.dataset-danger-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px 24px; padding:12px 0 }
+.dataset-danger-actions span { color:var(--muted); font-size:14px }
 .record-editor { width:min(700px,calc(100vw - 28px)); max-height:85dvh; overflow:auto; border:0; border-radius:18px; padding:24px; background:#fff; color:var(--ink); box-shadow:0 12px 60px #24344b22 }
 .record-editor::backdrop { background:#24344b55 }
 .record-editor label { display:flex; flex-direction:column; gap:8px; margin:16px 0 }

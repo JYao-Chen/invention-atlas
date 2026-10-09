@@ -3,7 +3,7 @@ import {useEffect,useState,useRef} from 'react';
 import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params} from '@/lib/types';
+import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params,Starter} from '@/lib/types';
 import ResultView from './ResultView';
 import ExecutionProgress from './ExecutionProgress';
 import SuggestedQuestions from './SuggestedQuestions';
@@ -26,6 +26,7 @@ const stateLabel:Record<string,string>={completed:'已完成',unavailable:'缺�
 const titles=atlasPages;
 function defaults(tool:string,first?:string):Params{if(tool==='search_patents')return {query:'blockchain digital identity authentication',top_k:10};if(tool==='read_patent_details'||tool==='analyze_claim_elements')return {patent_numbers:first?[first]:[]};if(tool==='audit_search_strategy')return {strategies:[{name:'v1',query:'blockchain'},{name:'v2',query:'blockchain identity authentication'}],top_k:20};if(tool==='monitor_patent_changes')return {query:'blockchain',strategy_id:'blockchain-monitor',top_k:20};if(tool==='analyze_clustering')return {k:6};return {};}
 export default function Workbench(){
+ const chosenStarter=useRef<Starter|undefined>(undefined);
  const [logged,setLogged]=useState<boolean|null>(null),[view,setView]=useState<keyof typeof titles>('data'),[meta,setMeta]=useState<Dataset>(),[catalog,setCatalog]=useState<Dataset[]>([]),[tools,setTools]=useState<Tool[]>([]),[records,setRecords]=useState<Patent[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState('');
  const [conversations,setConversations]=useState<Conversation[]>([]),[conversationId,setConversationId]=useState(''),[turns,setTurns]=useState<Run[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState(''),[results,setResults]=useState<AnalysisResult[]>([]),[selectedTool,setSelectedTool]=useState('search_patents'),[parameters,setParameters]=useState(JSON.stringify(defaults('search_patents'),null,2)),[restored,setRestored]=useState(false),[toolBusy,setToolBusy]=useState(false),[mobileFocus,setMobileFocus]=useState(false);
  const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;run:Run}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
@@ -55,7 +56,7 @@ export default function Workbench(){
  async function changeDataset(id:string){stream.current?.abort();await api('datasets',{id},'PATCH');sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setResults([]);setReport(undefined);await loadData(id);}
  async function openPatent(id:string,datasetId=meta?.id){try{setPatent(await api(`patents/${id}?dataset=${datasetId}`));}catch(e){setError((e as Error).message);}}
  async function openConversation(c:Conversation,openAssistant=true){stream.current?.abort();setBusy(false);if(openAssistant){setView('analysis');setMobileFocus(true);}try{await loadData(c.datasetId);const detail=await api('conversations/'+c.id);sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setRestored(true);setTurns(detail.runs);setReport(undefined);setResults(detail.runs.flatMap((r:Run)=>r.results));const pending=detail.runs.find((r:Run)=>r.status==='running');if(pending)await follow(pending.id);}catch(e){setError('打开对话失败：'+(e as Error).message);}}
- function newChat(){nearBottom.current=true;setShowLatest(false);if(!meta)void loadData();stream.current?.abort();sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setReport(undefined);setResults([]);setText('');setError('');setBusy(false);setPhase('');setMobileFocus(true);}
+ function newChat(){chosenStarter.current=undefined;nearBottom.current=true;setShowLatest(false);if(!meta)void loadData();stream.current?.abort();sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setReport(undefined);setResults([]);setText('');setError('');setBusy(false);setPhase('');setMobileFocus(true);}
  async function follow(id:string){stream.current?.abort();const controller=new AbortController();stream.current=controller;currentRun.current=id;setBusy(true);setTurns(value=>value.map(r=>r.id===id?{...r,answer:''}:r));try{
   const response=await fetch('/api/runs/'+id+'/events',{signal:controller.signal});if(!response.ok||!response.body)throw new Error('无法读取任务进度');const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';
   while(true){const chunk=await reader.read();buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});let end;while((end=buffer.indexOf('\n\n'))>=0){const block=buffer.slice(0,end);buffer=buffer.slice(end+2);const name=block.split('\n').find(line=>line.startsWith('event: '))?.slice(7);const raw=block.split('\n').find(line=>line.startsWith('data: '))?.slice(6);if(!raw)continue;const data=JSON.parse(raw);
@@ -73,7 +74,7 @@ export default function Workbench(){
   }if(chunk.done)break;}
   const final=await api('runs/'+id);setTurns(value=>value.map(r=>r.id===id?final:r));setPhase(final.status==='completed'?'分析完成':final.status==='cancelled'?'任务已停止':'已保留工具结果，请查看说明');await refreshHistory();
  }catch(e){if(!controller.signal.aborted)setError((e as Error).message);}finally{if(currentRun.current===id)setBusy(false);}}
- async function send(question=text){if(!meta||busy||!question.trim())return;setError('');setReport(undefined);setView('analysis');setMobileFocus(true);try{let id=conversationId;if(!id){const c=await api('conversations',{datasetId:meta.id});id=c.id;sessionStorage.setItem('patent-conversation',id);setConversationId(id);}const r=await api('runs',{conversationId:id,datasetId:meta.id,question});setRestored(false);setTurns(value=>[...value,r]);setText('');await follow(r.id);}catch(e){setError((e as Error).message);setBusy(false);}}
+ async function send(question=text){if(!meta||busy||!question.trim())return;setError('');setReport(undefined);setView('analysis');setMobileFocus(true);try{let id=conversationId;if(!id){const c=await api('conversations',{datasetId:meta.id});id=c.id;sessionStorage.setItem('patent-conversation',id);setConversationId(id);}const starter=chosenStarter.current;const r=await api('runs',{conversationId:id,datasetId:meta.id,question,...(starter?.datasetId===meta.id&&starter.question===question?{steps:[{tool:starter.name,params:starter.params}]}:{})});chosenStarter.current=undefined;setRestored(false);setTurns(value=>[...value,r]);setText('');await follow(r.id);}catch(e){setError((e as Error).message);setBusy(false);}}
  async function runTool(){if(!meta||toolBusy||busy)return;setError('');setToolBusy(true);setReport(undefined);try{let params:Params;try{params=JSON.parse(parameters);}catch{throw new Error('参数格式不正确。请使用 JSON，例如 {} 表示默认范围。');}const title=tools.find(t=>t.name===selectedTool)?.title||selectedTool;const c=await api('conversations',{datasetId:meta.id,title:'工具 · '+title});const r=await api('runs',{conversationId:c.id,datasetId:meta.id,question:'直接运行：'+title,mode:'tool',steps:[{tool:selectedTool,params}]});sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setResults([]);setRestored(false);setPhase('');setTurns([r]);await follow(r.id);setNotice('任务已结束，结果与已完成分段已保存。');}catch(e){setError((e as Error).message);}finally{setToolBusy(false);}}
  async function save(r:Run){try{await api('reports',{runId:r.id});await refreshHistory();setNotice('报告已保存。可在报告库查看或下载。');}catch(e){setError((e as Error).message);}}
  async function retry(r:Run){try{await api('runs/'+r.id+'/retry-report',{});requestedFollowups.current.delete(r.id);setTurns(value=>value.map(t=>t.id===r.id?{...t,status:'running',answer:'',error:'',followups:undefined}:t));await follow(r.id);}catch(e){setError((e as Error).message);}}
@@ -151,7 +152,8 @@ export default function Workbench(){
 </span>
 </div>
 <div className="dataset-actions">
-<IndexProgress key={meta.id} datasetId={meta.id} indexed={meta.indexed} total={meta.count} onUpdated={()=>loadData(meta.id)}/><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></div>
+<IndexProgress key={meta.id} datasetId={meta.id} indexed={meta.indexed} total={meta.count} onUpdated={()=>loadData(meta.id)}/>
+<details key={meta.id} className="dataset-management"><summary>数据集管理</summary><div className="dataset-danger-actions"><span>删除“{meta.name}”及其 {meta.count} 条记录；对话和已保存报告保留。</span><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></div></details></div>
 <div className="list-heading">
 <h3>专利记录 <small>{total} 条</small>
 </h3>
@@ -356,7 +358,7 @@ export default function Workbench(){
 <div className="chat-body" ref={chatRef} onScroll={e=>{const el=e.currentTarget;nearBottom.current=el.scrollHeight-el.scrollTop-el.clientHeight<100;setShowLatest(!nearBottom.current);}}>{!shownTurns.length&&<div className="assistant-welcome">
 <h3>开始新分析</h3>
 <p>输入问题，或选一个问题填入。工具计划和运行进度会显示在这里。</p>
-<SuggestedQuestions tools={tools} onChoose={question=>{setText(question);document.getElementById('question')?.focus();}}/>
+<SuggestedQuestions datasetId={meta?.id} onChoose={item=>{chosenStarter.current=item;setText(item.question);document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus();}}/>
 </div>}{shownTurns.map(r=>
 <section className="chat-turn" key={r.id}>
 <div className="question">{r.question}</div>{r.plan.length>0&&<details className="plan" open={r.status==='running'}>
