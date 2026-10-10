@@ -18,6 +18,8 @@ scripts/*
 !scripts/verify-workbench.ts
 !scripts/prepare-help.ts
 !scripts/capture-help.ts
+!scripts/build-report-export.mjs
+public/report-export/
 docs/local/
 *.sqlite*
 *.log

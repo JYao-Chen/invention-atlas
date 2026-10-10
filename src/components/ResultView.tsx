@@ -1,5 +1,7 @@
 'use client';
-import {useMemo,useState} from 'react';
+import {useMemo,useState,useRef} from 'react';
+import {downloadChart} from '@/lib/chart-download';
+import MathMarkdown from './MathMarkdown';
 import {partitionRows,coveragePercent,tableHeading,plottedRows} from '@/lib/result-tables';
 import {chartColors,graphColors,toolGroups} from './chart-colors';
 import ClusterView from './ClusterView';
@@ -125,7 +127,9 @@ function GraphView({graph,onPatent}:{graph:Graph;onPatent:(id:string)=>void}){
 <span>{selectedNode.kind==='external'?'外部节点，仅有引用标识':'来源语料节点'} · 权重 {selectedNode.value}</span>{selectedNode.kind==='patent'&&<button onClick={()=>onPatent(selectedNode.id)}>查看专利原文</button>}{selectedNode.kind==='external'&&<a href={`https://patents.google.com/patent/${selectedNode.id}/en`} target="_blank" rel="noreferrer">查询公开文献</a>}</div>}</>
 ;
 }
-export default function ResultView({result,onPatent}:{result:AnalysisResult;onPatent:(id:string)=>void}){
+export default function ResultView({result,onPatent,showMethod=false}:{result:AnalysisResult;onPatent:(id:string)=>void;showMethod?:boolean}){
+const panel=useRef<HTMLElement>(null),[imageBusy,setImageBusy]=useState(false),[imageError,setImageError]=useState('');
+async function saveChart(format:'svg'|'png'){const svg=panel.current?.querySelector<SVGSVGElement>('.word-cloud>svg,.cluster-svg,.graph-svg,.chart svg.recharts-surface');if(!svg)return;setImageBusy(true);setImageError('');try{await downloadChart(svg,result.tool,format);}catch(error){setImageError((error as Error).message);}finally{setImageBusy(false);}}
 const words=result.rows.some(row=>typeof row.word==='string');
 const metrics=['tfidf','tf','burst','documents','weight','score'].filter(key=>result.rows.some(row=>typeof row[key]==='number'&&Number(row[key])>0));
 const years=[...new Set(result.rows.filter(row=>typeof row.word==='string').map(row=>String(row.year||'')).filter(Boolean))].sort();
@@ -135,7 +139,7 @@ const chart=result.chart?{...result.chart,...(words&&metric?{y:metric}:{})}:word
 const availableWords=new Set(filtered.filter(row=>typeof row.word==='string'&&Number(row[metric])>0).map(row=>row.word)).size;
 const count=Math.min(displayCount,availableWords);
 const chartRows=chart?words?[...filtered].sort((a,b)=>Number(b[metric])-Number(a[metric])).slice(0,count):plottedRows(filtered,chart):[];
-return <section className="result-panel" data-group={toolGroups[result.tool]}>
+return <section ref={panel} className="result-panel" data-group={toolGroups[result.tool]}>
 <header>
 <div>
 <span className={`status-dot ${result.status}`}/>
@@ -145,6 +149,7 @@ return <section className="result-panel" data-group={toolGroups[result.tool]}>
 <span className="result-status">{result.status==='completed'?'已完成':result.status==='unavailable'?'数据不足':'执行失败'}</span>
 </header>
 <p>{result.summary}</p>
+{showMethod&&result.method&&<div className="markdown result-method"><MathMarkdown>{result.method}</MathMarkdown></div>}
 <div className="result-tabs">{words&&metrics.length>0&&<button className={tab==='cloud'?'selected':''} onClick={()=>setTab('cloud')}><ChartColumn size={15}/>词云</button>}{result.clusterMap&&<button className={tab==='cluster'?'selected':''} onClick={()=>setTab('cluster')}>
 <ChartColumn size={15}/>
 聚类图</button>}{chart&&<button className={tab==='chart'?'selected':''} onClick={()=>setTab('chart')}>
@@ -158,6 +163,7 @@ return <section className="result-panel" data-group={toolGroups[result.tool]}>
 <Download size={15}/>
 下载 JSON</button>
 </div>
+{tab!=='data'&&<div className="chart-download-actions"><button disabled={imageBusy} onClick={()=>void saveChart('svg')}><Download size={14}/>下载 SVG</button><button disabled={imageBusy} onClick={()=>void saveChart('png')}><Download size={14}/>{imageBusy?'正在生成…':'下载 PNG'}</button>{imageError&&<span role="alert">{imageError}</span>}</div>}
  {result.scope&&<p className="graph-note">输入 {result.scope.inputCount} 条 · 分析 {result.scope.analyzedCount} {result.scope.counting==='family'?'个来源同族代表件':'条公开件'} · 申请人归并规则 {result.scope.entityRules.length} 条</p>}
 {['cloud','chart'].includes(tab)&&<div className="visual-options">{years.length>0&&<label>公开年份<select value={year} onChange={e=>setYear(e.target.value)}>{years.map(y=><option key={y}>{y}</option>)}</select></label>}{words&&metrics.length>0&&<label>显示指标<select value={metric} onChange={e=>setMetric(e.target.value)}>{metrics.map(key=><option value={key} key={key}>{metricLabels[key]}</option>)}</select></label>}{tab==='chart'&&chart&&<label>图表类型<select value={chartKind} onChange={e=>setChartKind(e.target.value as 'bar'|'line'|'horizontal')}><option value="bar">柱状图</option><option value="horizontal">横向条形图</option>{['year','period'].includes(chart.x)&&<option value="line">折线图</option>}</select></label>}</div>}
 {words&&['cloud','chart'].includes(tab)&&availableWords>0&&<label className="word-count-control"><span>显示数量 <strong>{count}</strong><small>/ {availableWords} 个词</small></span><input aria-label="显示词数" type="range" min={1} max={availableWords} value={count} onChange={e=>setDisplayCount(Number(e.target.value))}/><span className="range-ends"><small>1</small><small>{availableWords}</small></span></label>}
@@ -166,7 +172,7 @@ return <section className="result-panel" data-group={toolGroups[result.tool]}>
 } {tab==='data'&&<DataTable rows={result.rows} onPatent={onPatent} tool={result.tool}/>
 }{tab==='graph'&&result.graph&&<GraphView graph={result.graph} onPatent={onPatent}/>
 }{tab==='chart'&&chart&&<div className="chart">
-<ResponsiveContainer width="100%" height={320}>{chartKind==='line'?<LineChart data={chartRows}>
+<ResponsiveContainer width="100%" height={chartKind==='horizontal'?Math.max(320,chartRows.length*24+50):320}>{chartKind==='line'?<LineChart data={chartRows}>
 <CartesianGrid stroke="#e0e8f3" strokeDasharray="3 3"/>
 
 <XAxis dataKey={chart.x} fontSize={11}/>

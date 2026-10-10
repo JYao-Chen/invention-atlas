@@ -1,7 +1,8 @@
 import {NextResponse} from 'next/server';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
-import {reportMarkdownHtml} from '@/server/report-markdown';
+import {exportReportHtml} from '@/server/report-export';
+import {deleteSaved} from '@/server/history-management';
 import {db,datasets,dataset,analysisPatents,patent,patentPage,setting,newConversation,conversations,runs,run,saveReport,reports,saveDataset,saveResult,savedResults,events,savePatent,updateDataset,saveRun} from '@/server/db';
 import {authenticate,login,logout,authorized,COOKIE} from '@/server/auth';
 import {TOOL_DEFS,executeTool,capability} from '@/server/tools';
@@ -63,7 +64,7 @@ async function handle(request:Request,{params}:{params:Promise<{path:string[]}>}
   if(method==='GET'){if(id){const c=conversations().find(c=>c.id===id);if(!c)return NextResponse.json({error:'对话不存在'},{status:404});const saved=runs(id);for(const r of saved)if(r.status==='running'&&!isActive(r.id)){r.status='interrupted';r.error='运行进程已结束；已完成工具保留，可仅重试报告';saveRun(r);}return NextResponse.json({conversation:c,runs:saved});}return NextResponse.json({conversations:conversations()});}
   if(method==='POST'){const body=await request.json();const meta=dataset(body.datasetId);if(!meta)throw new Error('数据集不存在');return NextResponse.json(newConversation(meta.id,body.title));}
   if(method==='PATCH'){const body=await request.json();if(!String(body.title||'').trim())throw new Error('名称不能为空');db.prepare('UPDATE conversations SET title=? WHERE id=?').run(String(body.title).slice(0,100),id);return NextResponse.json({ok:true});}
-  if(method==='DELETE'){if(runs(id).some(r=>isActive(r.id)))throw new Error('请先停止正在运行的任务');db.prepare('DELETE FROM conversations WHERE id=?').run(id);db.prepare('DELETE FROM runs WHERE conversation_id=?').run(id);return NextResponse.json({ok:true});}
+  if(method==='DELETE')return NextResponse.json(deleteSaved('conversations',id?[id]:(await request.json()).ids,isActive));
  }
  if(resource==='runs'){
   if(id&&action==='followups'&&method==='POST'){
@@ -85,10 +86,11 @@ async function handle(request:Request,{params}:{params:Promise<{path:string[]}>}
   return NextResponse.json(r);
  }
  if(resource==='reports'){
+  if(method==='DELETE')return NextResponse.json(deleteSaved('reports',id?[id]:(await request.json()).ids));
   if(method==='POST'){const body=await request.json();const r=run(body.runId);if(!r||!r.results.length||r.status==='running')throw new Error('请选择已结束且有工具结果的运行');return NextResponse.json({id:saveReport(r,String(body.title||r.question.slice(0,60)))});}
   const all=reports();if(!id)return NextResponse.json({reports:all});const report=all.find(r=>r.id===id);if(!report)return NextResponse.json({error:'报告不存在'},{status:404});const snapshot=report.run;const exportedAnswer=snapshot.answer.replace(/\[\[chart:([^\]]+)\]\]/g,(_,id)=>'【工具结果：'+(snapshot.results.find(r=>r.id===id)?.title||'未保存')+'】');
   if(action==='markdown')return new Response(exportedAnswer,{headers:{'Content-Type':'text/markdown; charset=utf-8','Content-Disposition':`attachment; filename="patent-report-${id}.md"`}});
-  if(action==='html'){const narrative=reportMarkdownHtml(exportedAnswer);const tables=snapshot.results.map(result=>{const keys=[...new Set(result.rows.flatMap(row=>Object.keys(row)))];return `<section><h2>${escape(result.title)}</h2><p>${escape(result.summary)}</p><p>${escape(result.method)}</p><div class="table"><table><thead><tr>${keys.map(key=>`<th>${escape(key)}</th>`).join('')}</tr></thead><tbody>${result.rows.map(row=>`<tr>${keys.map(key=>`<td>${escape(typeof row[key]==='object'?JSON.stringify(row[key]):row[key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p>${result.warnings.map(escape).join('<br>')}</p></section>`;}).join('');return new Response(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>${escape(report.title)}</title><style>body{font:16px/1.7 system-ui;margin:40px auto;max-width:1100px;color:#24344b;padding:0 24px}section{margin:32px 0}.math-display{max-width:100%;overflow:auto;padding:8px 0}.table{overflow:auto}table{border-collapse:collapse;font-size:13px}td,th{border:1px solid #d6dce5;padding:8px;text-align:left;max-width:380px;overflow-wrap:anywhere}a{color:#205bc1}</style><body><h1>${escape(report.title)}</h1><p>历史运行 · 数据集 ${escape(snapshot.datasetId)} · ${escape(snapshot.model)} · ${escape(snapshot.createdAt)}</p>${narrative}${tables}</body></html>`,{headers:{'Content-Type':'text/html; charset=utf-8','Content-Disposition':`attachment; filename="patent-report-${id}.html"`}});}
+  if(action==='html')return new Response(exportReportHtml(report),{headers:{'Content-Type':'text/html; charset=utf-8','Content-Disposition':`attachment; filename="patent-report-${id}.html"`}});
   return NextResponse.json(report);
  }
  return NextResponse.json({error:'接口不存在'},{status:404});

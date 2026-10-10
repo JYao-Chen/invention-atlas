@@ -32,6 +32,7 @@ export default function Workbench(){
  const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;run:Run}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
  const [historyPage,setHistoryPage]=useState(1);
+ const [historySelection,setHistorySelection]=useState<string[]>([]),[reportSelection,setReportSelection]=useState<string[]>([]),[deleting,setDeleting]=useState(false);
  const [navigationReady,setNavigationReady]=useState(false);
  const historyPages=Math.max(1,Math.ceil(conversations.length/10)),visibleHistoryPage=Math.min(historyPage,historyPages);
  useEffect(()=>{setSidebarCollapsed(localStorage.getItem('atlas-sidebar-collapsed')==='true');const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);setView(saved.page);setMobileFocus(saved.assistant);setNavigationReady(true);const openGuide=()=>{if(location.hash.startsWith('#guide/')){setView('help');setMobileFocus(false);setReport(undefined);}};addEventListener('hashchange',openGuide);return()=>removeEventListener('hashchange',openGuide);},[]);
@@ -49,7 +50,20 @@ export default function Workbench(){
  useEffect(()=>{contentRef.current?.scrollTo({top:0});},[view,report?.id]);
  async function loadData(id?:string){const [d,config]=await Promise.all([api('datasets'),api('settings')]);setSettings(config);setModelForm({model:config.model,base:config.base,apiKey:''});setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){setStarterPool(await api("starters?dataset="+selected.id));setMeta(selected);const t=await api('tools?dataset='+selected.id);setTools(t.tools);await loadRecords(selected.id,1,'');}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
  async function changeAfterEdit(id?:string){sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setResults([]);setQuery('');setRestored(false);setReport(undefined);await loadData(id);}
- async function refreshHistory(){setConversations((await api('conversations')).conversations);setReports((await api('reports')).reports);}
+ async function refreshHistory(){const conversations=(await api('conversations')).conversations,reports=(await api('reports')).reports;setConversations(conversations);setReports(reports);setHistorySelection(ids=>ids.filter(id=>conversations.some((c:Conversation)=>c.id===id)));setReportSelection(ids=>ids.filter(id=>reports.some((r:{id:string})=>r.id===id)));}
+ function selectSaved(kind:'reports'|'conversations',id:string,selected:boolean){const update=kind==='reports'?setReportSelection:setHistorySelection;update(ids=>selected?[...new Set([...ids,id])]:ids.filter(value=>value!==id));}
+ async function removeSaved(kind:'reports'|'conversations',ids:string[]){
+  if(deleting||!ids.length)return;
+  const noun=kind==='reports'?'报告':'对话',unit=kind==='reports'?'份':'条',detail=kind==='reports'?'原对话和专利数据仍保留。':'对话及其运行记录会删除；已保存报告和专利数据仍保留。';
+  if(!confirm(`删除选中的 ${ids.length} ${unit}${noun}？${detail}此操作不可撤销。`))return;
+  setDeleting(true);setError('');
+  try{
+   await api(kind,{ids},'DELETE');
+   if(kind==='conversations'&&ids.includes(conversationId)){stream.current?.abort();sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setResults([]);setRestored(false);setBusy(false);setPhase('');}
+   if(kind==='reports'&&report&&ids.includes(report.id)){setReport(undefined);setView('reports');setMobileFocus(false);}
+   await refreshHistory();setNotice(`已删除 ${ids.length} ${unit}${noun}。`);
+  }catch(error){setError((error as Error).message);}finally{setDeleting(false);}
+ }
  async function loadRecords(id:string,p:number,q:string){const data=await api(`patents?dataset=${id}&page=${p}&q=${encodeURIComponent(q)}`);setRecords(data.records);setTotal(data.total);setPage(p);}
  useEffect(()=>{const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);api('health').then(async()=>{setLogged(true);await loadData();if(saved.reportId&&saved.page==='analysis'){const item=(await api('reports')).reports.find((r:{id:string})=>r.id===saved.reportId);if(item){setReport(item);return;}}const remembered=sessionStorage.getItem('patent-conversation');if(remembered&&(saved.page==='analysis'||saved.assistant)){const items=(await api('conversations')).conversations;const c=items.find((item:Conversation)=>item.id===remembered);if(c){await openConversation(c,false);setRestored(true);}else sessionStorage.removeItem('patent-conversation');}}).catch(()=>setLogged(false));return()=>stream.current?.abort();},[]);
  useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElement;const dialog=document.querySelector<HTMLElement>('.patent-detail');dialog?.querySelector<HTMLElement>('button')?.focus();const handle=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPatent(undefined);return;}if(event.key==='Tab'&&dialog){const controls=[...dialog.querySelectorAll<HTMLElement>('button,a[href],summary,[tabindex="0"]')];const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};document.addEventListener('keydown',handle);return()=>{document.removeEventListener('keydown',handle);opener?.focus();};},[Boolean(patent)]);
@@ -258,8 +272,10 @@ export default function Workbench(){
 <Plus size={16}/>
 新对话</button>
 </div>
+<div className="saved-list-toolbar"><label><input type="checkbox" aria-label="选择本页对话" checked={conversations.slice((visibleHistoryPage-1)*10,visibleHistoryPage*10).length>0&&conversations.slice((visibleHistoryPage-1)*10,visibleHistoryPage*10).every(c=>historySelection.includes(c.id))} onChange={e=>{const ids=conversations.slice((visibleHistoryPage-1)*10,visibleHistoryPage*10).map(c=>c.id);setHistorySelection(value=>e.target.checked?[...new Set([...value,...ids])]:value.filter(id=>!ids.includes(id)));}}/>选择本页</label><span>已选 {historySelection.length} 条</span><button className="danger-action" disabled={deleting||!historySelection.length} onClick={()=>void removeSaved('conversations',historySelection)}>{deleting?'正在删除…':'删除选中'}</button>{historySelection.length>0&&<button onClick={()=>setHistorySelection([])}>取消选择</button>}</div>
 <div className="history-list">{conversations.slice((visibleHistoryPage-1)*10,visibleHistoryPage*10).map(c=>
-<div key={c.id} className="history-row" onClick={e=>{if(!(e.target as HTMLElement).closest('button'))void openConversation(c);}}>
+<div key={c.id} className="history-row" onClick={e=>{if(!(e.target as HTMLElement).closest('button,input,label,a'))void openConversation(c);}}>
+<label className="saved-row-select"><input type="checkbox" aria-label={'选择对话：'+c.title} checked={historySelection.includes(c.id)} onChange={e=>selectSaved('conversations',c.id,e.target.checked)}/></label>
 <button className="history-open" aria-label={'打开对话：'+c.title} onClick={()=>void openConversation(c)}>
 <MessagesSquare size={20}/>
 <span>
@@ -268,7 +284,7 @@ export default function Workbench(){
 </span>
 </button>
 <button aria-label="重命名对话" onClick={async()=>{const title=prompt('对话名称',c.title);if(title){await api('conversations/'+c.id,{title},'PATCH');await refreshHistory();}}}>重命名</button>
-<button onClick={async()=>{if(confirm('删除这段对话？已保存的报告仍保留。')){try{await api('conversations/'+c.id,undefined,'DELETE');await refreshHistory();}catch(e){setError((e as Error).message);}}}}>删除</button>
+<button className="danger-action" disabled={deleting} onClick={()=>void removeSaved('conversations',[c.id])}>删除</button>
 </div>)}{!conversations.length&&<p className="empty">还没有对话。点击“新对话”开始分析。</p>}</div>
 {conversations.length>0&&<nav className="pagination history-pagination" aria-label="对话历史分页">
 <span>共 {conversations.length} 条 · 第 {visibleHistoryPage}/{historyPages} 页</span>
@@ -280,8 +296,10 @@ export default function Workbench(){
  {view==='reports'&&<>
 <h2>已保存的报告</h2>
 <p className="muted">保存时的数据和分析结果一并保留，不随当前数据集改变。</p>
+<div className="saved-list-toolbar"><label><input type="checkbox" aria-label="选择全部报告" checked={reports.length>0&&reports.every(r=>reportSelection.includes(r.id))} onChange={e=>setReportSelection(e.target.checked?reports.map(r=>r.id):[])}/>选择全部</label><span>已选 {reportSelection.length} 份</span><button className="danger-action" disabled={deleting||!reportSelection.length} onClick={()=>void removeSaved('reports',reportSelection)}>{deleting?'正在删除…':'删除选中'}</button>{reportSelection.length>0&&<button onClick={()=>setReportSelection([])}>取消选择</button>}</div>
 <div className="report-list">{reports.map(item=>
 <section key={item.id}>
+<label className="saved-row-select"><input type="checkbox" aria-label={'选择报告：'+item.title} checked={reportSelection.includes(item.id)} onChange={e=>selectSaved('reports',item.id,e.target.checked)}/></label>
 <FileText size={24}/>
 <div>
 <h3>{item.title}</h3>
@@ -290,6 +308,7 @@ export default function Workbench(){
 <button onClick={()=>{setReport(item);setView('analysis');setMobileFocus(false);}}>查看报告</button>
 <a className="button" href={'/api/reports/'+item.id+'/html'}>HTML</a>
 <a className="button" href={'/api/reports/'+item.id+'/markdown'}>Markdown</a>
+<button className="danger-action" disabled={deleting} onClick={()=>void removeSaved('reports',[item.id])}>删除</button>
 </section>)}{!reports.length&&<p className="empty">还没有报告。分析结束后，点击回答下方的“保存报告”。</p>}</div>
 </>
 }
