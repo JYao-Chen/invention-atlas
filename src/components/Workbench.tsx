@@ -8,8 +8,8 @@ import ExecutionProgress from './ExecutionProgress';
 import SuggestedQuestions from './SuggestedQuestions';
 import PatentComposer from './PatentComposer';
 import PatentNarrative from './PatentNarrative';
+import AnalysisProcess from './AnalysisProcess';
 import AtlasNavigation,{atlasPages} from './AtlasNavigation';
-import ResearchTrail from './ResearchTrail';
 import DataResearchPanel from './DataResearchPanel';
 import SourceAcquisition from './SourceAcquisition';
 import ToolParameters from './ToolParameters';
@@ -21,7 +21,6 @@ import {readEventStream as readSSE} from '@/lib/event-stream';
 type Tool={name:string;title:string;group:string;available:boolean;defaultParams?:Params;reason:string};
 const DEMO='分析当前数据集的主要申请人、技术主题和代表专利，展示引证关系，并拆解一项代表专利的权利要求，生成报告。';
 async function api(path:string,body?:unknown,method?:string){const response=await fetch('/api/'+path,{method:method||(body?'POST':'GET'),headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw new Error(data.error||'请求失败');return data;}
-const stateLabel:Record<string,string>={completed:'已完成',unavailable:'缺少数据',failed:'失败',running:'进行中',partial:'部分完成',cancelled:'已停止',interrupted:'已中断'};
 const titles=atlasPages;
 function defaults(tool:string,first?:string):Params{if(tool==='search_patents')return {query:'blockchain digital identity authentication',top_k:10};if(tool==='read_patent_details'||tool==='analyze_claim_elements')return {patent_numbers:first?[first]:[]};if(tool==='audit_search_strategy')return {strategies:[{name:'v1',query:'blockchain'},{name:'v2',query:'blockchain identity authentication'}],top_k:20};if(tool==='monitor_patent_changes')return {query:'blockchain',strategy_id:'blockchain-monitor',top_k:20};if(tool==='analyze_clustering')return {k:6};return {};}
 export default function Workbench(){
@@ -80,6 +79,7 @@ export default function Workbench(){
    if(name==='scope')setTurns(value=>value.map(r=>r.id===id?{...r,scope:data.scope}:r));
    if(name==='research-review')setTurns(value=>value.map(r=>r.id===id?{...r,reviews:[...(r.reviews||[]),data.review]}:r));
    if(name==='audit')setTurns(value=>value.map(r=>r.id===id?{...r,audit:data.audit}:r));
+   if(name==='report-preparation')setTurns(value=>value.map(r=>r.id===id?{...r,reportPreparation:data.preparation}:r));
    if(name==='tool-start')setPhase('正在运行 '+(tools.find(t=>t.name===data.tool)?.title||data.tool));
    if(name==='tool-result'){setResults(value=>value.some(r=>r.id===data.result.id)?value:[...value,data.result]);setTurns(value=>value.map(r=>r.id===id?{...r,results:r.results.some(item=>item.id===data.result.id)?r.results:[...r.results,data.result]}:r));}
    if(name==='text-delta')setTurns(value=>value.map(r=>r.id===id?{...r,answer:r.answer+data.text}:r));
@@ -380,15 +380,7 @@ export default function Workbench(){
 <SuggestedQuestions datasetId={meta?.id} initialPool={starterPool} onPoolChange={setStarterPool} onChoose={item=>{chosenStarter.current=item;setText(item.question);document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus();}}/>
 </div>}{shownTurns.map(r=>
 <section className="chat-turn" key={r.id}>
-<div className="question">{r.question}</div>{r.plan.length>0&&<details className="plan">
-<summary>执行计划 · {r.plan.length} 项工具</summary>
-<ol>{r.plan.map((step,i)=>
-<li key={i}>
-<span>{tools.find(t=>t.name===step.tool)?.title||step.tool}</span>
-<small>{stateLabel[r.results.find(x=>x.tool===step.tool)?.status||'']||'待执行'}</small>
-</li>)}</ol>
-</details>}
-<ResearchTrail run={r} onPatent={openPatent}/>
+<div className="question">{r.question}</div>{r.kind!=='help'&&<AnalysisProcess run={r} tools={tools} onPatent={openPatent}/>}
 <PatentNarrative text={r.answer||(r.status==='running'?r.kind==='help'?'正在查阅功能说明。':'':r.results.length?'':'本次没有生成结果。')} results={r.results} streaming={r.status==='running'&&!report} onPatent={(id,datasetId)=>openPatent(id,datasetId)}/>
 {r.kind==='help'&&<small className="graph-note">功能说明 · 依据使用说明回答，未执行数据分析</small>}
 {r.error&&<p className="error">{r.error}</p>}<div className="turn-actions">
