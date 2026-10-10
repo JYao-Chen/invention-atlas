@@ -3,7 +3,7 @@ import {useEffect,useState,useRef} from 'react';
 import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params,Starter} from '@/lib/types';
+import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params,Starter,StarterPool} from '@/lib/types';
 import ResultView from './ResultView';
 import ExecutionProgress from './ExecutionProgress';
 import SuggestedQuestions from './SuggestedQuestions';
@@ -27,6 +27,7 @@ const titles=atlasPages;
 function defaults(tool:string,first?:string):Params{if(tool==='search_patents')return {query:'blockchain digital identity authentication',top_k:10};if(tool==='read_patent_details'||tool==='analyze_claim_elements')return {patent_numbers:first?[first]:[]};if(tool==='audit_search_strategy')return {strategies:[{name:'v1',query:'blockchain'},{name:'v2',query:'blockchain identity authentication'}],top_k:20};if(tool==='monitor_patent_changes')return {query:'blockchain',strategy_id:'blockchain-monitor',top_k:20};if(tool==='analyze_clustering')return {k:6};return {};}
 export default function Workbench(){
  const chosenStarter=useRef<Starter|undefined>(undefined);
+ const [starterPool,setStarterPool]=useState<StarterPool>({version:'',batches:[]});
  const [logged,setLogged]=useState<boolean|null>(null),[view,setView]=useState<keyof typeof titles>('data'),[meta,setMeta]=useState<Dataset>(),[catalog,setCatalog]=useState<Dataset[]>([]),[tools,setTools]=useState<Tool[]>([]),[records,setRecords]=useState<Patent[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState('');
  const [conversations,setConversations]=useState<Conversation[]>([]),[conversationId,setConversationId]=useState(''),[turns,setTurns]=useState<Run[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState(''),[results,setResults]=useState<AnalysisResult[]>([]),[selectedTool,setSelectedTool]=useState('search_patents'),[parameters,setParameters]=useState(JSON.stringify(defaults('search_patents'),null,2)),[restored,setRestored]=useState(false),[toolBusy,setToolBusy]=useState(false),[mobileFocus,setMobileFocus]=useState(false);
  const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;run:Run}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
@@ -47,7 +48,7 @@ export default function Workbench(){
  useEffect(()=>{const latest=turns.at(-1);if(report||busy||!latest||latest.followups?.length===5||!latest.answer.trim()||!['completed','partial'].includes(latest.status)||requestedFollowups.current.has(latest.id))return;void suggest(latest);},[turns,busy,report]);
  useEffect(()=>{if(nearBottom.current)chatRef.current?.scrollTo({top:chatRef.current.scrollHeight});},[turns,phase,mobileFocus]);
  useEffect(()=>{contentRef.current?.scrollTo({top:0});},[view,report?.id]);
- async function loadData(id?:string){const [d,config]=await Promise.all([api('datasets'),api('settings')]);setSettings(config);setModelForm({model:config.model,base:config.base,apiKey:''});setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));setMeta(selected);if(selected){const t=await api('tools?dataset='+selected.id);setTools(t.tools);await loadRecords(selected.id,1,'');}else{setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
+ async function loadData(id?:string){const [d,config]=await Promise.all([api('datasets'),api('settings')]);setSettings(config);setModelForm({model:config.model,base:config.base,apiKey:''});setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){setStarterPool(await api("starters?dataset="+selected.id));setMeta(selected);const t=await api('tools?dataset='+selected.id);setTools(t.tools);await loadRecords(selected.id,1,'');}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
  async function changeAfterEdit(id?:string){sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setResults([]);setQuery('');setRestored(false);setReport(undefined);await loadData(id);}
  async function refreshHistory(){setConversations((await api('conversations')).conversations);setReports((await api('reports')).reports);}
  async function loadRecords(id:string,p:number,q:string){const data=await api(`patents?dataset=${id}&page=${p}&q=${encodeURIComponent(q)}`);setRecords(data.records);setTotal(data.total);setPage(p);}
@@ -358,7 +359,7 @@ export default function Workbench(){
 <div className="chat-body" ref={chatRef} onScroll={e=>{const el=e.currentTarget;nearBottom.current=el.scrollHeight-el.scrollTop-el.clientHeight<100;setShowLatest(!nearBottom.current);}}>{!shownTurns.length&&<div className="assistant-welcome">
 <h3>开始新分析</h3>
 <p>输入问题，或选一个问题填入。工具计划和运行进度会显示在这里。</p>
-<SuggestedQuestions datasetId={meta?.id} onChoose={item=>{chosenStarter.current=item;setText(item.question);document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus();}}/>
+<SuggestedQuestions datasetId={meta?.id} initialPool={starterPool} onPoolChange={setStarterPool} onChoose={item=>{chosenStarter.current=item;setText(item.question);document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus();}}/>
 </div>}{shownTurns.map(r=>
 <section className="chat-turn" key={r.id}>
 <div className="question">{r.question}</div>{r.plan.length>0&&<details className="plan" open={r.status==='running'}>

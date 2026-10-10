@@ -11,6 +11,7 @@ import {nameClusterTopics} from '@/server/cluster-topics';
 import {startRun,stopRun,isActive,retryReport} from '@/server/agent';
 import {followups} from '@/server/followups';
 import {generateStarters} from '@/server/starters';
+import {readyStarterPool,warmStarterPool} from '@/server/starter-pool';
 import {savedResult} from '@/server/db';
 import {readResult,resultContract,toolInformation} from '@/server/result-contract';
 import {importText,datasetMeta} from '@/server/importers';
@@ -31,8 +32,10 @@ async function handle(request:Request,{params}:{params:Promise<{path:string[]}>}
  if(!authorized(request))return NextResponse.json({error:'请先登录'},{status:401});
  if(resource==='logout'){logout(request);const response=NextResponse.json({ok:true});response.cookies.delete(COOKIE);return response;}
  if(resource==='health')return NextResponse.json({ok:true,app:'invention-atlas',dataset:dataset(),model:modelConfig().model,modelConfigured:Boolean(modelConfig().key)});
+ if(resource==='starters'&&method==='GET'){const datasetId=url.searchParams.get('dataset')||dataset()?.id;if(!datasetId)throw new Error('数据集不存在');const pool=readyStarterPool(datasetId);if(url.searchParams.get('warm')==='1'){await warmStarterPool(datasetId);return NextResponse.json(readyStarterPool(datasetId));}void warmStarterPool(datasetId);return NextResponse.json(pool);}
  if(resource==='starters'&&method==='POST'){
-  const body=z.object({datasetId:z.string(),previous:z.array(z.string()).max(26).default([])}).parse(await request.json());const meta=dataset(body.datasetId);if(!meta)throw new Error('数据集不存在');const records=analysisPatents(meta.id),encoder=new TextEncoder(),controller=new AbortController();request.signal.addEventListener('abort',()=>controller.abort(),{once:true});
+  const raw=await request.json();if(raw.action==='pool'){const input=z.object({datasetId:z.string(),consumed:z.array(z.string()).max(30).default([])}).parse(raw);const pool=readyStarterPool(input.datasetId,input.consumed);void warmStarterPool(input.datasetId);return NextResponse.json(pool);}
+  const body=z.object({datasetId:z.string(),previous:z.array(z.string()).max(26).default([])}).parse(raw);const meta=dataset(body.datasetId);if(!meta)throw new Error('数据集不存在');const records=analysisPatents(meta.id),encoder=new TextEncoder(),controller=new AbortController();request.signal.addEventListener('abort',()=>controller.abort(),{once:true});
   const stream=new ReadableStream({start(output){const send=(data:unknown)=>{if(!controller.signal.aborted)output.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));};void generateStarters(records,meta.id,body.previous,items=>send({items}),controller.signal).then(result=>send({...result,done:true})).catch(()=>send({done:true,error:'推荐问题生成未完成，请重试'})).finally(()=>{if(!controller.signal.aborted)output.close();});},cancel(){controller.abort();}});return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-cache','X-Accel-Buffering':'no'}});
  }
  if(resource==='entities'){const datasetId=url.searchParams.get('dataset')||dataset()?.id;if(!datasetId||!dataset(datasetId))throw new Error('数据集不存在');const key='entities:'+datasetId;if(method==='PATCH'){if(runs().some(r=>r.datasetId===datasetId&&isActive(r.id)))throw new Error('请等待当前数据集分析结束再改归并规则');const rules=entityRulesSchema.parse((await request.json()).rules);setting(key,JSON.stringify(rules));}return NextResponse.json({rules:JSON.parse(setting(key)||'[]')});}

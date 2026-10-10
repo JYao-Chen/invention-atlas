@@ -59,7 +59,7 @@ export function patentPage(datasetId:string,query:string,page:number){
  return {total,page,records:rows.map(row=>JSON.parse(row.payload as string))};
 }
 export function saveDataset(meta:Dataset,records:Patent[]){db.exec('BEGIN');try{db.prepare('INSERT INTO datasets VALUES(?,?)').run(meta.id,JSON.stringify(meta));const q=db.prepare('INSERT INTO patents VALUES(?,?,?)');for(const p of records)q.run(meta.id,p.id,JSON.stringify(p));setting('active_dataset',meta.id);db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}}
-export function updateDataset(meta:Dataset){db.prepare('UPDATE datasets SET payload=? WHERE id=?').run(JSON.stringify(meta),meta.id);}
+export function updateDataset(meta:Dataset){db.prepare('UPDATE datasets SET payload=? WHERE id=?').run(JSON.stringify(meta),meta.id);db.prepare('DELETE FROM settings WHERE key=?').run('starter-pool:'+meta.id);}
 export function savePatent(datasetId:string,p:Patent){db.prepare('UPDATE patents SET payload=? WHERE dataset_id=? AND id=?').run(JSON.stringify(p),datasetId,p.id);}
 export function conversations():Conversation[]{return (db.prepare('SELECT * FROM conversations ORDER BY updated_at DESC').all() as {id:string;dataset_id:string;title:string;updated_at:string}[]).map(r=>({id:r.id,datasetId:r.dataset_id,title:r.title,updatedAt:r.updated_at}));}
 export function newConversation(datasetId:string,title='新对话'){const c:Conversation={id:randomUUID(),datasetId,title,updatedAt:new Date().toISOString()};db.prepare('INSERT INTO conversations VALUES(?,?,?,?)').run(c.id,c.datasetId,c.title,c.updatedAt);return c;}

@@ -40,8 +40,8 @@ export function starterCandidates(records:Patent[],datasetId:string,previous:str
  });
 }
 
-export async function generateStarters(records:Patent[],datasetId:string,previous:string[],receive:(items:Starter[])=>void,signal?:AbortSignal,write:typeof chat=chat){
- const items=starterCandidates(records,datasetId,previous);receive(items);if(!items.length)return {items,generated:false};
+export async function generateStarters(records:Patent[],datasetId:string,previous:string[],receive:(items:Starter[])=>void,signal?:AbortSignal,write:typeof chat=chat,prepared?:Starter[]){
+ const items=prepared?structuredClone(prepared):starterCandidates(records,datasetId,previous);receive(items);if(!items.length)return {items,generated:false};
  let buffer='',generated=0;const seen=new Set<number>();
  const read=(line:string)=>{try{const row=JSON.parse(line),item=items[row.index];if(!item||seen.has(row.index)||typeof row.question!=='string')return;const question=row.question.trim();if(question.length<6||question.length>180)return;
   const validYears=new Set([String(item.params.year_start),String(item.params.year_end)]);if([...question.matchAll(/\b((?:19|20)\d{2})\b/g)].some(m=>!validYears.has(m[1])))return;

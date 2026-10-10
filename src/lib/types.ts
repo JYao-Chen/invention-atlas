@@ -17,4 +17,6 @@ export type RowSource={row:number;word?:string;year?:string;patentIds:string[];r
 export type AnalysisResult={id:string;tool:string;title:string;status:'completed'|'unavailable'|'failed';datasetId:string;params:Params;summary:string;rows:Row[];rowSources?:RowSource[];graph?:Graph;clusterMap?:ClusterMap;chart?:{kind:'bar'|'line';x:string;y:string};warnings:string[];method:string;evidence:string[];createdAt:string;scope?:{inputCount:number;analyzedCount:number;counting:'publication'|'family';patentIds:string[];entityRules:EntityRule[]}};
 export type Conversation={id:string;title:string;datasetId:string;updatedAt:string};
 export type Starter={name:string;title:string;group:string;question:string;datasetId:string;params:Params};
+export type StarterBatch={id:string;items:Starter[];generated?:boolean};
+export type StarterPool={version:string;batches:StarterBatch[]};
 export type Run={id:string;conversationId:string;datasetId:string;question:string;kind?:'help';followups?:string[];status:'running'|'completed'|'partial'|'failed'|'cancelled'|'interrupted';plan:{tool:string;params:Params}[];results:AnalysisResult[];answer:string;error:string;model:string;createdAt:string;replay?:boolean;progress?:ToolProgress;scope?:ResearchScope;reviews?:ResearchReview[];audit?:ResearchAudit;datasetSnapshot?:Dataset};
