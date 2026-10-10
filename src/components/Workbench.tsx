@@ -380,7 +380,7 @@ export default function Workbench(){
 <SuggestedQuestions datasetId={meta?.id} initialPool={starterPool} onPoolChange={setStarterPool} onChoose={item=>{chosenStarter.current=item;setText(item.question);document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus();}}/>
 </div>}{shownTurns.map(r=>
 <section className="chat-turn" key={r.id}>
-<div className="question">{r.question}</div>{r.plan.length>0&&<details className="plan" open={r.status==='running'}>
+<div className="question">{r.question}</div>{r.plan.length>0&&<details className="plan">
 <summary>执行计划 · {r.plan.length} 项工具</summary>
 <ol>{r.plan.map((step,i)=>
 <li key={i}>
@@ -389,7 +389,7 @@ export default function Workbench(){
 </li>)}</ol>
 </details>}
 <ResearchTrail run={r} onPatent={openPatent}/>
-<PatentNarrative text={r.answer||(r.status==='running'?r.kind==='help'?'正在查阅功能说明。':'正在执行分析，工具结果会逐项出现在这里。':r.results.length?'':'本次没有生成结果。')} results={r.results} onPatent={(id,datasetId)=>openPatent(id,datasetId)}/>
+<PatentNarrative text={r.answer||(r.status==='running'?r.kind==='help'?'正在查阅功能说明。':'':r.results.length?'':'本次没有生成结果。')} results={r.results} streaming={r.status==='running'&&!report} onPatent={(id,datasetId)=>openPatent(id,datasetId)}/>
 {r.kind==='help'&&<small className="graph-note">功能说明 · 依据使用说明回答，未执行数据分析</small>}
 {r.error&&<p className="error">{r.error}</p>}<div className="turn-actions">
 <span>{r.status==='completed'?'已完成':r.status==='partial'?'部分完成':r.status==='running'?'进行中':r.status==='cancelled'?'已停止':r.status==='interrupted'?'运行中断':'失败'}</span>{!report&&r.status!=='running'&&<>
