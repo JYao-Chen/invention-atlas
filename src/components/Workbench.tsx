@@ -1,8 +1,7 @@
 'use client';
 import {useEffect,useState,useRef} from 'react';
 import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from './MathMarkdown';
 import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params,Starter,StarterPool} from '@/lib/types';
 import ResultView from './ResultView';
 import ExecutionProgress from './ExecutionProgress';
@@ -203,7 +202,7 @@ export default function Workbench(){
 } {report&&<div className="replay-banner">
 <Play size={16}/>
 历史运行 · 数据集 {report.run.datasetId.slice(0,8)} · {new Date(report.run.createdAt).toLocaleString('zh-CN')}</div>}{report&&<article className="markdown report-narrative">
-<Markdown remarkPlugins={[remarkGfm]}>{report.run.answer.replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>
+<Markdown>{report.run.answer.replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>
 </article>}{!report&&<>
 <div className="analysis-intro">
 <div>

@@ -272,6 +272,8 @@ tbody tr:last-child td { border-bottom:0 }
 .markdown ul,.markdown ol { padding-left:22px }
 .markdown table { display:block; min-width:0; width:100%; overflow:auto; font-size:12px }
 .markdown pre { background:#f7f1eb; padding:12px; overflow:auto }
+.katex-display { max-width:100%; overflow-x:auto; overflow-y:hidden; padding:6px 0 }
+.katex { font-size:1.05em; overflow-wrap:normal }
 .markdown code { font:12px ui-monospace,monospace; background:#f0eae3; padding:1px 4px }
 .turn-actions { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-top:14px; padding-top:10px; border-top:1px solid var(--line); color:var(--muted); font-size:12px }
 .turn-actions button { min-height:29px; padding:4px 8px; font-size:11px }

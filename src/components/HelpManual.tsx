@@ -1,7 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from './MathMarkdown';
 import {guideChapters,type HelpTarget,type GuideSection} from '@/lib/help-guide';
 
 function ManualFigure({section,device,onDevice}:{section:GuideSection;device:'desktop'|'mobile';onDevice:(device:'desktop'|'mobile')=>void}){
@@ -20,7 +19,7 @@ export default function HelpManual({onOpen,onDemo,toolsReady}:{onOpen:(target:He
  <nav className="help-desktop-chapters" aria-label="说明章节">{[...new Set(matched.map(c=>c.group))].map(group=><section key={group}><h2>{group}</h2>{matched.filter(c=>c.group===group).map(c=><button key={c.id} aria-current={chapter===c.id?'page':undefined} onClick={()=>select(c.id)}><span className="help-number">{c.number}</span>{c.title}</button>)}</section>)}</nav>{!matched.length&&<p>没有找到章节。</p>}</aside>
  <article className="help-article" key={current.id}><p className="help-group">{current.group} · {current.number} / {guideChapters.length}</p><h2>{current.number} {current.title}</h2><p className="help-lead">{current.intro}</p><div className="help-actions"><button disabled={Boolean(current.tool)&&!toolsReady} title={current.tool&&!toolsReady?'正在加载工具目录':undefined} onClick={()=>onOpen(current.target,current.tool)}>打开对应功能</button><button onClick={()=>onDemo(`请介绍“${current.title}”功能在专利挖掘中的用途、计算方法和操作步骤，以及结果应如何解释。`)}>询问助手</button>{current.question&&<button className="primary" onClick={()=>onDemo(current.question!)}>使用示例问题</button>}<a href={'#guide/'+current.id} onClick={()=>select(current.id)}>本章链接</a></div>
  <nav aria-label="本章目录" className="help-section-links">{current.sections.map((section,i)=><a key={i} href={'#section-'+current.id+'-'+i}>{section.title}</a>)}</nav>
- {current.sections.map((section,i)=><section className="help-reading-section" id={'section-'+current.id+'-'+i} key={section.title}><h3>{section.title}</h3><Markdown remarkPlugins={[remarkGfm]}>{section.body}</Markdown>{section.figure&&<ManualFigure section={section} device={device} onDevice={setDevice}/>}</section>)}
+ {current.sections.map((section,i)=><section className="help-reading-section" id={'section-'+current.id+'-'+i} key={section.title}><h3>{section.title}</h3><Markdown>{section.body}</Markdown>{section.figure&&<ManualFigure section={section} device={device} onDevice={setDevice}/>}</section>)}
  <footer className="help-chapter-footer">{guideChapters.indexOf(current)>0&&<button onClick={()=>select(guideChapters[guideChapters.indexOf(current)-1].id)}>上一章</button>}{guideChapters.indexOf(current)<guideChapters.length-1&&<button onClick={()=>select(guideChapters[guideChapters.indexOf(current)+1].id)}>下一章</button>}</footer></article>
  </div>;
 }
