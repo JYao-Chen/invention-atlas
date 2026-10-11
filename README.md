@@ -217,6 +217,7 @@ data/             私有运行数据，不提交 Git
 | [使用说明](docs/USER-GUIDE.md) | 研究流程、26 项工具、解读与截图 |
 | [工具参考](docs/TOOLS.md) | 参数及结构化结果定义 |
 | [开发与部署](docs/DEVELOPMENT.md) | 导入格式、配置和持久化 |
+| [完整平台开发计划](docs/PLATFORM-DEVELOPMENT-PLAN.md) | PG迁移、多用户、专业Agent、专题库及分阶段验收 |
 | [研究流程](docs/RESEARCH-WORKFLOW.md) | 候选范围传递与原文定位 |
 | [工具验收](docs/ACCEPTANCE-20261009.md) | 工具及推荐问题实际验证 |
 | [研究能力验收](docs/ACCEPTANCE-RESEARCH-20261009.md) | 全文流程与验证范围 |
