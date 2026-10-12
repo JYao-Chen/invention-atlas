@@ -1,6 +1,6 @@
 # Invention Atlas 使用说明
 
-本说明书按专利挖掘流程编排，说明各功能的研究用途、实现方法、操作及结果解释。应用中的“使用说明”提供章节跳转、功能入口和助手咨询。截图保留真实运行的页面及对应范围，不表示所有功能都在截图中完整展示。章节链接指向公网应用，本地部署可使用相同的#guide/章节标识。
+本说明书按专利挖掘流程编排，说明各功能的研究用途、实现方法、操作及结果解释。应用中的“使用说明”提供章节跳转、功能入口和助手咨询。截图保留真实运行的页面及对应范围，不表示所有功能都在截图中完整展示。目录链接用于跳转本文章节。登录自行部署的应用后，可在“使用说明”中选择对应章节，或在应用首页地址后追加本章给出的路由片段；例如追加 `#guide/start` 打开系统概述。
 
 - [01 系统概述](#start)
 - [02 数据导入与管理](#data)
@@ -52,7 +52,7 @@
 
 Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。研究对象由所选数据集和筛选条件共同确定，计算结果通过公开编号关联专利原文。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/start)（需要登录）
+自部署应用中的章节路由：`#guide/start`（登录后使用）。
 
 ## 专利挖掘流程
 
@@ -81,7 +81,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 数据管理建立分析语料、保存来源信息并维护检索索引。字段完整性决定方法适用范围，导入记录数与可分析记录数应分别核对。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/data)（需要登录）
+自部署应用中的章节路由：`#guide/data`（登录后使用）。
 
 ## 导入格式与字段定义
 
@@ -112,7 +112,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 组织管理账户和模型配置，项目划分研究资料与协作权限。数据集、原始材料、任务和报告均属于项目，切换项目后应重新核对研究对象。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/workspace)（需要登录）
+自部署应用中的章节路由：`#guide/workspace`（登录后使用）。
 
 ## 建立研究项目
 
@@ -135,7 +135,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 研究材料保存技术交底和待比较方案，为查新提供明确的输入文本及来源页码。材料提取与专利检索是不同操作，上传材料不会自动将其认定为公开现有技术。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/materials)（需要登录）
+自部署应用中的章节路由：`#guide/materials`（登录后使用）。
 
 ## 上传、版本和文本提取
 
@@ -158,7 +158,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 技术交底整理保存方案描述与修订版本，用于形成查新和布局研究的输入。交底内容由用户提供，模型追问用于发现需要补充的描述，不自动认定材料具有缺陷。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/disclosures)（需要登录）
+自部署应用中的章节路由：`#guide/disclosures`（登录后使用）。
 
 ## 方案保存与修订
 
@@ -181,7 +181,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 数据概况汇总语料规模、公开年份和字段覆盖率，用于判断后续方法是否具备输入条件。该功能说明研究范围，未执行数据真实性或全球覆盖程度的认证。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/get_dataset_summary)（需要登录）
+自部署应用中的章节路由：`#guide/get_dataset_summary`（登录后使用）。
 
 ## 字段覆盖率
 
@@ -218,7 +218,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 数据质量审计检查规范字段和原文定位，识别影响计算的导入或维护问题。审计结果提供具体公开编号及异常类型，便于修正后复验。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/audit_dataset)（需要登录）
+自部署应用中的章节路由：`#guide/audit_dataset`（登录后使用）。
 
 ## 检查项目与异常分类
 
@@ -255,7 +255,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 研究范围确定参与计算的文献集合，计数口径确定文献如何计入统计。跨工具比较需保持两者一致，避免将筛选变化解释为技术或主体结构变化。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/tools)（需要登录）
+自部署应用中的章节路由：`#guide/tools`（登录后使用）。
 
 ## 全库、候选集与上轮范围
 
@@ -278,7 +278,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 专利检索从入库文献中建立与技术问题相关的候选集合，为后续统计和文本挖掘确定研究范围。候选相关性需要结合标题摘要及具体技术内容判断。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/search_patents)（需要登录）
+自部署应用中的章节路由：`#guide/search_patents`（登录后使用）。
 
 ## 语义检索与词法匹配
 
@@ -315,7 +315,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 全文片段检索用于寻找说明书或权利要求中与技术问题相关的原文，为技术特征比较及报告论证提供可定位证据。检索对象是指定版本的已索引片段，返回内容保留公开编号和字段位置。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/search_patent_passages)（需要登录）
+自部署应用中的章节路由：`#guide/search_patent_passages`（登录后使用）。
 
 ## 原文版本和索引条件
 
@@ -356,7 +356,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 检索策略比较评估不同术语组合对返回集合的影响，用于记录检索方案及识别遗漏或歧义。程序比较候选重合和差异，未计算未经标注的查全率。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/audit_search_strategy)（需要登录）
+自部署应用中的章节路由：`#guide/audit_search_strategy`（登录后使用）。
 
 ## 集合比较方法
 
@@ -393,7 +393,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 专利详情用于核对统计和主题分析涉及的具体文献。公开版本的权利要求与说明书提供技术判断依据，来源链接用于回查公开记录。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/read_patent_details)（需要登录）
+自部署应用中的章节路由：`#guide/read_patent_details`（登录后使用）。
 
 ## 公开版本和主体角色
 
@@ -430,7 +430,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 原文阅读按技术问题、解决手段和声明效果整理指定专利，为技术方案比较提供带有出处的阅读笔记。笔记区分原文引文与模型解释，保留公开版本及字段位置。该功能用于文献阅读准备，不认定技术方案完整性或法律效力。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_patent_reading)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_patent_reading`（登录后使用）。
 
 ## 指定文献与处理范围
 
@@ -467,7 +467,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 公开趋势分析按公开日期汇总专利数量，用于描述研究语料的时间分布和公开活动变化。年度或月度序列可辅助确定比较区间，并与主体布局及技术主题联合分析。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_patent_trend)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_patent_trend`（登录后使用）。
 
 ## 日期字段与统计口径
 
@@ -504,7 +504,7 @@ Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。�
 
 生命周期统计以累计公开量的增长形态描述语料的时间演变，并检验其与Logistic曲线的拟合关系。该方法可补充时间结构研究，样本曲线不能直接确立行业的技术生命周期阶段。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_lifecycle)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_lifecycle`（登录后使用）。
 
 ## 累计公开量与Logistic模型
 
@@ -545,7 +545,7 @@ R²描述对观测累计量变异的拟合程度，RMSE以记录数为单位表�
 
 IPC分类分布描述语料涉及的技术类别，用于识别主要领域和交叉分类。它使用文献的国际专利分类标引，不能替代语义主题或全文判断。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_ipc_distribution)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_ipc_distribution`（登录后使用）。
 
 ## 分类粒度与重复计数
 
@@ -582,7 +582,7 @@ IPC分类分布描述语料涉及的技术类别，用于识别主要领域和�
 
 公开局分布依据编号前缀描述语料的公开机构构成，用于检查记录来源及地域覆盖。公开局不表示主体国籍或当前有效权利地域。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_country_distribution)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_country_distribution`（登录后使用）。
 
 ## 编号前缀和来源
 
@@ -619,7 +619,7 @@ IPC分类分布描述语料涉及的技术类别，用于识别主要领域和�
 
 关键词分析提取标题摘要词项，用于识别反复出现的技术对象及表达。TF、DF和TF-IDF分别描述重复程度、文献覆盖及区分度，三者需分别解释。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/generate_wordcloud)（需要登录）
+自部署应用中的章节路由：`#guide/generate_wordcloud`（登录后使用）。
 
 ## 分词与权重计算
 
@@ -656,7 +656,7 @@ IPC分类分布描述语料涉及的技术类别，用于识别主要领域和�
 
 年度关键词按公开年计算词项权重，用于比较技术表述与关注对象的时间变化。各年度使用整个筛选语料作为逆文档频率参照，形成共同计算基准。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_yearly_keywords)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_yearly_keywords`（登录后使用）。
 
 ## 年度统计与返回行数
 
@@ -693,7 +693,7 @@ IPC分类分布描述语料涉及的技术类别，用于识别主要领域和�
 
 关键词突现识别词项相对于自身基线进入较高出现率状态的时间区间，用于定位样本中的阶段性关注变化。其结果补充年度词频，未以简单增幅替代模型。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_burst_terms)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_burst_terms`（登录后使用）。
 
 ## 状态模型和批次
 
@@ -730,7 +730,7 @@ IPC分类分布描述语料涉及的技术类别，用于识别主要领域和�
 
 技术主题聚类依据标题摘要语义向量形成文献簇，用于组织技术主题和选择代表专利。分组是数据驱动的分析单元，不等同于IPC或固定边界的技术领域。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/charts)（需要登录）
+自部署应用中的章节路由：`#guide/charts`（登录后使用）。
 
 ## 高维分组与主题命名
 
@@ -767,7 +767,7 @@ IPC分类分布描述语料涉及的技术类别，用于识别主要领域和�
 
 申请人组合汇总主体公开数量与主要IPC，用于比较样本技术布局。主体与文献分布相结合，为跨期研究和代表专利选择提供基础。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_entity_portfolio)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_entity_portfolio`（登录后使用）。
 
 ## 主体识别与计数
 
@@ -804,7 +804,7 @@ IPC分类分布描述语料涉及的技术类别，用于识别主要领域和�
 
 竞争者演化按主要申请人分解年度公开量及IPC，用于研究公开活动和分类布局的时间变化。主体由语料选出，未认证实际市场竞争关系。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_competitor_evolution)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_competitor_evolution`（登录后使用）。
 
 ## 主体选择与年度矩阵
 
@@ -841,7 +841,7 @@ IPC分类分布描述语料涉及的技术类别，用于识别主要领域和�
 
 申请人集中度描述专利数量在主体间的分配，用于比较样本组织结构。指标衡量样本专利份额，不能据此认定市场集中度或垄断程度。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_concentration)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_concentration`（登录后使用）。
 
 ## 分数计数与指标
 
@@ -878,7 +878,7 @@ CR描述头部份额，HHI描述整体分布。有效主体数表达分布均衡
 
 合作网络以专利中同角色主体共现建立联系，用于识别共同申请或共同发明。公开记录的署名关系不能覆盖全部产业合作。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_co_network)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_co_network`（登录后使用）。
 
 ## 节点、边及权重
 
@@ -915,7 +915,7 @@ CR描述头部份额，HHI描述整体分布。有效主体数表达分布均衡
 
 引证分析研究文献引用联系。直接引证记录方向，共引表示两项文献被共同引用，耦合表示两项文献具有共同参考文献，三种关联具有不同含义。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_citation_network)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_citation_network`（登录后使用）。
 
 ## 网络和PageRank
 
@@ -954,7 +954,7 @@ CR描述头部份额，HHI描述整体分布。有效主体数表达分布均衡
 
 主路径提取时间有序内部引证图中的高路径权重连接，用于组织样本文献的关联阅读次序。该方法依据引用与公开日期，不提供完整行业路线或因果演化证明。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_tech_roadmap)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_tech_roadmap`（登录后使用）。
 
 ## 时间方向与SPC
 
@@ -991,7 +991,7 @@ CR描述头部份额，HHI描述整体分布。有效主体数表达分布均衡
 
 引证筛查依据样本内部被引数和PageRank整理后续阅读对象，采用非支配分层。该功能不生成加权价值评分，也未执行单项专利商业估值。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_patent_valuation)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_patent_valuation`（登录后使用）。
 
 ## Pareto非支配分层
 
@@ -1028,7 +1028,7 @@ CR描述头部份额，HHI描述整体分布。有效主体数表达分布均衡
 
 同族地域按来源成员编号描述公开局分布，用于核对已有跨地域申请资料。结果受来源同族定义和覆盖影响，部分成员不能用于推断完整全球布局。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_family_geography)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_family_geography`（登录后使用）。
 
 ## 同族标识和成员
 
@@ -1065,7 +1065,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 法律状态统计整理获取时点的来源声明及事件，用于研究记录中已有法律资料。未进行官方效力核验，不能直接用于侵权或自由实施判断。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_legal_status)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_legal_status`（登录后使用）。
 
 ## 状态与日期
 
@@ -1102,7 +1102,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 要素抽取将指定版本的权利要求分解为技术要素和关联，用于整理方案及准备文献对照。结果保留引句与偏移，供逐项核查。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_claim_elements)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_claim_elements`（登录后使用）。
 
 ## 条款范围与证据定位
 
@@ -1139,7 +1139,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 权利要求对照以一项专利为基准比较其他文献，形成双侧原文证据表，用于研究技术方案差异。未执行法律侵权或新颖性评价。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/compare_claims)（需要登录）
+自部署应用中的章节路由：`#guide/compare_claims`（登录后使用）。
 
 ## 基准与版本
 
@@ -1176,7 +1176,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 技术效果矩阵抽取全文中明确陈述的措施—效果关系，用于整理方案如何解决技术问题。矩阵呈现文本声明，不能表示效果已经独立实验验证。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/analyze_tech_matrix)（需要登录）
+自部署应用中的章节路由：`#guide/analyze_tech_matrix`（登录后使用）。
 
 ## 全文读取与关系抽取
 
@@ -1213,7 +1213,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 技术全景研究将分类、时间、主体和主题分析组织为同一研究范围内的连续任务，用于形成领域文献结构及代表方案的研究报告。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/landscape-workflow)（需要登录）
+自部署应用中的章节路由：`#guide/landscape-workflow`（登录后使用）。
 
 ## 范围准备与候选确认
 
@@ -1242,7 +1242,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 竞争主体研究以确认的申请人名称建立可比较集合，分析各主体的公开活动、分类组合及共同申请关系。主体名称与实际竞争关系需分别判断。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/competitor-workflow)（需要登录）
+自部署应用中的章节路由：`#guide/competitor-workflow`（登录后使用）。
 
 ## 主体名称确认
 
@@ -1271,7 +1271,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 技术方案查新从待研究方案提取特征，组织检索策略并逐特征比较候选原文，形成有出处的技术对照底稿。该流程辅助现有技术研究，不出具法定查新或专利新颖性结论。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/novelty-workflow)（需要登录）
+自部署应用中的章节路由：`#guide/novelty-workflow`（登录后使用）。
 
 ## 方案特征与检索策略
 
@@ -1300,7 +1300,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 专利布局研究整理代表文献中的技术措施与效果关系，在确认的证据矩阵上提出可进一步研究的方向。方向建议属于研究候选，不是已经验证的可专利方案。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/layout-workflow)（需要登录）
+自部署应用中的章节路由：`#guide/layout-workflow`（登录后使用）。
 
 ## 文献选择与关系矩阵
 
@@ -1329,7 +1329,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 变化监测比较同一范围与检索条件下的两次入库返回集，用于记录资料更新。它不自动获取互联网新增专利。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/monitor_patent_changes)（需要登录）
+自部署应用中的章节路由：`#guide/monitor_patent_changes`（登录后使用）。
 
 ## 基线与变化类型
 
@@ -1370,7 +1370,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 综合分析在同一范围内连接统计结构、技术主题和全文证据。图表间对应关系用于组织研究问题，而非仅并列多个输出。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/demo)（需要登录）
+自部署应用中的章节路由：`#guide/demo`（登录后使用）。
 
 ## 结构分析与代表文献
 
@@ -1395,7 +1395,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 分析助手将自然语言要求转换为工具计划并解释真实结果。功能咨询查阅说明书，数据分析才执行工具，二者分别记录。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/assistant)（需要登录）
+自部署应用中的章节路由：`#guide/assistant`（登录后使用）。
 
 ## 研究要求与执行计划
 
@@ -1434,7 +1434,7 @@ familyId用于归组，familyMembers提供成员编号。程序去重已有编�
 
 研究记录保存问题、参数和计算结果，用于复现及回查。对话历史记录过程，报告库保存已归档输出。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/history)（需要登录）
+自部署应用中的章节路由：`#guide/history`（登录后使用）。
 
 ## 对话与报告库
 
@@ -1469,7 +1469,7 @@ Markdown导出正文，HTML保留交互图表、公式与完整工具结果，�
 
 模型配置选择规划、主题命名和全文抽取使用的语言模型。嵌入模型负责检索索引，不能任意替换后沿用原向量。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/settings)（需要登录）
+自部署应用中的章节路由：`#guide/settings`（登录后使用）。
 
 ## 平台与组织模型
 
@@ -1492,7 +1492,7 @@ Markdown导出正文，HTML保留交互图表、公式与完整工具结果，�
 
 项目开放接口允许外部程序和MCP宿主读取授权资料并提交分析任务。外部调用与网页使用同一工具和项目范围，不提供任意自然语言对应任意未实现功能的保证。
 
-[打开应用中的本章](https://patent.jyaochen.cn/#guide/integrations)（需要登录）
+自部署应用中的章节路由：`#guide/integrations`（登录后使用）。
 
 ## 项目凭据和访问范围
 

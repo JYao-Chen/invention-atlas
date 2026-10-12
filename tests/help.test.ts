@@ -47,5 +47,8 @@ test('README navigation and chapter counts match the current manual',()=>{
  assert.deepEqual(headings,Array.from({length:17},(_,i)=>String(i+1).padStart(2,'0')));
  for(const match of readme.matchAll(/\]\((docs\/[^)#]+|integrations\/[^)#]+|LICENSE)\)/g))assert.ok(existsSync(match[1]),match[1]);
  assert.ok(!readme.includes('当前没有独立对外 MCP 服务'));
- assert.ok(readFileSync('docs/USER-GUIDE.md','utf8').includes('https://patent.jyaochen.cn/#guide/materials'));
+ const manual=readFileSync('docs/USER-GUIDE.md','utf8');
+ assert.ok(!manual.includes('patent.jyaochen.cn'));
+ assert.ok(manual.includes('`#guide/materials`'));
+ assert.ok(!/tallybear/i.test(readme));
 });
