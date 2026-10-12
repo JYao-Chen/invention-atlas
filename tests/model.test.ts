@@ -3,6 +3,18 @@ import assert from 'node:assert/strict';
 import {chat,readSSE} from '../src/server/model';
 import {modelConfig} from '../src/server/config';
 const stream=(text:string)=>new ReadableStream<Uint8Array>({start(controller){const bytes=new TextEncoder().encode(text);for(let i=0;i<bytes.length;i+=3)controller.enqueue(bytes.slice(i,i+3));controller.close();}});
+test('chat does not impose output token limits for planning, extraction or streamed reports',async()=>{
+ const original=globalThis.fetch;const config={...modelConfig(),key:'fixture',base:'https://example.com/v1'};
+ try{
+  const bodies:Record<string,unknown>[]=[];
+  globalThis.fetch=async(_url,init)=>{const body=JSON.parse(String(init?.body));bodies.push(body);return body.stream?new Response(stream('data: {"choices":[{"delta":{"content":"完整报告"}}]}\n\ndata: [DONE]\n\n')):Response.json({choices:[{message:{content:'{"steps":[]}'},finish_reason:'stop'}]});};
+  await chat('planning','question',{config,json:true});
+  await chat('extraction','source',{config});
+  await chat('report','results',{config,onDelta:()=>{}});
+  for(const body of bodies){assert.equal(Object.hasOwn(body,'max_tokens'),false);assert.equal(Object.hasOwn(body,'max_completion_tokens'),false);}
+  await chat('explicit','question',{config,maxTokens:100});assert.equal(bodies.at(-1)?.max_tokens,100);
+ }finally{globalThis.fetch=original;}
+});
 test('SSE awaits asynchronous persistence before receiving the next chunk and surfaces write failures',async()=>{
  const received:string[]=[];
  await readSSE(stream('data: first\n\ndata: second\n\n'),async data=>{await new Promise(resolve=>setImmediate(resolve));received.push(data);});
