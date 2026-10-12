@@ -10,4 +10,4 @@ PostgreSQL 的 `material_ocr_parts` 保存已申请的批次、上传状态和�
 
 安装依赖：Poppler（`pdfseparate`、`pdfunite`）及 `unzip`；如果还需要执行历史 Tesseract 任务，继续保留 Tesseract 中英文语言包。执行数据库迁移后再启动 Web 与 worker。
 
-本地已用 WeKnora 当前配置的真实 MinerU Cloud `vlm` 识别中英文扫描 PDF，并验证完成结果复用。凭据在验证进程中读取，未写入源码或验证输出。公网版本是否启用以部署记录为准。
+本地已用 WeKnora 当前配置的真实 MinerU Cloud `vlm` 识别中英文扫描 PDF，并验证完成结果复用；独立worker保存分片、逐页结果并创建选页查新任务通过。2026-10-12公网同样提交扫描PDF，由生产worker完成MinerU识别，返回原始第1页及中英文文本。凭据仅保存在服务器私有配置中，未写入源码或验证输出。验收材料移除后原始文件按材料保留规则保存。
