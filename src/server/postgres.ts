@@ -19,6 +19,7 @@ MIGRATIONS.push('036_model_usage_runs');
 MIGRATIONS.push('037_model_call_budgets');
 MIGRATIONS.push('038_model_call_counters');
 MIGRATIONS.push('039_organization_models');
+MIGRATIONS.push('040_material_ocr_parts');
 
 export function assertRuntimeRole(pool:Pool){
  let check=runtimeChecks.get(pool);

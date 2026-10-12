@@ -3,7 +3,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-export type OcrPage={page:number;text:string;method:'ocr';language:string;meanWordConfidence:number|null;status:'recognized'|'unreadable'};
+export type OcrPage={page:number;text:string;method:'ocr';engine?:'mineru-cloud'|'tesseract';language:string;meanWordConfidence:number|null;status:'recognized'|'unreadable'};
 export function ocrConfidence(tsv:string):number|null{
  const scores=tsv.split(/\r?\n/).slice(1).map(line=>line.split('\t')).filter(columns=>columns[0]==='5'&&columns[11]?.trim()).map(columns=>Number(columns[10])).filter(score=>Number.isFinite(score)&&score>=0);
  return scores.length?scores.reduce((sum,value)=>sum+value,0)/scores.length:null;

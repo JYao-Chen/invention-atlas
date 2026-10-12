@@ -58,12 +58,14 @@ test('material OCR queue works without datasets, prevents duplicates and resumes
    let output='';worker.stdout.on('data',data=>{output+=data;});worker.stderr.on('data',data=>{output+=data;});
    const exited=new Promise<number|null>(resolve=>worker.once('exit',resolve));
    try{
-    const deadline=Date.now()+30000;
+    const deadline=Date.now()+(process.env.PATENT_MINERU_API_KEY?180000:30000);
     while(Date.now()<deadline){const state=(await queue.get(realJob.id))?.state;if(['completed','failed','cancelled'].includes(state||''))break;if(worker.exitCode!==null)throw new Error('独立worker提前退出：'+output);await delay(100);}
     assert.equal((await queue.get(realJob.id))?.state,'completed',output);
     assert.ok(output.includes('Agent worker ready:'),output);
    }finally{worker.kill('SIGTERM');await exited;}
-   await withAccess(scope,async()=>{if(realJob.kind!=='material-ocr')throw new Error('错误任务类型');const result=await materialOcrResults(runtime!,realJob.materialId,realJob.id);assert.equal(result.state,'completed');assert.equal(result.done,1);assert.equal(result.pages[0].status,'recognized');assert.ok(result.pages[0].text.includes('TECHNICAL DISCLOSURE'));assert.ok(result.pages[0].text.replace(/\s+/g,'').includes('技术方案'));assert.equal((await new ProjectMaterials(runtime!).read(realJob.materialId)).extraction.pages[0].status,'needs_ocr');});
+   await withAccess(scope,async()=>{if(realJob.kind!=='material-ocr')throw new Error('错误任务类型');const result=await materialOcrResults(runtime!,realJob.materialId,realJob.id);assert.equal(result.state,'completed');assert.equal(result.done,1);assert.equal(result.pages[0].status,'recognized');assert.ok(result.pages[0].text.includes('TECHNICAL DISCLOSURE'));assert.ok(result.pages[0].text.replace(/\s+/g,'').includes('技术方案'));assert.equal((await new ProjectMaterials(runtime!).read(realJob.materialId)).extraction.pages[0].status,'needs_ocr');
+    if(process.env.PATENT_MINERU_API_KEY){assert.equal(result.pages[0].engine,'mineru-cloud');const parts=(await connection(runtime!).query('SELECT payload FROM material_ocr_parts WHERE job_id=$1',[realJob.id])).rows;assert.equal(parts.length,1);assert.equal(parts[0].payload.checkpoint.uploaded,true);assert.equal(parts[0].payload.results[0].page,1);}
+   });
    await withAccess(scope,async()=>{
     if(realJob.kind!=='material-ocr')throw new Error('错误任务类型');
     const meta=datasetMeta('SYNTHETIC OCR novelty scope',[],'fixture','TEST ONLY');await new PostgresStore(runtime!).saveDataset(meta,[]);

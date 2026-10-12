@@ -197,6 +197,8 @@ npm start
 
 专业任务包括技术全景、竞争主体分析、技术方案查新和专利布局分析。各流程保留输入、研究范围及阶段产物；需确认的阶段允许用户选择、编辑、保存后继续。布局使用原文措施—效果关系形成矩阵，候选方向可选择是否纳入报告；查新支持从PDF、Word或文本材料创建输入，并可选择已完成OCR的原文件页码。
 
+材料 OCR 支持 MinerU Cloud 的 `vlm` 模型，保留表格、公式及原始 PDF 页码，并保存上传批次和分片结果以便续跑。启用后材料会发送至 MinerU Cloud；凭据仅由服务器读取。配置、依赖和验证范围见 [MinerU OCR](docs/MINERU-OCR.md)。
+
 开放接口使用项目凭据，支持OpenAPI、stdio与HTTP MCP。构建接入包用`node scripts/build-patent-mcp.mjs`，配置和权限说明见[integrations/patent-mcp](integrations/patent-mcp/README.md)。部署后台与迁移脚本用`node scripts/build-runtime.mjs`，普通Web连接与队列维护连接不得混用。
 
 工具目录提供输入字段和参数说明，返回结果包含研究范围、逐行专利关联及原文证据。已保存结果可通过 `/api/results/{id}` 按 `offset`、`limit` 分页，按 `word`、`year` 筛选；`section=graph` 读取真实图谱边。报告传递指标定义与预览覆盖情况，必要时由模型选择补读最多四页，每页最多一百行。省略量明确记录，不把预览当作全部结果。

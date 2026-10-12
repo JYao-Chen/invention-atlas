@@ -4,6 +4,7 @@ import {connection,transaction,currentAccess} from './postgres';
 import {JobStore,type Job} from './job-store';
 import {ProjectMaterials} from './project-materials';
 import {recognizePdfPages} from './material-ocr';
+import {recognizeMineruPdf} from './mineru-pdf';
 const input=z.object({materialId:z.string().min(1),pages:z.array(z.number().int().positive()).min(1).optional()}).strict();
 export async function submitMaterialOcr(pool:Pool,value:unknown){
  const data=input.parse(value);
@@ -16,7 +17,11 @@ export async function submitMaterialOcr(pool:Pool,value:unknown){
   if(!pages.length)throw new Error('没有待识别页；需要重识别时请明确选择PDF页码');
   if(pages.some(page=>!available.some(item=>item.page===page)))throw new Error('OCR页码超出原PDF范围');
   if((await client.query("SELECT id FROM jobs WHERE material_id=$1 AND state IN('queued','running')",[data.materialId])).rowCount)throw new Error('该材料已有OCR任务');
-  return new JobStore(pool).enqueueMaterial(data.materialId,pages);
+  const job=await new JobStore(pool).enqueueMaterial(data.materialId,pages);
+  const ocrEngine=process.env.PATENT_MINERU_API_KEY?'mineru-cloud':'tesseract';
+  await client.query("UPDATE jobs SET payload=payload||jsonb_build_object('ocrEngine',$2::text) WHERE id=$1",[job.id,ocrEngine]);
+  job.payload.ocrEngine=ocrEngine;
+  return job;
  });
 }
 export async function executeMaterialOcr(pool:Pool,job:Extract<Job,{kind:'material-ocr'}>,signal:AbortSignal){
@@ -24,9 +29,14 @@ export async function executeMaterialOcr(pool:Pool,job:Extract<Job,{kind:'materi
  const done=new Set((await connection(pool).query('SELECT page FROM material_ocr_pages WHERE job_id=$1',[job.id])).rows.map(row=>Number(row.page)));
  const remaining=pages.filter(page=>!done.has(page));if(!remaining.length)return;
  const original=await new ProjectMaterials(pool).original(job.materialId);
- await recognizePdfPages(original.bytes,remaining,{signal,onPage:async page=>{
+ const onPage=async(page:import('./material-ocr').OcrPage)=>{
   signal.throwIfAborted();await connection(pool).query('INSERT INTO material_ocr_pages(job_id,page,organization_id,project_id,payload) VALUES($1,$2,$3,$4,$5) ON CONFLICT(job_id,page) DO NOTHING',[job.id,page.page,scope.organizationId,scope.projectId,JSON.stringify(page)]);
- }});
+ };
+ if(job.payload.ocrEngine==='mineru-cloud')await recognizeMineruPdf(original.bytes,pages,{signal,onPage,
+  load:async part=>(await connection(pool).query('SELECT payload FROM material_ocr_parts WHERE job_id=$1 AND part=$2',[job.id,part])).rows[0]?.payload,
+  save:async(part,value)=>{await connection(pool).query('INSERT INTO material_ocr_parts(job_id,part,organization_id,project_id,payload) VALUES($1,$2,$3,$4,$5) ON CONFLICT(job_id,part) DO UPDATE SET payload=excluded.payload,updated_at=now()',[job.id,part,scope.organizationId,scope.projectId,JSON.stringify(value)]);}
+ });
+ else await recognizePdfPages(original.bytes,remaining,{signal,onPage});
 }
 export async function materialOcrStatus(pool:Pool,materialId:string){
  await new ProjectMaterials(pool).read(materialId);
