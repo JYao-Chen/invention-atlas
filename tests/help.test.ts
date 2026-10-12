@@ -8,6 +8,11 @@ test('manual links to the project repository and contribution paths',()=>{
  assert.ok(start.body.includes(projectRepository));
  assert.ok(start.body.includes(projectRepository+'/issues'));
  assert.ok(start.body.includes('Pull Request'));
+ for(const asset of ['public/brand/invention-atlas.png','public/help/desktop-generate_wordcloud.png'])assert.ok(existsSync(asset));
+ const component=readFileSync('src/components/HelpManual.tsx','utf8');
+ assert.ok(component.includes('>{projectRepository}</a>'));
+ assert.ok(component.includes('Invention Atlas 品牌 Logo'));
+ assert.ok(component.includes('仓库 README 首页展示图'));
 });
 import {questions} from '../src/lib/suggestions';
 test('manual has distinct chapters, valid destinations, sections and documented demos',()=>{

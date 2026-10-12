@@ -615,3 +615,7 @@ tbody tr:last-child td { border-bottom:0 }
 .professional-candidate-list .professional-alias-option input{flex:none;width:20px;height:20px;padding:0;margin:0;accent-color:var(--accent)}
 .professional-candidate-list .professional-alias-option span{min-width:0;overflow-wrap:anywhere}
 @media(max-width:600px){.layout-label-row{grid-template-columns:minmax(0,1fr);gap:8px}}
+.help-repository-brand{display:flex;align-items:center;gap:16px;margin-block:20px}
+.help-repository-brand img{flex:none;object-fit:contain}
+.help-repository-brand p{margin:4px 0 0}
+.help-repository-url{display:block;overflow-wrap:anywhere;user-select:text}
