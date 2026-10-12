@@ -619,3 +619,16 @@ tbody tr:last-child td { border-bottom:0 }
 .help-repository-brand img{flex:none;object-fit:contain}
 .help-repository-brand p{margin:4px 0 0}
 .help-repository-url{display:block;overflow-wrap:anywhere;user-select:text}
+.record-label-filter{margin-block:16px;min-width:0}
+.record-label-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.record-label-toolbar label{margin:0}
+.record-label-select{display:flex;align-items:center;gap:10px;min-width:0}
+.record-label-select select{margin:0;width:220px;max-width:100%;height:40px;min-height:40px;padding:8px 12px}
+.record-label-toolbar .record-label-children{display:flex;align-items:center;gap:8px;min-height:40px}
+.record-label-children input[type=checkbox]{display:inline-block;flex:none;width:20px;height:20px;min-width:20px;min-height:20px;padding:0;margin:0;accent-color:var(--accent)}
+.record-label-toolbar button,.record-label-edit button{min-height:40px;padding:8px 12px}
+.record-label-manager{margin-top:8px}
+.record-label-edit{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-block:12px}
+.record-label-edit label{margin:0;flex:1 1 240px;min-width:0;max-width:420px}
+.record-label-edit input{width:100%;min-width:0}
+@media(max-width:600px){.record-label-select{width:100%;justify-content:space-between}.record-label-select select{flex:1;min-width:0}.record-label-edit label{flex-basis:100%;max-width:none}}
