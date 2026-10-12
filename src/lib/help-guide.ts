@@ -1,11 +1,12 @@
 import {questions} from './suggestions';
+import {professionalExamples,guideModules,type GuideModule,type ProfessionalWorkflow} from './guide-launch';
 export type HelpTarget='data'|'analysis'|'history'|'reports'|'settings'|'assistant';
 export type GuideSection={title:string;body:string;figure?:string;caption?:string};
-export type GuideChapter={id:string;group:string;title:string;intro:string;body:string;sections:GuideSection[];target:HelpTarget;tool?:string;question?:string;number:string};
+export type GuideChapter={id:string;group:string;title:string;intro:string;body:string;sections:GuideSection[];target:HelpTarget;tool?:string;question?:string;example?:{workflow:ProfessionalWorkflow;question:string};module?:GuideModule;number:string};
 const s=(title:string,body:string,figure?:string,caption?:string):GuideSection=>({title,body,figure,caption});
 const illustrated=(tool:string,title:string,body:string):GuideSection=>s(title,body,tool,'已完成分析的结果页面局部。截图对应真实保存结果，研究范围和参数可在该次运行记录中核对。');
 function c(id:string,group:string,title:string,intro:string,sections:GuideSection[],target:HelpTarget='analysis',tool?:string):Omit<GuideChapter,'number'>{
- return {id,group,title,intro,sections,body:sections.map(section=>`## ${section.title}\n\n${section.body}`).join('\n\n'),target,tool,question:tool?questions[tool]:undefined};
+ return {id,group,title,intro,sections,body:sections.map(section=>`## ${section.title}\n\n${section.body}`).join('\n\n'),target,tool,question:tool?questions[tool]:undefined,example:professionalExamples[id],module:guideModules[id]};
 }
 const chapters=[
  c('start','数据准备','系统概述','Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。研究对象由所选数据集和筛选条件共同确定，计算结果通过公开编号关联专利原文。',[

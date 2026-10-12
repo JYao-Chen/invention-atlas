@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import type {DisclosureInput} from '../server/technical-disclosure';
 import Markdown from './MathMarkdown';
 import DisclosureQuestions from './DisclosureQuestions';
@@ -7,7 +7,9 @@ import ProjectMaterials from './ProjectMaterials';
 type Saved={id:string;title:string;revision:number;snapshot:{source:DisclosureInput;questions:{field:string;question:string;required:boolean}[];draft:{markdown:string}|null}};
 const blank=():DisclosureInput=>({title:'',technicalField:'',background:'',problem:'',solution:'',embodiments:[],effects:[],drawings:[],alternatives:''});
 async function request(path:string,method='GET',body?:unknown,signal?:AbortSignal){const response=await fetch('/api/disclosures'+path,{method,signal,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw new Error(data.error||'交底材料操作失败');return data;}
-export default function TechnicalDisclosures({readOnly,datasets}:{readOnly:boolean;datasets:{id:string;name:string;count:number}[]}){
+export default function TechnicalDisclosures({readOnly,datasets,openRequest}:{readOnly:boolean;datasets:{id:string;name:string;count:number}[];openRequest?:{id:number;part:'materials'|'disclosures'}}){
+ const details=useRef<HTMLDetailsElement>(null);
+ useEffect(()=>{if(openRequest&&details.current){details.current.open=true;requestAnimationFrame(()=>details.current?.scrollIntoView({block:'start'}));}},[openRequest]);
  const [items,setItems]=useState<{id:string;title:string;revision:number}[]>([]),[selected,setSelected]=useState<Saved>(),[source,setSource]=useState<DisclosureInput>(blank),[editing,setEditing]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[dirty,setDirty]=useState(false);
  const [noveltyDataset,setNoveltyDataset]=useState('');
  async function refresh(signal?:AbortSignal){setItems((await request('', 'GET',undefined,signal)).disclosures);}
@@ -17,9 +19,9 @@ export default function TechnicalDisclosures({readOnly,datasets}:{readOnly:boole
  async function open(id:string,revision?:number){if(!leave())return;setBusy(true);setError('');try{const item=await request('/'+id+(revision?'?revision='+revision:''));setSelected(item);setSource(item.snapshot.source);setEditing(true);setDirty(false);setMessage('');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function save(){setBusy(true);setError('');try{const item=await request(selected?'/'+selected.id:'',selected?'PATCH':'POST',selected?{expectedRevision:selected.revision,source}:source);setSelected({...item,title:source.title});setSource(item.snapshot.source);setDirty(false);await refresh();setMessage('已保存第'+item.revision+'版。');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  const textFields=[['technicalField','技术领域'],['background','背景技术'],['problem','技术问题'],['solution','技术方案'],['alternatives','替代方案']] as const;
- return <details className="technical-disclosures"><summary>技术交底材料 · {items.length}份</summary>
+ return <details ref={details} className="technical-disclosures"><summary>技术交底材料 · {items.length}份</summary>
   <p className="muted">整理用户材料并保留版本。草稿不补充技术事实，不作为专利申请文件。</p>
-  <ProjectMaterials readOnly={readOnly} datasets={datasets}/>
+  <ProjectMaterials readOnly={readOnly} datasets={datasets} openRequest={openRequest?.part==='materials'?openRequest.id:undefined}/>
   {!readOnly&&<button disabled={busy} onClick={()=>{if(!leave())return;setSelected(undefined);setSource(blank());setEditing(true);setDirty(false);setError('');setMessage('');}}>新建交底材料</button>}
   {items.map(item=><div className="record-actions" key={item.id}><button disabled={busy} onClick={()=>void open(item.id)}>{item.title} · 第{item.revision}版</button></div>)}
   {editing&&<section aria-label="交底材料编辑器">

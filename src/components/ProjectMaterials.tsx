@@ -1,10 +1,12 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import type {Dataset} from '@/lib/types';
 type Material={id:string;filename:string;format:string;extraction:{warnings:string[];pages:{page:number|null;text:string;status:string}[]}};
 type Job={id:string;state:string;done:number;payload:{pages:number[]};error:string};
 async function request(path='',method='GET',body?:BodyInit,signal?:AbortSignal){const response=await fetch('/api/materials'+path,{method,body,signal,headers:typeof body==='string'?{'Content-Type':'application/json'}:undefined});const data=await response.json();if(!response.ok)throw new Error(data.error||'材料操作失败');return data;}
-export default function ProjectMaterials({readOnly,datasets=[]}:{readOnly:boolean;datasets?:Pick<Dataset,'id'|'name'|'count'>[]}){
+export default function ProjectMaterials({readOnly,datasets=[],openRequest}:{readOnly:boolean;datasets?:Pick<Dataset,'id'|'name'|'count'>[];openRequest?:number}){
+ const details=useRef<HTMLDetailsElement>(null);
+ useEffect(()=>{if(openRequest&&details.current)details.current.open=true;},[openRequest]);
  const [items,setItems]=useState<Material[]>([]),[selected,setSelected]=useState<Material>(),[jobs,setJobs]=useState<Job[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[offset,setOffset]=useState(0),[next,setNext]=useState<number|null>(null);
  const [recognized,setRecognized]=useState<{page:number;text:string}[]|null>(null),[jobsLoading,setJobsLoading]=useState(false),[message,setMessage]=useState('');
  const [proposalSource,setProposalSource]=useState('original');
@@ -14,7 +16,7 @@ export default function ProjectMaterials({readOnly,datasets=[]}:{readOnly:boolea
  useEffect(()=>{const controller=new AbortController();void list(0,controller.signal).catch(e=>{if(!controller.signal.aborted)setError(e.message);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[]);
  useEffect(()=>{if(!selected)return;const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;const poll=async()=>{try{const data=await request('/'+selected.id+'/ocr','GET',undefined,controller.signal);if(controller.signal.aborted)return;setJobs(data.jobs);setJobsLoading(false);if(data.jobs.some((job:Job)=>['queued','running'].includes(job.state)))timer=setTimeout(poll,1000);}catch(e){if(!controller.signal.aborted){setJobsLoading(false);setError((e as Error).message);}}};void poll();return()=>{controller.abort();clearTimeout(timer);};},[selected]);
  async function act(work:()=>Promise<void>){setBusy(true);setError('');setMessage('');try{await work();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <details className="project-materials"><summary>原始材料与文字识别</summary>
+ return <details ref={details} className="project-materials"><summary>原始材料与文字识别</summary>
   <p className="muted">保存 PDF、Word 或 UTF-8 文本，查看提取内容。识别文本与原文件分别保留。</p>
   {!readOnly&&<label>上传材料<input type="file" accept=".pdf,.docx,.txt,.md" disabled={busy} onChange={e=>{const file=e.target.files?.[0];if(!file)return;e.target.value='';void act(async()=>{const form=new FormData();form.append('file',file);const material=await request('','POST',form);select(material);setItems(current=>[material,...current.filter(item=>item.id!==material.id)]);setMessage('材料已上传。');try{await list(0);}catch{setError('材料已上传，但列表刷新失败；已打开保存的材料，请勿重复上传。');}});}}/></label>}
   {loading?<p role="status">正在读取材料…</p>:items.length===0?<p>当前页没有材料。</p>:<ul>{items.map(item=><li key={item.id}><button disabled={busy} onClick={()=>void act(async()=>{select(await request('/'+item.id));})}>{item.filename}</button></li>)}</ul>}

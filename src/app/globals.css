@@ -20,6 +20,9 @@
 .professional-form { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px 0 }
 .professional-form label { display:grid; gap:5px }
 .professional-form button { justify-self:start }
+.help-example { padding-block:18px; margin-block:18px; border-block:1px solid var(--line) }
+.help-example p:last-child { margin:10px 0 0 }
+.professional-demo { margin:16px 0; overflow-wrap:anywhere }
 .professional-entity-input { grid-column:1/-1 }
 .professional-feature-editor { display:grid; gap:12px; margin:20px 0 }
 .professional-feature-editor fieldset { display:grid; gap:10px; min-width:0; padding:16px; border:1px solid var(--line); border-radius:8px }

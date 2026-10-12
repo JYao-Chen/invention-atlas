@@ -3,6 +3,8 @@ import {useEffect,useState,useRef} from 'react';
 import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
 import Markdown from './MathMarkdown';
 import TechnicalDisclosures from './TechnicalDisclosures';
+import type {GuideChapter} from '@/lib/help-guide';
+import {professionalPreset,toolExampleParams,type ProfessionalLaunch} from '@/lib/guide-launch';
 import MonitorSubscriptions from './MonitorSubscriptions';
 import SourceUpdates from './SourceUpdates';
 import SourceVersions from './SourceVersions';
@@ -60,6 +62,17 @@ export default function Workbench(){
  async function selectProject(projectId:string){await api('workspace',{projectId},'PATCH');sessionStorage.removeItem('patent-conversation');sessionStorage.removeItem('atlas-navigation');location.reload();}
  const submitting=useRef('');
  const [modelCallLimit,setModelCallLimit]=useState('');
+ const guideSequence=useRef(0),management=useRef<HTMLDetailsElement>(null);
+ const [professionalLaunch,setProfessionalLaunch]=useState<ProfessionalLaunch>(),[workspaceOpen,setWorkspaceOpen]=useState<number>(),[credentialsOpen,setCredentialsOpen]=useState<number>(),[materialsOpen,setMaterialsOpen]=useState<{id:number;part:'materials'|'disclosures'}>();
+ async function openGuideFunction(chapter:GuideChapter,example=false){
+  const id=++guideSequence.current;setReport(undefined);setError('');
+  if(chapter.example){if(!meta){setError('请先选择数据集，再打开专业任务。');return;}try{const sample=example?(await api('patents?'+new URLSearchParams({dataset:meta.id,page:'1',q:''}))).records:[];if(id!==guideSequence.current)return;setProfessionalLaunch({id,workflow:chapter.example.workflow,preset:example?professionalPreset(chapter.example.workflow,meta,sample):{datasetId:meta.id},question:example?chapter.example.question:undefined});}catch(error){setError('读取演示参数失败：'+(error as Error).message);}return;}
+  if(chapter.module==='workspace'||chapter.module==='credentials'){if(management.current)management.current.open=true;if(chapter.module==='workspace')setWorkspaceOpen(id);else setCredentialsOpen(id);return;}
+  if(chapter.module==='materials'||chapter.module==='disclosures'){setView('reports');setMobileFocus(false);setMaterialsOpen({id,part:chapter.module});return;}
+  setView(chapter.target==='assistant'?'analysis':chapter.target);setMobileFocus(chapter.target==='assistant');
+  if(chapter.tool){const initial=tools.find(tool=>tool.name===chapter.tool)?.defaultParams||defaults(chapter.tool,records[0]?.id);setSelectedTool(chapter.tool);setParameters(JSON.stringify(example?toolExampleParams(chapter.tool,initial,records):initial));setRestored(false);}
+  history.replaceState(null,'',location.pathname);
+ }
  const chosenStarter=useRef<Starter|undefined>(undefined);
  const [starterPool,setStarterPool]=useState<StarterPool>({version:'',batches:[]});
  const [logged,setLogged]=useState<boolean|null>(null),[view,setView]=useState<keyof typeof titles>('data'),[meta,setMeta]=useState<Dataset>(),[catalog,setCatalog]=useState<Dataset[]>([]),[tools,setTools]=useState<Tool[]>([]),[records,setRecords]=useState<Patent[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState('');
@@ -179,18 +192,18 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <span className="dataset-caption">{currentMeta?.name||'尚未导入数据'}</span>
 </div>
 <div className="top-actions">
-{workspace&&<details className="workspace-actions"><summary>管理</summary><div>
-{workspace&&<WorkspaceManager workspace={workspace} onSelect={selectProject}/>}
+{workspace&&<details ref={management} className="workspace-actions"><summary>管理</summary><div>
+{workspace&&<WorkspaceManager workspace={workspace} onSelect={selectProject} openRequest={workspaceOpen}/>}
 {workspace&&<ReceivedReports/>}
 {workspace&&<ReportTaskInbox key={workspace.current?.id} onOpen={async(id,revision)=>{const item=await api('reports/'+id+'?version='+revision);setReport(item);setView('analysis');setMobileFocus(false);}}/>}
 {workspace&&<TaskNotifications key={'notifications:'+workspace.current?.id} onOpen={async(id,revision)=>{const item=await api('reports/'+id+'?version='+revision);setReport(item);setView('analysis');setMobileFocus(false);}}/>}
 {workspace&&<AccountSettings username={workspace.user.username} displayName={workspace.user.displayName}/>}
-{workspace?.current&&<ApiCredentials key={'credentials:'+workspace.current.id} projectName={workspace.projects.find(project=>project.id===workspace.current?.id)?.name||workspace.current.id} readOnly={Boolean(readOnly)}/>}
+{workspace?.current&&<ApiCredentials key={'credentials:'+workspace.current.id} projectName={workspace.projects.find(project=>project.id===workspace.current?.id)?.name||workspace.current.id} readOnly={Boolean(readOnly)} openRequest={credentialsOpen}/>}
 {workspace?.current&&<OrganizationModel key={'organization-model:'+workspace.current.id}/>}
 {workspace&&<OrganizationManager platformAdmin={workspace.user.platformRole==='admin'} onProjectCreated={selectProject} onChanged={async()=>{await refreshWorkspace();}}/>}
 {workspace?.user.platformRole==='admin'&&<UserManager currentUserId={workspace.user.id}/>}
 </div></details>}
-{workspace&&<ProfessionalTasks datasets={catalog} readOnly={Boolean(readOnly)} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>}
+{workspace&&<ProfessionalTasks datasets={catalog} readOnly={Boolean(readOnly)} launch={professionalLaunch} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>}
 {mobileFocus&&<button aria-label="对话历史" onClick={()=>{setView('history');setMobileFocus(false);setReport(undefined);}}><MessagesSquare size={16}/><span className="mobile-action-label">对话历史</span></button>}
 <button aria-label="新对话" onClick={()=>{newChat();setView('analysis');}}>
 <Plus size={15}/>
@@ -211,7 +224,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <X size={15}/>
 </button>
 </div>}
- {view==='help'&&<HelpManual toolsReady={tools.length>0} onOpen={(target,tool)=>{setReport(undefined);if(target==='assistant'){setView('analysis');setMobileFocus(true);}else{setView(target);setMobileFocus(false);}if(tool){setSelectedTool(tool);setParameters(JSON.stringify(tools.find(t=>t.name===tool)?.defaultParams||defaults(tool,records[0]?.id)));}history.replaceState(null,'',location.pathname);}} onDemo={question=>{setView('analysis');setMobileFocus(true);setText(question);history.replaceState(null,'',location.pathname);}}/>}
+ {view==='help'&&<HelpManual toolsReady={tools.length>0} onOpen={openGuideFunction} onDemo={question=>{setView('analysis');setMobileFocus(true);setText(question);history.replaceState(null,'',location.pathname);}}/>}
  {view==='data'&&<>
  <MonitorSubscriptions key={'monitor:'+workspace?.current?.id} datasets={catalog} readOnly={Boolean(readOnly)} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>
 <section className="data-header">
@@ -309,8 +322,8 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <span>{t.title}</span>{!t.available&&<small>缺少数据</small>}</button>)}</details>)}</div>
 <div className="tool-params" data-group={tools.find(t=>t.name===selectedTool)?.group}>
 <h3>{tools.find(t=>t.name===selectedTool)?.title}</h3>{selectedTool==='analyze_tech_matrix'&&!scopeParams.patent_numbers?.length&&<p className="notice">未指定编号，将完整读取当前筛选范围的全部专利。可填入编号缩小范围，运行中可停止并续跑。</p>}<p>{tools.find(t=>t.name===selectedTool)?.reason||'默认分析当前数据集。需要限定范围时，可修改下面的参数。'}</p>
-<div className="scope-fields">{['search_patents','monitor_patent_changes'].includes(selectedTool)&&<label className="query-field">检索词<input value={typeof scopeParams.query==='string'?scopeParams.query:''} onChange={e=>changeParam('query',e.target.value)} placeholder="关键词、技术问题或公开编号"/>
-</label>}{['read_patent_details','analyze_claim_elements','analyze_tech_matrix','compare_claims'].includes(selectedTool)&&<label className="query-field">公开编号<input value={Array.isArray(scopeParams.patent_numbers)?scopeParams.patent_numbers.join(', '):''} onChange={e=>changeParam('patent_numbers',e.target.value)} placeholder={records[0]?.id||'输入专利公开编号'}/>
+<div className="scope-fields">{['search_patents','search_patent_passages','monitor_patent_changes'].includes(selectedTool)&&<label className="query-field">检索词<input value={typeof scopeParams.query==='string'?scopeParams.query:''} onChange={e=>changeParam('query',e.target.value)} placeholder="关键词、技术问题或公开编号"/>
+</label>}{['read_patent_details','analyze_patent_reading','analyze_claim_elements','analyze_tech_matrix','compare_claims'].includes(selectedTool)&&<label className="query-field">公开编号<input value={Array.isArray(scopeParams.patent_numbers)?scopeParams.patent_numbers.join(', '):''} onChange={e=>changeParam('patent_numbers',e.target.value)} placeholder={records[0]?.id||'输入专利公开编号'}/>
 <span className="field-help">多个编号用逗号分隔，最多5条。默认选择原文完整、篇幅适中的一项；可自行修改编号。</span>
 </label>}
 <label>计数口径<select aria-label="计数口径" value={scopeParams.counting||'publication'} onChange={e=>changeParam('counting',e.target.value)}><option value="publication">公开件</option><option value="family">来源同族标识去重</option></select><span className="field-help">同族口径保留最早公开件；缺标识的记录独立保留。原文与权利要求工具仍按公开件读取。</span></label>
@@ -365,7 +378,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 </>
 }
  {view==='reports'&&<>
- <TechnicalDisclosures key={'disclosures:'+workspace?.current?.id} readOnly={Boolean(readOnly)} datasets={catalog}/>
+ <TechnicalDisclosures key={'disclosures:'+workspace?.current?.id} readOnly={Boolean(readOnly)} datasets={catalog} openRequest={materialsOpen}/>
 <h2>已保存的报告</h2>
 <p className="muted">保存时的数据和分析结果一并保留，不随当前数据集改变。</p>
 <div className="saved-list-toolbar"><label><input type="checkbox" aria-label="选择全部报告" checked={reports.length>0&&reports.every(r=>reportSelection.includes(r.id))} onChange={e=>setReportSelection(e.target.checked?reports.map(r=>r.id):[])}/>选择全部</label><span>已选 {reportSelection.length} 份</span><button className="danger-action" disabled={deleting||!reportSelection.length} onClick={()=>void removeSaved('reports',reportSelection)}>{deleting?'正在删除…':'删除选中'}</button>{reportSelection.length>0&&<button onClick={()=>setReportSelection([])}>取消选择</button>}</div>

@@ -5,13 +5,14 @@ type Member={id:string;username:string;displayName:string;enabled:boolean;role:'
 type Organization={id:string;name:string;role:'admin'|'member'};
 async function api(path:string,body?:unknown,method?:string){const response=await fetch('/api/'+path,{method:method||(body?'POST':'GET'),headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw new Error(data.error||'请求失败');return data;}
 const roles={owner:'负责人',analyst:'分析成员',reader:'只读成员'};
-export default function WorkspaceManager({workspace,onSelect}:{workspace:Workspace;onSelect:(id:string)=>Promise<void>}){
+export default function WorkspaceManager({workspace,onSelect,openRequest}:{workspace:Workspace;onSelect:(id:string)=>Promise<void>;openRequest?:number}){
  const dialog=useRef<HTMLDialogElement>(null),[open,setOpen]=useState(false),[members,setMembers]=useState<Member[]>([]),[organizations,setOrganizations]=useState<Organization[]>([]),[candidates,setCandidates]=useState<Member[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false),[invite,setInvite]=useState('');
  const project=workspace.projects.find(p=>p.id===workspace.current?.id);
  const organizationId=organizations.find(o=>o.id===project?.organizationId&&o.role==='admin')?.id;
  async function refresh(isCurrent=()=>true){const [memberData,organizationData,candidateData]=await Promise.all([project?api('projects/'+project.id+'/members'):Promise.resolve({members:[]}),api('organizations'),project?.role==='owner'?api('projects/'+project.id+'/candidates'):Promise.resolve({members:[]})]);if(!isCurrent())return;setMembers(memberData.members);setOrganizations(organizationData.organizations);setCandidates(candidateData.members);}
  async function perform(work:()=>Promise<void>){setBusy(true);setError('');try{await work();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  useEffect(()=>{if(open)dialog.current?.showModal();else dialog.current?.close();},[open]);
+ useEffect(()=>{if(openRequest)setOpen(true);},[openRequest]);
  useEffect(()=>{if(!open)return;let current=true;setMembers([]);setCandidates([]);setOrganizations([]);setInvite('');setBusy(true);setError('');void refresh(()=>current).catch(e=>{if(current)setError((e as Error).message);}).finally(()=>{if(current)setBusy(false);});return()=>{current=false;};},[open,project?.id,project?.role]);
  return <><button onClick={()=>setOpen(true)} aria-label="项目与成员">项目与成员</button><dialog ref={dialog} className="workspace-manager" onCancel={()=>setOpen(false)} onClose={()=>setOpen(false)}>
  <header><h2>项目与成员</h2><button onClick={()=>setOpen(false)} aria-label="关闭项目管理">关闭</button></header>

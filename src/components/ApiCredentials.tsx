@@ -1,10 +1,11 @@
 'use client';
-import {useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 type Credential={id:string;name:string;access:'read'|'write';expiresAt:string;revokedAt:string|null};
-export default function ApiCredentials({projectName,readOnly}:{projectName:string;readOnly:boolean}){
+export default function ApiCredentials({projectName,readOnly,openRequest}:{projectName:string;readOnly:boolean;openRequest?:number}){
  const dialog=useRef<HTMLDialogElement>(null),[items,setItems]=useState<Credential[]>([]),[loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[secret,setSecret]=useState(''),[copied,setCopied]=useState(false);
  async function request(path='',options?:RequestInit){const response=await fetch('/api/api-credentials'+path,options);const data=await response.json();if(!response.ok)throw new Error(data.error||'凭据操作失败');return data;}
  async function open(){setSecret('');setCopied(false);setError('');setItems([]);setLoaded(false);dialog.current?.showModal();setBusy(true);try{setItems((await request()).credentials);setLoaded(true);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ useEffect(()=>{if(openRequest)void open();},[openRequest]);
  function close(){if(secret&&!confirm('关闭后无法再次查看此密钥。确认已保存并关闭？'))return;setSecret('');dialog.current?.close();}
  async function create(form:HTMLFormElement){const values=new FormData(form);setBusy(true);setError('');try{const result=await request('',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:values.get('name'),access:values.get('access'),days:Number(values.get('days'))})});setSecret(result.token);setCopied(false);setItems(previous=>[result.credential,...previous]);form.reset();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function revoke(item:Credential){if(!confirm('撤销“'+item.name+'”后，使用此凭据的客户端将无法继续访问。确认撤销？'))return;setBusy(true);setError('');try{await request('/'+item.id,{method:'DELETE'});setItems(previous=>previous.map(row=>row.id===item.id?{...row,revokedAt:new Date().toISOString()}:row));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
