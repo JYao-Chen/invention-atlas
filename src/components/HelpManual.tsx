@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import Markdown from './MathMarkdown';
-import {guideChapters,type GuideChapter,type GuideSection} from '@/lib/help-guide';
+import {guideChapters,projectRepository,type GuideChapter,type GuideSection} from '@/lib/help-guide';
 
 function ManualFigure({section,device,onDevice}:{section:GuideSection;device:'desktop'|'mobile';onDevice:(device:'desktop'|'mobile')=>void}){
  const src=`/help/${device}-${section.figure}.png`;
@@ -21,6 +21,7 @@ export default function HelpManual({onOpen,onDemo,toolsReady}:{onOpen:(chapter:G
  {(current.example||current.question)&&<section className="help-example" aria-label="使用实例"><h3>使用实例</h3><p>{current.example?.question||current.question}</p><button className="primary" disabled={Boolean(current.tool||current.example)&&!toolsReady} onClick={()=>onOpen(current,true)}>填入示例并打开功能</button><p className="muted">参数可修改，确认后点击功能页的开始按钮；此处不会提交任务。</p></section>}
  <nav aria-label="本章目录" className="help-section-links">{current.sections.map((section,i)=><a key={i} href={'#section-'+current.id+'-'+i}>{section.title}</a>)}</nav>
  {current.sections.map((section,i)=><section className="help-reading-section" id={'section-'+current.id+'-'+i} key={section.title}><h3>{section.title}</h3><Markdown>{section.body}</Markdown>{section.figure&&<ManualFigure section={section} device={device} onDevice={setDevice}/>}</section>)}
+ <section className="help-reading-section" aria-label="项目仓库"><p>欢迎使用与共建。<a href={projectRepository} target="_blank" rel="noreferrer">GitHub 仓库 ↗</a> · <a href={projectRepository+'/issues'} target="_blank" rel="noreferrer">反馈问题</a> · <a href={projectRepository+'/pulls'} target="_blank" rel="noreferrer">提交改进</a></p></section>
  <footer className="help-chapter-footer">{guideChapters.indexOf(current)>0&&<button onClick={()=>select(guideChapters[guideChapters.indexOf(current)-1].id)}>上一章</button>}{guideChapters.indexOf(current)<guideChapters.length-1&&<button onClick={()=>select(guideChapters[guideChapters.indexOf(current)+1].id)}>下一章</button>}</footer></article>
  </div>;
 }

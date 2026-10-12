@@ -1,7 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
-import {guideChapters} from '../src/lib/help-guide';
+import {guideChapters,projectRepository} from '../src/lib/help-guide';
+test('manual links to the project repository and contribution paths',()=>{
+ assert.equal(projectRepository,'https://github.com/JYao-Chen/invention-atlas');
+ const start=guideChapters.find(chapter=>chapter.id==='start')!;
+ assert.ok(start.body.includes(projectRepository));
+ assert.ok(start.body.includes(projectRepository+'/issues'));
+ assert.ok(start.body.includes('Pull Request'));
+});
 import {questions} from '../src/lib/suggestions';
 test('manual has distinct chapters, valid destinations, sections and documented demos',()=>{
  assert.equal(new Set(guideChapters.map(c=>c.id)).size,guideChapters.length);

@@ -1,5 +1,6 @@
 import {questions} from './suggestions';
 import {professionalExamples,guideModules,type GuideModule,type ProfessionalWorkflow} from './guide-launch';
+export const projectRepository='https://github.com/JYao-Chen/invention-atlas';
 export type HelpTarget='data'|'analysis'|'history'|'reports'|'settings'|'assistant';
 export type GuideSection={title:string;body:string;figure?:string;caption?:string};
 export type GuideChapter={id:string;group:string;title:string;intro:string;body:string;sections:GuideSection[];target:HelpTarget;tool?:string;question?:string;example?:{workflow:ProfessionalWorkflow;question:string};module?:GuideModule;number:string};
@@ -12,7 +13,8 @@ const chapters=[
  c('start','数据准备','系统概述','Invention Atlas 用于已入库专利的检索、统计分析及文本挖掘。研究对象由所选数据集和筛选条件共同确定，计算结果通过公开编号关联专利原文。',[
   s('专利挖掘流程','研究从数据整理和检索开始，在确定范围后开展公开量统计、技术分类与主题分析，再结合主体及引证关系选择代表文献。权利要求和说明书分析用于核对具体技术措施，报告汇总统计结果及文本证据。\n\n本说明书依照该流程编排。数据概况与质量审计检查输入条件；时间统计描述公开活动；关键词和聚类归纳文本结构；主体及引证分析研究组织布局与文献联系；全文工具处理具体技术内容。'),
   s('工作台与分析助手','查询工作台提供直接执行入口，可设置工具参数。分析助手根据自然语言安排工具，并保存计划和结果。统计与网络由程序计算；主题命名、全文要素抽取和报告解释由模型辅助完成。功能咨询依据本说明书回答，不将功能介绍作为已执行的数据分析。'),
-  s('研究对象和资料来源','系统读取已导入资料，未提供全球实时专利检索。公开编号标识具体公开版本，来源同族标识用于归组。申请人、受让人与发明人分别保存。当前专利库是定向选取的公开文献集合，样本统计不能直接推断行业总体规模。')
+  s('研究对象和资料来源','系统读取已导入资料，未提供全球实时专利检索。公开编号标识具体公开版本，来源同族标识用于归组。申请人、受让人与发明人分别保存。当前专利库是定向选取的公开文献集合，样本统计不能直接推断行业总体规模。'),
+  s('使用与共建',`欢迎使用专利分析平台，也欢迎参与共建。项目代码和部署说明见 [GitHub 仓库](${projectRepository})。使用中遇到问题或有功能建议，可以在 [Issues](${projectRepository}/issues) 反馈；代码改进和文档补充可通过 Pull Request 提交。反馈问题时请附上操作步骤，截图中的账户、凭据和未公开研究资料应先遮盖。`)
  ]),
  c('data','数据准备','数据导入与管理','数据管理建立分析语料、保存来源信息并维护检索索引。字段完整性决定方法适用范围，导入记录数与可分析记录数应分别核对。',[
   s('导入格式与字段定义','在数据与证据页面选择数据集，或导入规范化JSONL、Google Patents JSONL、USPTO XML及Derwent/WoS文本。公开编号用于去重。CPC不替代IPC，受让人不自动转换成申请人。来源缺少的权利要求、引证或法律状态保持缺失。'),
