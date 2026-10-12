@@ -6,6 +6,7 @@ import {runTextWriter} from './run-text';
 import {saveRun,event} from './db';
 
 const aliases:Record<string,string[]>={analyze_lifecycle:['生命周期','Logistic'],analyze_citation_network:['引证','引用网络','共引','耦合','PageRank'],analyze_concentration:['集中度','CR3','CR5','HHI'],charts:['聚类','K-means','PCA','主题'],generate_wordcloud:['词云','词频','TF-IDF','关键词'],analyze_patent_trend:['公开趋势'],analyze_yearly_keywords:['年度关键词'],analyze_burst_terms:['突现'],analyze_co_network:['合作网络'],analyze_tech_roadmap:['主路径','技术路线','SPC'],analyze_patent_valuation:['估值','筛查','Pareto'],compare_claims:['权利要求对照'],analyze_claim_elements:['权利要求','要素'],analyze_tech_matrix:['技术效果','矩阵'],analyze_family_geography:['同族'],analyze_legal_status:['法律状态'],search_patents:['检索']};
+Object.assign(aliases,{workspace:['项目权限','组织管理','多用户','成员角色'],materials:['OCR','MinerU','扫描识别','原始材料'],disclosures:['技术交底'], 'landscape-workflow':['技术全景'],'competitor-workflow':['竞争主体'],'novelty-workflow':['查新'],'layout-workflow':['专利布局'],integrations:['MCP','开放接口','接口凭据'],settings:['组织模型','调用预算','模型用量']});
 export function manualChapters(question:string):GuideChapter[]{
  if(Object.values(questions).includes(question.trim()))return [];
  if(!/介绍|是什么|什么是|含义|定义|原理|如何使用|怎么用|有什么用|用途|作用|讲解|说明|解释|如何操作|怎么操作|如何设置|怎么设置|有何区别|有什么区别|有哪些功能/.test(question))return [];

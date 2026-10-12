@@ -15,7 +15,10 @@ test('method consultation supports concepts, aliases and multi-method comparison
  assert.ok(manualChapters('请解释CR3和HHI').some(c=>c.tool==='analyze_concentration'));
  assert.ok(manualChapters('共引和耦合有什么区别？').some(c=>c.tool==='analyze_citation_network'));
  assert.ok(manualChapters('什么是PCA与K-means？').some(c=>c.tool==='analyze_clustering'));
- assert.equal(manualChapters('系统有哪些功能？').length,35);
+ assert.equal(manualChapters('系统有哪些功能？').length,guideChapters.length);
+});
+test('new workflow consultations resolve to current documentation',()=>{
+ for(const [question,id] of [['OCR怎么用？','materials'],['请介绍MCP接入','integrations'],['查新如何操作？','novelty-workflow'],['组织模型怎么设置？','settings'],['请介绍技术全景','landscape-workflow']])assert.ok(manualChapters(question).some(c=>c.id===id),question);
 });
 test('analysis requests and recommendations never get replaced by manual answers',()=>{
  assert.deepEqual(manualChapters('请调用全文片段检索工具 search_patent_passages 针对 US20210042826A1 检索 blockchain network 的原文证据，并基于工具实际结果简要解释'),[]);

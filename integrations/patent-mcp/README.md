@@ -12,7 +12,7 @@ stdio启动命令为 `node server.mjs`，不向stdout打印日志。另提供 `h
 
 每个客户端在请求头设置 `Authorization: Bearer <项目凭据>`。HTTP进程不使用全局ATLAS_API_TOKEN代表所有用户；每次请求先向平台验证该凭据，再创建独立的工具实例。只读凭据能读取已有数据、进度和结果，不能运行分析。每次调用重新验证，到期、撤销或成员变化后不能继续访问。
 
-SDK使用Streamable HTTP。需要对外部署时，将已经授权的HTTPS反向代理转发到本机端口，并把 `ATLAS_MCP_PUBLIC_HOSTNAME` 设为实际外部主机名（不含协议和端口）。默认仅接受localhost类Host／浏览器Origin。当前源码没有配置公网入口，也未实现OAuth登录流程；只能在支持显式Bearer配置的客户端中使用，不宣称所有宿主直接可连。
+SDK使用Streamable HTTP。自行部署时，将HTTPS反向代理转发到本机端口，并把 `ATLAS_MCP_PUBLIC_HOSTNAME` 设为实际外部主机名（不含协议和端口）。默认仅接受localhost类Host／浏览器Origin。已部署平台的公网入口为 `https://patent.jyaochen.cn/mcp`，使用平台创建的项目Bearer凭据；没有OAuth登录流程，只能在支持显式Bearer配置的客户端中使用，不宣称所有宿主直接可连。
 
 ## 调用流程
 
