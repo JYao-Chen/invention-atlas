@@ -1,0 +1,20 @@
+import {createServer} from 'node:http';
+import {createMcpHandler,hostHeaderValidationResponse,originValidationResponse,localhostAllowedHostnames,localhostAllowedOrigins} from '@modelcontextprotocol/server';
+import {toNodeHandler} from '@modelcontextprotocol/node';
+import {createPatentMcpServer} from './patent-mcp-server.mjs';
+const base=new URL(process.env.ATLAS_API_URL||'http://127.0.0.1:3017/api/');if(!base.pathname.endsWith('/'))base.pathname+='/';
+const port=Number(process.env.ATLAS_MCP_PORT||3032);if(!Number.isInteger(port)||port<1||port>65535)throw new Error('ATLAS_MCP_PORT应为1—65535');
+const publicHostname=process.env.ATLAS_MCP_PUBLIC_HOSTNAME;
+const hosts=[...localhostAllowedHostnames(),...(publicHostname?[publicHostname]:[])],origins=[...localhostAllowedOrigins(),...(publicHostname?[publicHostname]:[])];
+const handler=createMcpHandler(ctx=>createPatentMcpServer({url:base.href,token:ctx.authInfo.token,spec:ctx.authInfo.extra.spec}));
+const http=createServer(toNodeHandler({async fetch(request){
+ if(new URL(request.url).pathname!=='/mcp')return new Response('Not found',{status:404});
+ const rejected=hostHeaderValidationResponse(request,hosts)||originValidationResponse(request,origins);if(rejected)return rejected;
+ const token=/^Bearer\s+(.+)$/i.exec(request.headers.get('authorization')||'')?.[1];
+ if(!token)return Response.json({error:'请提供项目Bearer凭据'},{status:401,headers:{'WWW-Authenticate':'Bearer'}});
+ const verified=await fetch(new URL('openapi',base),{headers:{authorization:'Bearer '+token},signal:request.signal});
+ const spec=await verified.json();if(!verified.ok)return Response.json(spec,{status:verified.status,headers:verified.status===401?{'WWW-Authenticate':'Bearer'}:{}});
+ return handler.fetch(request,{authInfo:{token,clientId:'project-api',scopes:[],extra:{spec}}});
+}}));
+http.listen(port,'127.0.0.1',()=>console.error('Patent MCP HTTP ready on 127.0.0.1:'+port+'/mcp'));
+const stop=()=>http.close(()=>process.exit(0));process.once('SIGTERM',stop);process.once('SIGINT',stop);

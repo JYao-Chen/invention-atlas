@@ -1,0 +1,41 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {layoutMatrix} from '../src/server/layout-matrix';
+import {readResult,resultReadParameters} from '../src/server/result-contract';
+import {reportResult} from '../src/server/report-input';
+import {retrieveResults,retrievalContext} from '../src/server/report-retrieval';
+import type {AnalysisResult} from '../src/lib/types';
+test('layout matrix deduplicates publications but retains every evidence row and bounds absent pairs',()=>{
+ const result=layoutMatrix([{function:'F',effect:'E',patent:'P',quote:'a'},{function:'F',effect:'E',patent:'P',quote:'b'},{function:'G',effect:'H',patent:'Q',quote:'c'}]);
+ assert.equal(result.cells[0].documents,1);assert.deepEqual(result.cells[0].evidenceRows,[0,1]);assert.equal(result.missingPairs.length,2);assert.ok(result.missingPairs.every(pair=>pair.status==='not_observed_in_sample'));assert.ok(result.interpretation.includes('不能解释为专利空白'));
+ assert.equal(layoutMatrix([]).cells.length,0);assert.throws(()=>layoutMatrix([{function:'F',effect:'E',patent:'P'}]),/证据行/);
+});
+test('large layout remains sparse, explicitly reports preview omissions and supports cell pagination',()=>{
+ const rows=Array.from({length:130},(_,i)=>({function:'F'+i,effect:'E'+i,patent:'P'+i,quote:'SYNTHETIC QUOTE'})),matrix=layoutMatrix(rows);
+ assert.equal(matrix.cells.length,130);assert.equal(matrix.missingPairCount,130*130-130);assert.equal(matrix.missingPairs.length,120);assert.equal(matrix.omittedMissingPairs,matrix.missingPairCount-120);
+ const result:AnalysisResult={id:'R',tool:'analyze_tech_matrix',title:'矩阵',status:'completed',datasetId:'D',params:{},summary:'SYNTHETIC',rows,layoutMatrix:matrix,warnings:[],method:'fixture',evidence:[],createdAt:'2026-10-12'};
+ const report=reportResult(result);assert.equal(report.layoutMatrix?.omittedCells,10);assert.equal(report.layoutMatrix?.readEndpoint,'/api/results/R?section=layout');
+ const page=readResult(result,{section:'layout',offset:120,limit:20});assert.equal(page.total,130);assert.equal('cells' in page&&page.cells?.length,10);assert.equal(page.nextOffset,null);
+ const [retrieved]=retrieveResults([result],[{resultId:'R',section:'layout',offset:120,limit:10}]);
+ assert.ok('cells' in retrieved);assert.deepEqual(retrieved.cells,page.cells);
+ assert.equal(retrieved.evidenceReadEndpoint,'/api/results/R?section=rows');
+ assert.deepEqual(retrieved.cells?.[0].evidenceRows,[120]);
+ const [evidence]=retrieveResults([result],[{resultId:'R',section:'rows',offset:120,limit:1}]);
+ assert.ok('rows' in evidence);assert.equal(evidence.rows?.[0].patent,'P120');
+ assert.equal(evidence.rows?.[0].quote,'SYNTHETIC QUOTE');
+ assert.throws(()=>retrieveResults([result],[{resultId:'not-this-run',section:'layout'}]),/本次运行/);
+ assert.equal(retrievalContext([result])[0].layout?.omittedCells,10);
+ assert.equal(retrievalContext([result])[0].layout?.functions.length,130);
+});
+test('cell evidence filters paginate exact labels and preserve original source row identities',()=>{
+ const rows=[{function:'F',effect:'E',patent:'P',quote:'first'},{function:'G',effect:'E',patent:'Q',quote:'other'},{function:'F',effect:'E',patent:'P',quote:'second'},{function:'F',effect:'H',patent:'S',quote:'different effect'}];
+ const result:AnalysisResult={id:'R',tool:'analyze_tech_matrix',title:'矩阵',status:'completed',datasetId:'D',params:{},summary:'SYNTHETIC',rows,layoutMatrix:layoutMatrix(rows),warnings:[],method:'fixture',evidence:[],createdAt:'2026-10-12',rowSources:rows.map((row,i)=>({row:i,patentIds:[row.patent],representatives:[]}))};
+ const [first]=retrieveResults([result],[{resultId:'R',function:'F',effect:'E',limit:1}]);
+ assert.ok('rows' in first);assert.equal(first.total,2);assert.equal(first.nextOffset,1);assert.equal(first.rows?.[0].quote,'first');
+ const [second]=retrieveResults([result],[{resultId:'R',function:'F',effect:'E',offset:1,limit:1}]);
+ assert.ok('rowSources' in second);assert.equal(second.rowSources?.[0].row,2);assert.equal(second.rows?.[0].quote,'second');assert.equal(second.nextOffset,null);
+ const [empty]=retrieveResults([result],[{resultId:'R',function:'not-present',effect:'E'}]);assert.equal(empty.total,0);
+ const query=new URLSearchParams({function:'F',effect:'E',offset:'1',limit:'1',section:'rows'});
+ const publicPage=readResult(result,resultReadParameters(query));assert.deepEqual(publicPage,second);
+ const unicode=resultReadParameters(new URLSearchParams('function='+encodeURIComponent('网络传输 & 编码')+'&effect='+encodeURIComponent('降低时延')));assert.equal(unicode.function,'网络传输 & 编码');assert.equal(unicode.effect,'降低时延');
+});

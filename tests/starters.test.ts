@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {randomUUID} from 'node:crypto';
+import type {Run} from '../src/lib/types';
 process.env.PATENT_DATA_DIR=mkdtempSync(join(tmpdir(),'patent-starters-'));
 const {starterCandidates,generateStarters}=await import('../src/server/starters');
 const {normalize}=await import('../src/server/importers');
@@ -27,7 +29,9 @@ test('a failed model leaves usable targeted questions rather than an empty recom
  const result=await generateStarters(records,'d',[],()=>{},undefined,async()=>{throw new Error('Unavailable');});assert.equal(result.generated,false);assert.equal(result.items.length,4);assert.ok(result.items.every(i=>stepSchema.safeParse({tool:i.name,params:i.params}).success));
 });
 test('a bound starter plan saves effective defaults and audits its actual execution',async()=>{
- const {datasetMeta}=await import('../src/server/importers');const {saveDataset,newConversation,run}=await import('../src/server/db');const {startRun}=await import('../src/server/agent');
- const meta=datasetMeta('UNIT TEST ONLY',records,'test','test only');saveDataset(meta,records);const c=newConversation(meta.id);const task=startRun(c.id,meta.id,'统计这批专利的公开局分布',[{tool:'analyze_country_distribution',params:{}}],true);
- for(let i=0;i<100;i++){const current=run(task.id)!;if(current.status!=='running'){assert.equal(current.status,'completed');assert.equal(current.audit?.[0].status,'completed');assert.equal(current.plan[0].params.top_k,20);assert.deepEqual(current.plan[0].params,current.results[0].params);return;}await new Promise(resolve=>setTimeout(resolve,10));}assert.fail('工具执行未完成');
+ const {datasetMeta}=await import('../src/server/importers');const {saveDataset,newConversation,run,saveRun,finishRun}=await import('../src/server/db');const {executeRun}=await import('../src/server/agent');
+ const meta=datasetMeta('UNIT TEST ONLY',records,'test','test only');await saveDataset(meta,records);const c=await newConversation(meta.id);
+ const task:Run={id:randomUUID(),conversationId:c.id,datasetId:meta.id,question:'统计这批专利的公开局分布',status:'running',plan:[],results:[],answer:'',error:'',model:'fixture',createdAt:new Date().toISOString()};
+ await saveRun(task);await executeRun(task,[{tool:'analyze_country_distribution',params:{}}],true,new AbortController().signal);task.status='completed';await finishRun(task);
+ const current=(await run(task.id))!;assert.equal(current.status,'completed');assert.equal(current.audit?.[0].status,'completed');assert.equal(current.plan[0].params.top_k,20);assert.deepEqual(current.plan[0].params,current.results[0].params);
 });

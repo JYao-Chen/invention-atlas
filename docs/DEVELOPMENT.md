@@ -6,6 +6,8 @@
 
 使用Node.js 22.16及以上、npm。`npm ci`安装锁文件中的版本；复制 `.env.example` 为 `.env.local` 后填写自己的账号和Key。开发用 `npm run dev`，生产用 `npm run build` 和 `npm start`。默认地址为 `127.0.0.1:3017`。
 
+开发分支现已改用PostgreSQL。先建立独立业务库，配置`DATABASE_URL`，再执行`npx tsx --env-file=.env.local scripts/migrate-postgres.ts`。现有SQLite资料用离线迁移脚本导入，不再作为应用运行数据库。具体导入、核对和本地测试库见[PG开发记录](POSTGRES-DEVELOPMENT.md)。在线环境尚未据此切换。
+
 | 环境变量 | 用途 |
 | --- | --- |
 | `PATENT_USERNAME`、`PATENT_PASSWORD` | 单账号登录；密码必须自行设置 |
@@ -14,6 +16,9 @@
 | `PATENT_API_BASE_URL` | 初始OpenAI兼容接口 |
 | `PATENT_EMBEDDING_MODEL` | 百炼嵌入模型，默认text-embedding-v4 |
 | `PATENT_DATA_DIR` | 数据目录，默认data，可设绝对路径 |
+| `PATENT_MODEL_CREDENTIAL_KEY` | 组织聊天模型凭据的64位十六进制AES密钥，独立于数据库备份保管 |
+| `DATABASE_URL` | PostgreSQL业务库连接；与源文件目录分开 |
+| `PG_TEST_DATABASE_URL` | 专用测试库；测试文件通过独立schema隔离 |
 | `PATENT_DATASET_ROWS_URL` | 可选的自管HF rows转发地址，仅页面采集入口使用 |
 
 页面保存的对话模型配置在数据目录的 `model-config.json`，不会回显Key。保存后新请求生效；测试连接不会保存。不要上传这个文件。
@@ -39,17 +44,17 @@
 
 ## 持久化与发布
 
-SQLite保存专利、向量、数据集、对话、事件和报告。源窗口及公开页缓存也位于数据目录。代码发布不要覆盖数据目录或私有环境文件。
+PostgreSQL保存专利、向量、数据集、对话、事件和报告。源窗口及公开页缓存位于数据目录。代码发布不要覆盖数据库、数据目录或私有环境文件。
 
 1. 运行测试和构建；构建失败时不要切换服务。
-2. 用SQLite的备份功能保存一致性快照；不要只复制正在写入的主文件而遗漏WAL。
+2. 用`pg_dump`保存业务库，并恢复到独立库验证；首次SQLite迁移另按完整计划执行一致性快照和维护窗口。
 3. 从确认的提交制作独立发布目录，环境与数据通过服务配置指向共享目录。
 4. 切换current并重启，保留明确的上一版回滚入口。
 5. 检查登录、未登录API保护、数据数量和流式请求。数据迁移或恢复与代码回滚分别处理。
 
 Next.js配置启用standalone。直接运行standalone时，需要将 `.next/static` 复制到 `.next/standalone/.next/static`，将 `public` 复制到 `.next/standalone/public`，再运行 `server.js`。打包排除 `.env*` 和运行数据，避免构建追踪把本地私有文件带上。
 
-反向代理配置HTTPS，SSE关闭响应缓冲并允许长连接。首版没有多租户，部署者应给单账号设置独立密码，并在模型供应商设置费用限制。
+反向代理配置HTTPS，SSE关闭响应缓冲并允许长连接。开发版本包含组织、项目和成员权限；首次迁移需初始化管理员并将旧资料归入默认项目，原登录会话需要重新登录。后台worker使用独立维护连接领取队列，Web与业务执行使用非owner运行连接。模型供应商账户应设置费用限制。
 
 ## 更新说明与截图
 
@@ -81,6 +86,19 @@ npm run typecheck
 npm run build
 ```
 
-测试覆盖算法、范围、数据写入、恢复、事件协议和说明书资源。真实源缓存不存在时相应测试会跳过，模型端到端结果需要另外验证。功能验收和人工专利质量审查不可互相替代。
+测试前在执行环境设置`PG_TEST_DATABASE_URL`，或通过Node的`--env-file`加载私有测试配置；测试入口不会默认读取生产连接。测试覆盖算法、范围、数据写入、恢复、事件协议和说明书资源。真实源缓存不存在时相应测试会跳过，模型端到端结果需要另外验证。功能验收和人工专利质量审查不可互相替代。
 
 不要提交 `.env.local`、数据库、模型配置、源页缓存或可用凭证。增加字段或工具时同步类型、接口、表单、说明及最小测试。提交前检查暂存文件，避免把个人QA产物加入仓库。
+# 本地综合验证（2026-10-12）
+
+当前开发树全量自动测试260项通过，无失败或跳过，使用独立 `atlas_test` 数据库和每进程临时 schema。同轮在独立 artifacts 构建目录完成 Next.js webpack 生产构建、TypeScript 检查和页面生成，未覆盖3019开发服务产物、未部署生产。新增项目凭据、OpenAPI和官方SDK的MCP协议测试；真实SDK客户端及后台worker联调另见 [开放接口开发记录](API-DEVELOPMENT.md)。
+
+此结果覆盖代码回归及打包，不代替真实模型专业质量、完整全文索引、持续数据更新与监测闭环或生产迁移验收。M1—M8整体目标仍未完成。
+
+后续同版本线Next.js补丁升级至16.3.8，260项测试和新构建再次通过；standalone服务的真实浏览器与MCP客户端验证见 [开放接口开发记录](API-DEVELOPMENT.md)。仅本地验收，生产未切换。
+
+后续MCP HTTP与stdio共享工具注册，261项全量测试和隔离构建通过。实际HTTP客户端验证统计与凭据限制，模拟双项目并发验证请求身份不串用；公网和宿主端验收仍未完成。
+
+后续Word/PDF交付与来源定时采集加入开发树后，全量276项测试：275通过、0失败、1跳过。跳过的是需要显式LibreOffice/Math目录的真实PDF并发测试，该项此前在隔离转换环境实际执行通过；不能把跳过记为本轮通过。
+
+在`/home/yao/artifacts/invention-atlas/pg-migration/build-LQUkXs`完成全新隔离生产构建，使用既有prepare-release脚本准备静态资源，并在本机3020短暂启动standalone验收。真实登录、项目PG接口、站内通知、电脑/手机宽度、静态资源及logo检查通过；推荐问题接口在这项浏览器冒烟中模拟，未调用模型。独立HTTP请求进一步实测Word与PDF下载均200，文件分别22909与704652字节、正确文件头，验证导出依赖在实际打包后可运行。生产服务、数据库及线上release未改动，构建通过不代表M1—M8整体完成。

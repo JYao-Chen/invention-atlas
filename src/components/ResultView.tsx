@@ -1,4 +1,5 @@
 'use client';
+import type {PatentEvidenceLocation} from '../lib/patent-evidence';
 import {useMemo,useState,useRef} from 'react';
 import {downloadChart} from '@/lib/chart-download';
 import MathMarkdown from './MathMarkdown';
@@ -7,6 +8,8 @@ import {chartColors,graphColors,toolGroups} from './chart-colors';
 import ClusterView from './ClusterView';
 import ClaimComparison from './ClaimComparison';
 import WordCloud from './WordCloud';
+import PatentReadingNotes from './PatentReadingNotes';
+import LayoutMatrixView from './LayoutMatrixView';
 import {BarChart,Bar,Cell,Legend,LineChart,Line,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid} from 'recharts';
 import {Table2,ChartColumn,Network,Download} from 'lucide-react';
 import type {AnalysisResult,Graph,Row} from '@/lib/types';
@@ -90,7 +93,7 @@ export function DataTable({rows,onPatent,tool}:{rows:Row[];onPatent?:(id:string)
 
 </div>)}</div>;
 }
-function GraphView({graph,onPatent}:{graph:Graph;onPatent:(id:string)=>void}){
+function GraphView({graph,onPatent}:{graph:Graph;onPatent:(id:string,location?:PatentEvidenceLocation)=>void}){
  const [query,setQuery]=useState(''),[selected,setSelected]=useState(''),[scale,setScale]=useState(1);
  const geometry=useMemo(()=>{const connected=new Set(graph.edges.flatMap(e=>[e.source,e.target]));const candidates=graph.nodes.filter(n=>connected.has(n.id));const roots=candidates.filter(n=>query?n.label.toLowerCase().includes(query.toLowerCase()):n.kind!=='external').sort((a,b)=>b.value-a.value).slice(0,8);const rootIds=new Set(roots.map(n=>n.id));const neighbors=new Set(graph.edges.filter(e=>rootIds.has(e.source)||rootIds.has(e.target)).flatMap(e=>[e.source,e.target]));const nodes=[...roots,...candidates.filter(n=>!rootIds.has(n.id)&&neighbors.has(n.id)).sort((a,b)=>b.value-a.value)].slice(0,60);const citation=graph.edges.some(e=>e.kind==='citation');const positions=new Map(nodes.map((n,i)=>{if(citation)return [n.id,rootIds.has(n.id)?{x:85,y:65+roots.indexOf(n)*400/Math.max(1,roots.length-1)}:{x:250+(i-roots.length)%4*96,y:35+Math.floor((i-roots.length)/4)*34}];const angle=i*2.399963229728653;const radius=35+Math.sqrt(i/Math.max(1,nodes.length))*210;return [n.id,{x:320+Math.cos(angle)*radius,y:255+Math.sin(angle)*radius}];}));return {nodes,positions,edges:graph.edges.filter(e=>positions.has(e.source)&&positions.has(e.target))};},[graph,query]);
  const selectedNode=graph.nodes.find(n=>n.id===selected);
@@ -127,13 +130,13 @@ function GraphView({graph,onPatent}:{graph:Graph;onPatent:(id:string)=>void}){
 <span>{selectedNode.kind==='external'?'外部节点，仅有引用标识':'来源语料节点'} · 权重 {selectedNode.value}</span>{selectedNode.kind==='patent'&&<button onClick={()=>onPatent(selectedNode.id)}>查看专利原文</button>}{selectedNode.kind==='external'&&<a href={`https://patents.google.com/patent/${selectedNode.id}/en`} target="_blank" rel="noreferrer">查询公开文献</a>}</div>}</>
 ;
 }
-export default function ResultView({result,onPatent,showMethod=false}:{result:AnalysisResult;onPatent:(id:string)=>void;showMethod?:boolean}){
+export default function ResultView({result,onPatent,showMethod=false}:{result:AnalysisResult;onPatent:(id:string,location?:PatentEvidenceLocation)=>void;showMethod?:boolean}){
 const panel=useRef<HTMLElement>(null),[imageBusy,setImageBusy]=useState(false),[imageError,setImageError]=useState('');
 async function saveChart(format:'svg'|'png'){const svg=panel.current?.querySelector<SVGSVGElement>('.word-cloud>svg,.cluster-svg,.graph-svg,.chart svg.recharts-surface');if(!svg)return;setImageBusy(true);setImageError('');try{await downloadChart(svg,result.tool,format);}catch(error){setImageError((error as Error).message);}finally{setImageBusy(false);}}
 const words=result.rows.some(row=>typeof row.word==='string');
 const metrics=['tfidf','tf','burst','documents','weight','score'].filter(key=>result.rows.some(row=>typeof row[key]==='number'&&Number(row[key])>0));
 const years=[...new Set(result.rows.filter(row=>typeof row.word==='string').map(row=>String(row.year||'')).filter(Boolean))].sort();
-const [tab,setTab]=useState(result.clusterMap?'cluster':result.graph?'graph':words&&metrics.length?'cloud':result.chart?'chart':'data'),[metric,setMetric]=useState(metrics[0]||''),[year,setYear]=useState(years[0]||''),[displayCount,setDisplayCount]=useState(30),[chartKind,setChartKind]=useState<'bar'|'line'|'horizontal'>(result.chart?.kind||'bar');
+const [tab,setTab]=useState(result.layoutMatrix?'layout':result.clusterMap?'cluster':result.graph?'graph':words&&metrics.length?'cloud':result.chart?'chart':'data'),[metric,setMetric]=useState(metrics[0]||''),[year,setYear]=useState(years[0]||''),[displayCount,setDisplayCount]=useState(30),[chartKind,setChartKind]=useState<'bar'|'line'|'horizontal'>(result.chart?.kind||'bar');
 const filtered=years.length?result.rows.filter(row=>String(row.year)===year):result.rows;
 const chart=result.chart?{...result.chart,...(words&&metric?{y:metric}:{})}:words&&metrics.length?{kind:'bar' as const,x:'word',y:metric}:undefined;
 const availableWords=new Set(filtered.filter(row=>typeof row.word==='string'&&Number(row[metric])>0).map(row=>row.word)).size;
@@ -149,8 +152,9 @@ return <section ref={panel} className="result-panel" data-group={toolGroups[resu
 <span className="result-status">{result.status==='completed'?'已完成':result.status==='unavailable'?'数据不足':'执行失败'}</span>
 </header>
 <p>{result.summary}</p>
+{result.tool==='analyze_patent_reading'&&<PatentReadingNotes rows={result.rows} onPatent={onPatent}/>}
 {showMethod&&result.method&&<div className="markdown result-method"><MathMarkdown>{result.method}</MathMarkdown></div>}
-<div className="result-tabs">{words&&metrics.length>0&&<button className={tab==='cloud'?'selected':''} onClick={()=>setTab('cloud')}><ChartColumn size={15}/>词云</button>}{result.clusterMap&&<button className={tab==='cluster'?'selected':''} onClick={()=>setTab('cluster')}>
+<div className="result-tabs">{result.layoutMatrix&&<button type="button" className={tab==='layout'?'selected':''} onClick={()=>setTab('layout')}><Table2 size={15}/>布局矩阵</button>}{words&&metrics.length>0&&<button className={tab==='cloud'?'selected':''} onClick={()=>setTab('cloud')}><ChartColumn size={15}/>词云</button>}{result.clusterMap&&<button className={tab==='cluster'?'selected':''} onClick={()=>setTab('cluster')}>
 <ChartColumn size={15}/>
 聚类图</button>}{chart&&<button className={tab==='chart'?'selected':''} onClick={()=>setTab('chart')}>
 <ChartColumn size={15}/>
@@ -163,7 +167,8 @@ return <section ref={panel} className="result-panel" data-group={toolGroups[resu
 <Download size={15}/>
 下载 JSON</button>
 </div>
-{tab!=='data'&&<div className="chart-download-actions"><button disabled={imageBusy} onClick={()=>void saveChart('svg')}><Download size={14}/>下载 SVG</button><button disabled={imageBusy} onClick={()=>void saveChart('png')}><Download size={14}/>{imageBusy?'正在生成…':'下载 PNG'}</button>{imageError&&<span role="alert">{imageError}</span>}</div>}
+{tab!=='data'&&tab!=='layout'&&<div className="chart-download-actions"><button disabled={imageBusy} onClick={()=>void saveChart('svg')}><Download size={14}/>下载 SVG</button><button disabled={imageBusy} onClick={()=>void saveChart('png')}><Download size={14}/>{imageBusy?'正在生成…':'下载 PNG'}</button>{imageError&&<span role="alert">{imageError}</span>}</div>}
+{tab==='layout'&&result.layoutMatrix&&<LayoutMatrixView key={result.id} result={result} onPatent={onPatent}/>}
  {result.scope&&<p className="graph-note">输入 {result.scope.inputCount} 条 · 分析 {result.scope.analyzedCount} {result.scope.counting==='family'?'个来源同族代表件':'条公开件'} · 申请人归并规则 {result.scope.entityRules.length} 条</p>}
 {['cloud','chart'].includes(tab)&&<div className="visual-options">{years.length>0&&<label>公开年份<select value={year} onChange={e=>setYear(e.target.value)}>{years.map(y=><option key={y}>{y}</option>)}</select></label>}{words&&metrics.length>0&&<label>显示指标<select value={metric} onChange={e=>setMetric(e.target.value)}>{metrics.map(key=><option value={key} key={key}>{metricLabels[key]}</option>)}</select></label>}{tab==='chart'&&chart&&<label>图表类型<select value={chartKind} onChange={e=>setChartKind(e.target.value as 'bar'|'line'|'horizontal')}><option value="bar">柱状图</option><option value="horizontal">横向条形图</option>{['year','period'].includes(chart.x)&&<option value="line">折线图</option>}</select></label>}</div>}
 {words&&['cloud','chart'].includes(tab)&&availableWords>0&&<label className="word-count-control"><span>显示数量 <strong>{count}</strong><small>/ {availableWords} 个词</small></span><input aria-label="显示词数" type="range" min={1} max={availableWords} value={count} onChange={e=>setDisplayCount(Number(e.target.value))}/><span className="range-ends"><small>1</small><small>{availableWords}</small></span></label>}

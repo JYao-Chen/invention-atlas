@@ -30,10 +30,27 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    "next.config.ts",
+    "scripts/fetch-demo.ts",
+    "scripts/index-demo.ts",
+    "scripts/enrich-public.ts",
+    "scripts/enrich-commercial-context.ts",
+    "scripts/verify-research.ts",
+    "scripts/evaluate-research.ts",
+    "scripts/verify-workbench.ts",
+    "scripts/prepare-help.ts",
+    "scripts/capture-help.ts",
+    "scripts/inventory-sqlite.ts",
+    "scripts/migrate-postgres.ts",
+    "scripts/agent-worker.ts",
+    "scripts/initialize-admin.ts",
+    "scripts/import-sqlite-postgres.ts",
+    "scripts/verify-postgres-import.ts"
   ],
   "exclude": [
     "node_modules"

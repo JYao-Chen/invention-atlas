@@ -2,6 +2,29 @@
 import {useEffect,useState,useRef} from 'react';
 import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
 import Markdown from './MathMarkdown';
+import TechnicalDisclosures from './TechnicalDisclosures';
+import MonitorSubscriptions from './MonitorSubscriptions';
+import SourceUpdates from './SourceUpdates';
+import SourceVersions from './SourceVersions';
+import ProjectEntry,{type Workspace} from './ProjectEntry';
+import WorkspaceManager from './WorkspaceManager';
+import AccountSettings from './AccountSettings';
+import ModelUsage from './ModelUsage';
+import ApiCredentials from './ApiCredentials';
+import OrganizationModel from './OrganizationModel';
+import OrganizationManager from './OrganizationManager';
+import UserManager from './UserManager';
+import PatentAnnotations from './PatentAnnotations';
+import ClaimReader from './ClaimReader';
+import PatentEvidence from './PatentEvidence';
+import type {PatentEvidenceLocation} from '../lib/patent-evidence';
+import RecordLabelFilter,{type RecordLabelSelection} from './RecordLabelFilter';
+import ReportDraftEditor from './ReportDraftEditor';
+import ReceivedReports from './ReceivedReports';
+import ReportTaskInbox from './ReportTaskInbox';
+import TaskNotifications from './TaskNotifications';
+import ProfessionalTasks from './ProfessionalTasks';
+import FulltextSearch from './FulltextSearch';
 import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params,Starter,StarterPool} from '@/lib/types';
 import ResultView from './ResultView';
 import ExecutionProgress from './ExecutionProgress';
@@ -9,6 +32,7 @@ import SuggestedQuestions from './SuggestedQuestions';
 import PatentComposer from './PatentComposer';
 import PatentNarrative from './PatentNarrative';
 import AnalysisProcess from './AnalysisProcess';
+import RunBudget from './RunBudget';
 import AtlasNavigation,{atlasPages} from './AtlasNavigation';
 import DataResearchPanel from './DataResearchPanel';
 import SourceAcquisition from './SourceAcquisition';
@@ -24,12 +48,23 @@ async function api(path:string,body?:unknown,method?:string){const response=awai
 const titles=atlasPages;
 function defaults(tool:string,first?:string):Params{if(tool==='search_patents')return {query:'blockchain digital identity authentication',top_k:10};if(tool==='read_patent_details'||tool==='analyze_claim_elements')return {patent_numbers:first?[first]:[]};if(tool==='audit_search_strategy')return {strategies:[{name:'v1',query:'blockchain'},{name:'v2',query:'blockchain identity authentication'}],top_k:20};if(tool==='monitor_patent_changes')return {query:'blockchain',strategy_id:'blockchain-monitor',top_k:20};if(tool==='analyze_clustering')return {k:6};return {};}
 export default function Workbench(){
+ const [registering,setRegistering]=useState(false),[signingIn,setSigningIn]=useState(false);
+ const [workspace,setWorkspace]=useState<Workspace>();
+ const readOnly=workspace?.projects.find(project=>project.id===workspace.current?.id)?.role==='reader';
+ async function refreshWorkspace(){const next:Workspace=await api('workspace');setWorkspace(next);return next;}
+ const [patentDatasetId,setPatentDatasetId]=useState<string>();
+ const [patentEvidence,setPatentEvidence]=useState<PatentEvidenceLocation>();
+ const [recordLabel,setRecordLabel]=useState<RecordLabelSelection>(null);
+ const recordsRequest=useRef(0);
+ const dataRequest=useRef(0);
+ async function selectProject(projectId:string){await api('workspace',{projectId},'PATCH');sessionStorage.removeItem('patent-conversation');sessionStorage.removeItem('atlas-navigation');location.reload();}
  const submitting=useRef('');
+ const [modelCallLimit,setModelCallLimit]=useState('');
  const chosenStarter=useRef<Starter|undefined>(undefined);
  const [starterPool,setStarterPool]=useState<StarterPool>({version:'',batches:[]});
  const [logged,setLogged]=useState<boolean|null>(null),[view,setView]=useState<keyof typeof titles>('data'),[meta,setMeta]=useState<Dataset>(),[catalog,setCatalog]=useState<Dataset[]>([]),[tools,setTools]=useState<Tool[]>([]),[records,setRecords]=useState<Patent[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState('');
  const [conversations,setConversations]=useState<Conversation[]>([]),[conversationId,setConversationId]=useState(''),[turns,setTurns]=useState<Run[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState(''),[results,setResults]=useState<AnalysisResult[]>([]),[selectedTool,setSelectedTool]=useState('search_patents'),[parameters,setParameters]=useState(JSON.stringify(defaults('search_patents'),null,2)),[restored,setRestored]=useState(false),[toolBusy,setToolBusy]=useState(false),[mobileFocus,setMobileFocus]=useState(false);
- const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;run:Run}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
+const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;run:Run}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run;revision?:number}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
  const [historyPage,setHistoryPage]=useState(1);
  const [historySelection,setHistorySelection]=useState<string[]>([]),[reportSelection,setReportSelection]=useState<string[]>([]),[deleting,setDeleting]=useState(false);
@@ -48,7 +83,7 @@ export default function Workbench(){
  useEffect(()=>{const latest=turns.at(-1);if(report||busy||!latest||latest.followups?.length===5||!latest.answer.trim()||!['completed','partial'].includes(latest.status)||requestedFollowups.current.has(latest.id))return;void suggest(latest);},[turns,busy,report]);
  useEffect(()=>{if(nearBottom.current)chatRef.current?.scrollTo({top:chatRef.current.scrollHeight});},[turns,phase,mobileFocus]);
  useEffect(()=>{contentRef.current?.scrollTo({top:0});},[view,report?.id]);
- async function loadData(id?:string){const [d,config]=await Promise.all([api('datasets'),api('settings')]);setSettings(config);setModelForm({model:config.model,base:config.base,apiKey:''});setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){setStarterPool(await api("starters?dataset="+selected.id));setMeta(selected);const t=await api('tools?dataset='+selected.id);setTools(t.tools);await loadRecords(selected.id,1,'');}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
+async function loadData(id?:string){const request=++dataRequest.current,recordRequest=++recordsRequest.current;setRecordLabel(null);setQuery('');setRecords([]);setTotal(0);const [d,config]=await Promise.all([api('datasets'),api('settings')]);if(request!==dataRequest.current)return;setSettings(config);setModelForm({model:config.model,base:config.base,apiKey:''});setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){const starters=await api('starters?dataset='+selected.id);if(request!==dataRequest.current)return;setStarterPool(starters);setMeta(selected);const t=await api('tools?dataset='+selected.id);if(request!==dataRequest.current)return;setTools(t.tools);if(recordRequest===recordsRequest.current)await loadRecords(selected.id,1,'',null);}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
  async function changeAfterEdit(id?:string){sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setResults([]);setQuery('');setRestored(false);setReport(undefined);await loadData(id);}
  async function refreshHistory(){const conversations=(await api('conversations')).conversations,reports=(await api('reports')).reports;setConversations(conversations);setReports(reports);setHistorySelection(ids=>ids.filter(id=>conversations.some((c:Conversation)=>c.id===id)));setReportSelection(ids=>ids.filter(id=>reports.some((r:{id:string})=>r.id===id)));}
  function selectSaved(kind:'reports'|'conversations',id:string,selected:boolean){const update=kind==='reports'?setReportSelection:setHistorySelection;update(ids=>selected?[...new Set([...ids,id])]:ids.filter(value=>value!==id));}
@@ -64,13 +99,13 @@ export default function Workbench(){
    await refreshHistory();setNotice(`已删除 ${ids.length} ${unit}${noun}。`);
   }catch(error){setError((error as Error).message);}finally{setDeleting(false);}
  }
- async function loadRecords(id:string,p:number,q:string){const data=await api(`patents?dataset=${id}&page=${p}&q=${encodeURIComponent(q)}`);setRecords(data.records);setTotal(data.total);setPage(p);}
- useEffect(()=>{const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);api('health').then(async()=>{setLogged(true);await loadData();if(saved.reportId&&saved.page==='analysis'){const item=(await api('reports')).reports.find((r:{id:string})=>r.id===saved.reportId);if(item){setReport(item);return;}}const remembered=sessionStorage.getItem('patent-conversation');if(remembered&&(saved.page==='analysis'||saved.assistant)){const items=(await api('conversations')).conversations;const c=items.find((item:Conversation)=>item.id===remembered);if(c){await openConversation(c,false);setRestored(true);}else sessionStorage.removeItem('patent-conversation');}}).catch(()=>setLogged(false));return()=>stream.current?.abort();},[]);
- useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElement;const dialog=document.querySelector<HTMLElement>('.patent-detail');dialog?.querySelector<HTMLElement>('button')?.focus();const handle=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPatent(undefined);return;}if(event.key==='Tab'&&dialog){const controls=[...dialog.querySelectorAll<HTMLElement>('button,a[href],summary,[tabindex="0"]')];const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};document.addEventListener('keydown',handle);return()=>{document.removeEventListener('keydown',handle);opener?.focus();};},[Boolean(patent)]);
+async function loadRecords(id:string,p:number,q:string,label:RecordLabelSelection=recordLabel){const request=++recordsRequest.current;const params=new URLSearchParams({dataset:id,page:String(p),q,...(label?{label:label.id,includeChildren:String(label.includeChildren)}:{})});const data=await api('patents?'+params);if(request!==recordsRequest.current)return;setRecords(data.records);setTotal(data.total);setPage(p);}
+useEffect(()=>{let current=true;const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);api('workspace').then(async(next:Workspace)=>{if(!current)return;setWorkspace(next);setLogged(true);if(!next.current)return;await loadData();if(!current)return;if(saved.reportId&&saved.page==='analysis'){const item=(await api('reports')).reports.find((r:{id:string})=>r.id===saved.reportId);if(item){setReport(item);return;}}const remembered=sessionStorage.getItem('patent-conversation');if(remembered&&(saved.page==='analysis'||saved.assistant)){const items=(await api('conversations')).conversations;const c=items.find((item:Conversation)=>item.id===remembered);if(c){await openConversation(c,false);setRestored(true);}else sessionStorage.removeItem('patent-conversation');}}).catch(()=>{if(current)setLogged(false);});return()=>{current=false;stream.current?.abort();};},[]);
+useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElement;const dialog=document.querySelector<HTMLElement>('.patent-detail');dialog?.querySelector<HTMLElement>('button')?.focus();const handle=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPatent(undefined);return;}if(event.key==='Tab'&&dialog){const controls=[...dialog.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],summary,input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')];const visible=controls.filter(control=>control.getClientRects().length>0);const first=visible[0],last=visible.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};document.addEventListener('keydown',handle);return()=>{document.removeEventListener('keydown',handle);opener?.focus();};},[Boolean(patent)]);
  async function changeDataset(id:string){stream.current?.abort();await api('datasets',{id},'PATCH');sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setResults([]);setReport(undefined);await loadData(id);}
- async function openPatent(id:string,datasetId=meta?.id){try{setPatent(await api(`patents/${id}?dataset=${datasetId}`));}catch(e){setError((e as Error).message);}}
+ async function openPatent(id:string,datasetId=meta?.id,location?:PatentEvidenceLocation){try{const record=await api(`patents/${id}?dataset=${datasetId}`);setPatentEvidence(location);setPatentDatasetId(datasetId);setPatent(record);}catch(e){setError((e as Error).message);}}
  async function openConversation(c:Conversation,openAssistant=true){stream.current?.abort();setBusy(false);if(openAssistant){setView('analysis');setMobileFocus(true);}try{await loadData(c.datasetId);const detail=await api('conversations/'+c.id);sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setRestored(true);setTurns(detail.runs);setReport(undefined);setResults(detail.runs.flatMap((r:Run)=>r.results));const pending=detail.runs.find((r:Run)=>r.status==='running');if(pending)await follow(pending.id);}catch(e){setError('打开对话失败：'+(e as Error).message);}}
- function newChat(){submitting.current='';chosenStarter.current=undefined;nearBottom.current=true;setShowLatest(false);if(!meta)void loadData();stream.current?.abort();sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setReport(undefined);setResults([]);setText('');setError('');setBusy(false);setPhase('');setMobileFocus(true);}
+ function newChat(){submitting.current='';chosenStarter.current=undefined;nearBottom.current=true;setShowLatest(false);if(!meta)void loadData();stream.current?.abort();sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setReport(undefined);setResults([]);setText('');setError('');setBusy(false);setToolBusy(false);setPhase('');setMobileFocus(true);}
  async function follow(id:string){stream.current?.abort();const controller=new AbortController();stream.current=controller;currentRun.current=id;setBusy(true);setTurns(value=>value.map(r=>r.id===id?{...r,answer:''}:r));try{
   const response=await fetch('/api/runs/'+id+'/events',{signal:controller.signal});if(!response.ok||!response.body)throw new Error('无法读取任务进度');const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';
   while(true){const chunk=await reader.read();buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});let end;while((end=buffer.indexOf('\n\n'))>=0){const block=buffer.slice(0,end);buffer=buffer.slice(end+2);const name=block.split('\n').find(line=>line.startsWith('event: '))?.slice(7);const raw=block.split('\n').find(line=>line.startsWith('data: '))?.slice(6);if(!raw)continue;const data=JSON.parse(raw);
@@ -89,8 +124,23 @@ export default function Workbench(){
   }if(chunk.done)break;}
   const final=await api('runs/'+id);setTurns(value=>value.map(r=>r.id===id?final:r));setPhase(final.status==='completed'?'分析完成':final.status==='cancelled'?'任务已停止':'已保留工具结果，请查看说明');await refreshHistory();
  }catch(e){if(!controller.signal.aborted)setError((e as Error).message);}finally{if(currentRun.current===id)setBusy(false);}}
- async function send(question=text){if(!meta||busy||submitting.current||!question.trim())return;const pendingId='pending-'+crypto.randomUUID();submitting.current=pendingId;const pending:Run={id:pendingId,conversationId,datasetId:meta.id,question,status:'running',plan:[],results:[],answer:'',error:'',model:'',createdAt:new Date().toISOString(),progress:{tool:'request',unit:'正在提交问题并创建分析任务'}};nearBottom.current=true;setShowLatest(false);setBusy(true);setError('');setReport(undefined);setView('analysis');setMobileFocus(true);setRestored(false);setTurns(value=>[...value,pending]);setText('');try{let id=conversationId;if(!id){const c=await api('conversations',{datasetId:meta.id});id=c.id;sessionStorage.setItem('patent-conversation',id);setConversationId(id);}const starter=chosenStarter.current;const r=await api('runs',{conversationId:id,datasetId:meta.id,question,...(starter?.datasetId===meta.id&&starter.question===question?{steps:[{tool:starter.name,params:starter.params}]}:{})});if(submitting.current!==pendingId)return;chosenStarter.current=undefined;setTurns(value=>value.map(t=>t.id===pendingId?r:t));await follow(r.id);}catch(e){if(submitting.current!==pendingId)return;const message=(e as Error).message;setTurns(value=>value.map(t=>t.id===pendingId?{...t,status:'failed',error:message}:t));setError(message);setBusy(false);}finally{if(submitting.current===pendingId)submitting.current='';}}
- async function runTool(){if(!meta||toolBusy||busy)return;setError('');setToolBusy(true);setReport(undefined);try{let params:Params;try{params=JSON.parse(parameters);}catch{throw new Error('参数格式不正确。请使用 JSON，例如 {} 表示默认范围。');}const title=tools.find(t=>t.name===selectedTool)?.title||selectedTool;const c=await api('conversations',{datasetId:meta.id,title:'工具 · '+title});const r=await api('runs',{conversationId:c.id,datasetId:meta.id,question:'直接运行：'+title,mode:'tool',steps:[{tool:selectedTool,params}]});sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setResults([]);setRestored(false);setPhase('');setTurns([r]);await follow(r.id);setNotice('任务已结束，结果与已完成分段已保存。');}catch(e){setError((e as Error).message);}finally{setToolBusy(false);}}
+ async function send(question=text){if(!meta||busy||submitting.current||!question.trim())return;
+ const maxModelCalls=modelCallLimit.trim()?Number(modelCallLimit):undefined;
+ if(maxModelCalls!==undefined&&(!Number.isInteger(maxModelCalls)||maxModelCalls<1||maxModelCalls>2147483647)){setError('调用上限须为正整数');return;}
+ const pendingId='pending-'+crypto.randomUUID();submitting.current=pendingId;const pending:Run={id:pendingId,conversationId,datasetId:meta.id,question,status:'running',plan:[],results:[],answer:'',error:'',model:'',createdAt:new Date().toISOString(),progress:{tool:'request',unit:'正在提交问题并创建分析任务'}};nearBottom.current=true;setShowLatest(false);setBusy(true);setError('');setReport(undefined);setView('analysis');setMobileFocus(true);setRestored(false);setTurns(value=>[...value,pending]);setText('');try{let id=conversationId;if(!id){const c=await api('conversations',{datasetId:meta.id});id=c.id;sessionStorage.setItem('patent-conversation',id);setConversationId(id);}const starter=chosenStarter.current;const r=await api('runs',{conversationId:id,datasetId:meta.id,question,...(maxModelCalls!==undefined?{maxModelCalls}:{}),...(starter?.datasetId===meta.id&&starter.question===question?{steps:[{tool:starter.name,params:starter.params}]}:{})});if(submitting.current!==pendingId)return;chosenStarter.current=undefined;setTurns(value=>value.map(t=>t.id===pendingId?r:t));await follow(r.id);}catch(e){if(submitting.current!==pendingId)return;const message=(e as Error).message;setTurns(value=>value.map(t=>t.id===pendingId?{...t,status:'failed',error:message}:t));setError(message);setBusy(false);}finally{if(submitting.current===pendingId)submitting.current='';}}
+ async function runTool(input?:{tool:string;params:Params;question:string}){
+  if(!meta||readOnly||toolBusy||busy||submitting.current)return;
+  const tool=input?.tool||selectedTool,title=tools.find(t=>t.name===tool)?.title||tool;let params:Params;
+  try{params=input?.params||JSON.parse(parameters);}catch{setError('参数格式不正确。请检查分析参数。');return;}
+  const question=input?.question||'直接运行：'+title,pendingId='pending-'+crypto.randomUUID();submitting.current=pendingId;
+  const pending:Run={id:pendingId,conversationId:'',datasetId:meta.id,question,status:'running',plan:[{tool,params}],results:[],answer:'',error:'',model:'',createdAt:new Date().toISOString(),progress:{tool:'request',unit:'正在提交工具任务'}};
+  setError('');setToolBusy(true);setBusy(true);setPatent(undefined);setReport(undefined);setView('analysis');setMobileFocus(true);setResults([]);setRestored(false);setPhase('');setTurns([pending]);nearBottom.current=true;setShowLatest(false);
+  try{
+   const c=await api('conversations',{datasetId:meta.id,title:'工具 · '+title}),r=await api('runs',{conversationId:c.id,datasetId:meta.id,question,mode:'tool',steps:[{tool,params}]});
+   if(submitting.current!==pendingId)return;sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setTurns([r]);await follow(r.id);setNotice('任务已结束，结果与已完成分段已保存。');
+  }catch(e){if(submitting.current!==pendingId)return;const message=(e as Error).message;setTurns(value=>value.map(run=>run.id===pendingId?{...run,status:'failed',error:message}:run));setError(message);setBusy(false);}
+  finally{if(submitting.current===pendingId){submitting.current='';setToolBusy(false);}}
+ }
  async function save(r:Run){try{await api('reports',{runId:r.id});await refreshHistory();setNotice('报告已保存。可在报告库查看或下载。');}catch(e){setError((e as Error).message);}}
  async function retry(r:Run){try{await api('runs/'+r.id+'/retry-report',{});requestedFollowups.current.delete(r.id);setTurns(value=>value.map(t=>t.id===r.id?{...t,status:'running',answer:'',error:'',followups:undefined}:t));await follow(r.id);}catch(e){setError((e as Error).message);}}
  if(logged===null)return <div className="boot">正在打开专利分析工作台…</div>;
@@ -100,18 +150,21 @@ export default function Workbench(){
 <h1>Invention Atlas</h1>
 <p>Patent analysis with traceable evidence</p>
 </div>
-<form onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setError('');try{await api('login',{username:form.get('username'),password:form.get('password')});setLogged(true);await loadData();}catch(e){setError((e as Error).message);}}}>
-<h2>登录工作台</h2>
-<p className="muted">输入账号和密码</p>
-<label>用户名<input name="username" autoComplete="username" required defaultValue="jyao"/>
+<form onSubmit={async e=>{e.preventDefault();if(signingIn)return;const form=new FormData(e.currentTarget);setError('');setSigningIn(true);try{await api(registering?'register':'login',{username:form.get('username'),password:form.get('password'),...(registering?{token:form.get('token'),displayName:form.get('displayName')}:{})});const next=await refreshWorkspace();setLogged(true);if(next.current)await loadData();}catch(e){setError((e as Error).message);}finally{setSigningIn(false);}}}>
+<h2>{registering?'凭邀请注册':'登录工作台'}</h2>
+<p className="muted">{registering?'使用组织管理员提供的邀请码创建账号':'输入账号和密码'}</p>
+{registering&&<><label>组织邀请码<input name="token" required autoComplete="off"/></label><label>姓名<input name="displayName" required maxLength={100} autoComplete="name"/></label></>}
+<label>用户名<input name="username" autoComplete="username" required maxLength={80}/>
 </label>
-<label>密码<input name="password" type="password" autoComplete="current-password" required/>
-</label>{error&&<p className="error" role="alert">{error}</p>}<button className="primary">登录</button>
+<label>密码<input name="password" type="password" autoComplete={registering?'new-password':'current-password'} minLength={registering?10:undefined} maxLength={1024} required/>
+</label>{error&&<p className="error" role="alert">{error}</p>}<button className="primary" disabled={signingIn}>{signingIn?'正在提交…':registering?'创建账号':'登录'}</button>
+<button type="button" disabled={signingIn} onClick={()=>{setRegistering(!registering);setError('');}}>{registering?'已有账号，返回登录':'使用邀请码注册'}</button>
 <p className="login-note">
 <ShieldCheck size={15}/>
 模型密钥保存在服务端</p>
 </form>
 </main>;
+ if(workspace&&!workspace.current)return <ProjectEntry workspace={workspace} onSelect={selectProject} onReload={async()=>{await refreshWorkspace();}} onLogout={logout}/>;
  const visible=report?report.run.results:results;const shownTurns=report?[report.run]:turns;const currentMeta=report?(report.run.datasetSnapshot||catalog.find(d=>d.id===report.run.datasetId)):meta;
  let scopeParams:Params={};try{const value=JSON.parse(parameters);if(value&&typeof value==='object'&&!Array.isArray(value))scopeParams=value;}catch{}
  function changeParam(key:keyof Params,value:string){try{const next=JSON.parse(parameters);if(!value.trim())delete next[key];else next[key]=key==='patent_numbers'?value.split(',').map(v=>v.trim()).filter(Boolean):['year_start','year_end','top_k','k'].includes(key)?Number(value):value;setParameters(JSON.stringify(next,null,2));}catch{setError('请先修正完整参数中的 JSON 格式。');}}
@@ -126,6 +179,18 @@ export default function Workbench(){
 <span className="dataset-caption">{currentMeta?.name||'尚未导入数据'}</span>
 </div>
 <div className="top-actions">
+{workspace&&<details className="workspace-actions"><summary>管理</summary><div>
+{workspace&&<WorkspaceManager workspace={workspace} onSelect={selectProject}/>}
+{workspace&&<ReceivedReports/>}
+{workspace&&<ReportTaskInbox key={workspace.current?.id} onOpen={async(id,revision)=>{const item=await api('reports/'+id+'?version='+revision);setReport(item);setView('analysis');setMobileFocus(false);}}/>}
+{workspace&&<TaskNotifications key={'notifications:'+workspace.current?.id} onOpen={async(id,revision)=>{const item=await api('reports/'+id+'?version='+revision);setReport(item);setView('analysis');setMobileFocus(false);}}/>}
+{workspace&&<AccountSettings username={workspace.user.username} displayName={workspace.user.displayName}/>}
+{workspace?.current&&<ApiCredentials key={'credentials:'+workspace.current.id} projectName={workspace.projects.find(project=>project.id===workspace.current?.id)?.name||workspace.current.id} readOnly={Boolean(readOnly)}/>}
+{workspace?.current&&<OrganizationModel key={'organization-model:'+workspace.current.id}/>}
+{workspace&&<OrganizationManager platformAdmin={workspace.user.platformRole==='admin'} onProjectCreated={selectProject} onChanged={async()=>{await refreshWorkspace();}}/>}
+{workspace?.user.platformRole==='admin'&&<UserManager currentUserId={workspace.user.id}/>}
+</div></details>}
+{workspace&&<ProfessionalTasks datasets={catalog} readOnly={Boolean(readOnly)} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>}
 {mobileFocus&&<button aria-label="对话历史" onClick={()=>{setView('history');setMobileFocus(false);setReport(undefined);}}><MessagesSquare size={16}/><span className="mobile-action-label">对话历史</span></button>}
 <button aria-label="新对话" onClick={()=>{newChat();setView('analysis');}}>
 <Plus size={15}/>
@@ -148,6 +213,7 @@ export default function Workbench(){
 </div>}
  {view==='help'&&<HelpManual toolsReady={tools.length>0} onOpen={(target,tool)=>{setReport(undefined);if(target==='assistant'){setView('analysis');setMobileFocus(true);}else{setView(target);setMobileFocus(false);}if(tool){setSelectedTool(tool);setParameters(JSON.stringify(tools.find(t=>t.name===tool)?.defaultParams||defaults(tool,records[0]?.id)));}history.replaceState(null,'',location.pathname);}} onDemo={question=>{setView('analysis');setMobileFocus(true);setText(question);history.replaceState(null,'',location.pathname);}}/>}
  {view==='data'&&<>
+ <MonitorSubscriptions key={'monitor:'+workspace?.current?.id} datasets={catalog} readOnly={Boolean(readOnly)} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>
 <section className="data-header">
 <div>
 <h2>当前数据集</h2>
@@ -166,9 +232,10 @@ export default function Workbench(){
 <span>语义索引 <strong>{meta.indexed}/{meta.count}</strong>
 </span>
 </div>
-<div className="dataset-actions">
+{!readOnly&&<div className="dataset-actions">
 <IndexProgress key={meta.id} datasetId={meta.id} indexed={meta.indexed} total={meta.count} onUpdated={()=>loadData(meta.id)}/>
-<details key={meta.id} className="dataset-management"><summary>数据集管理</summary><div className="dataset-danger-actions"><span>删除“{meta.name}”及其 {meta.count} 条记录；对话和已保存报告保留。</span><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></div></details></div>
+<details key={meta.id} className="dataset-management"><summary>数据集管理</summary><div className="dataset-danger-actions"><span>删除“{meta.name}”及其 {meta.count} 条记录；对话和已保存报告保留。</span><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></div></details></div>}
+<SourceUpdates key={'source:'+meta.id} datasetId={meta.id} readOnly={Boolean(readOnly)} onChanged={()=>void loadData(meta.id)} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>
 <div className="list-heading">
 <h3>专利记录 <small>{total} 条</small>
 </h3>
@@ -178,7 +245,8 @@ export default function Workbench(){
 <button>查找</button>
 </form>
 </div>
-<DataRecords datasetId={meta.id} records={records} onPatent={openPatent} onChanged={()=>changeAfterEdit(meta.id)}/>
+<RecordLabelFilter key={meta.id} value={recordLabel} readOnly={Boolean(readOnly)} onApply={async filter=>{setRecordLabel(filter);await loadRecords(meta.id,1,query,filter);}}/>
+<DataRecords datasetId={meta.id} records={records} onPatent={openPatent} onChanged={()=>changeAfterEdit(meta.id)} readOnly={readOnly}/>
 <div className="pagination">
 <button disabled={page<=1} onClick={()=>loadRecords(meta.id,page-1,query)}>上一页</button>
 <span>{total?(page-1)*20+1:0}—{Math.min(page*20,total)} / {total}</span>
@@ -187,8 +255,9 @@ export default function Workbench(){
 </>
 }
 
-{meta&&<DataResearchPanel datasetId={meta.id} onUpdated={()=>void loadData(meta.id)}/>}
-<SourceAcquisition onImported={id=>void changeDataset(id)}/>
+{meta&&<FulltextSearch key={meta.id} datasetId={meta.id} readOnly={readOnly}/>}
+{meta&&!readOnly&&<DataResearchPanel datasetId={meta.id} onUpdated={()=>void loadData(meta.id)}/>}
+{!readOnly&&<SourceAcquisition onImported={id=>void changeDataset(id)}/>}
 <details className="import-panel">
 <summary>
 <Upload size={16}/>
@@ -217,6 +286,7 @@ export default function Workbench(){
 } {report&&<div className="replay-banner">
 <Play size={16}/>
 历史运行 · 数据集 {report.run.datasetId.slice(0,8)} · {new Date(report.run.createdAt).toLocaleString('zh-CN')}</div>}{report&&<article className="markdown report-narrative">
+<ReportDraftEditor key={report.id} reportId={report.id} selectedRevision={report.revision||0} readOnly={Boolean(readOnly)} onRead={version=>setReport(current=>current?{...current,revision:version.revision,title:version.title,run:{...current.run,answer:version.answer}}:current)}/>
 <Markdown>{report.run.answer.replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>
 </article>}{!report&&<>
 <div className="analysis-intro">
@@ -254,13 +324,13 @@ export default function Workbench(){
 </label>
 </div>
 <ToolParameters tool={selectedTool} params={scopeParams} onChange={value=>setParameters(JSON.stringify(value,null,2))}/>
-<button className="primary" disabled={busy||toolBusy||!tools.find(t=>t.name===selectedTool)?.available} onClick={runTool}>{toolBusy?'正在运行…':'运行分析'}</button>
+<button className="primary" disabled={busy||toolBusy||!tools.find(t=>t.name===selectedTool)?.available} onClick={()=>void runTool()}>{toolBusy?'正在运行…':'运行分析'}</button>
 </div>
 </div>
 </details>
 </>
 }{visible.length?<div className="results">{visible.map(result=>
-<ResultView key={result.id} result={result} onPatent={id=>openPatent(id,result.datasetId)}/>
+<ResultView key={result.id} result={result} onPatent={(id,location)=>openPatent(id,result.datasetId,location)}/>
 )}</div>:<div className="analysis-empty">
 <h3>尚无分析结果</h3>
 <p>选择工具并运行后，可在这里查看图表和数据。</p>
@@ -295,6 +365,7 @@ export default function Workbench(){
 </>
 }
  {view==='reports'&&<>
+ <TechnicalDisclosures key={'disclosures:'+workspace?.current?.id} readOnly={Boolean(readOnly)} datasets={catalog}/>
 <h2>已保存的报告</h2>
 <p className="muted">保存时的数据和分析结果一并保留，不随当前数据集改变。</p>
 <div className="saved-list-toolbar"><label><input type="checkbox" aria-label="选择全部报告" checked={reports.length>0&&reports.every(r=>reportSelection.includes(r.id))} onChange={e=>setReportSelection(e.target.checked?reports.map(r=>r.id):[])}/>选择全部</label><span>已选 {reportSelection.length} 份</span><button className="danger-action" disabled={deleting||!reportSelection.length} onClick={()=>void removeSaved('reports',reportSelection)}>{deleting?'正在删除…':'删除选中'}</button>{reportSelection.length>0&&<button onClick={()=>setReportSelection([])}>取消选择</button>}</div>
@@ -343,13 +414,14 @@ export default function Workbench(){
 </dl>
 <p>现有索引使用此嵌入配置。对话模型的修改不会影响它；更换嵌入模型需重新建立索引。</p>
 </section>
+{workspace?.current&&<ModelUsage key={workspace.current.id} projectName={workspace.projects.find(project=>project.id===workspace.current?.id)?.name||workspace.current.id}/>}
 <details className="settings-environment">
 <summary>账号与运行环境</summary>
 <dl>
 <dt>登录账号</dt>
 <dd>{settings?.username}</dd>
 <dt>运行方式</dt>
-<dd>Next.js 与本地 SQLite</dd>
+<dd>Next.js 与 PostgreSQL</dd>
 </dl>
 </details>
 </>
@@ -382,14 +454,15 @@ export default function Workbench(){
 </div>}{shownTurns.map(r=>
 <section className="chat-turn" key={r.id}>
 <div className="question">{r.question}</div>{r.kind!=='help'&&<AnalysisProcess run={r} tools={tools} onPatent={openPatent}/>}
-<PatentNarrative text={r.answer||(r.status==='running'?r.kind==='help'?'正在查阅功能说明。':'':r.results.length?'':'本次没有生成结果。')} results={r.results} streaming={r.status==='running'&&!report} onPatent={(id,datasetId)=>openPatent(id,datasetId)}/>
+{!report&&!r.id.startsWith('pending-')&&<RunBudget key={'budget:'+r.id} runId={r.id} readOnly={Boolean(readOnly)}/>}
+<PatentNarrative text={r.answer||(r.status==='running'?r.kind==='help'?'正在查阅功能说明。':'':r.results.length?'':'本次没有生成结果。')} results={r.results} streaming={r.status==='running'&&!report} onPatent={(id,datasetId,location)=>openPatent(id,datasetId,location)}/>
 {r.kind==='help'&&<small className="graph-note">功能说明 · 依据使用说明回答，未执行数据分析</small>}
 {r.error&&<p className="error">{r.error}</p>}<div className="turn-actions">
 <span>{r.status==='completed'?'已完成':r.status==='partial'?'部分完成':r.status==='running'?'进行中':r.status==='cancelled'?'已停止':r.status==='interrupted'?'运行中断':'失败'}</span>{!report&&r.status!=='running'&&<>
 <button disabled={busy||!meta} onClick={()=>send(r.question)}>重新运行问题</button>{r.results.length>0&&<button onClick={()=>save(r)}>保存报告</button>}{r.results.some(result=>result.status==='completed')&&<button disabled={busy} onClick={()=>retry(r)}>重新生成报告</button>}</>
 }</div>
 {!report&&r===shownTurns.at(-1)&&['completed','partial'].includes(r.status)&&<div className="followup-questions" aria-label="相关追问"><div className="followup-heading"><small>{suggesting===r.id?'正在生成相关追问…':'相关追问'}</small><button className="followup-refresh" disabled={busy||Boolean(suggesting)} onClick={()=>void suggest(r,true)}><RefreshCw size={13}/>换一组</button></div>{r.followups?.map(question=><button key={question} disabled={busy} onClick={()=>{setText(question);requestAnimationFrame(()=>document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus());}}>{question}<ArrowUpRight size={14}/></button>)}</div>}
-</section>)}</div>{showLatest&&<button className="chat-jump" onClick={()=>{nearBottom.current=true;chatRef.current?.scrollTo({top:chatRef.current.scrollHeight,behavior:'smooth'});setShowLatest(false);}}>回到最新消息</button>}<PatentComposer text={text} onText={setText} onSend={()=>send()} onStop={()=>api('runs/'+currentRun.current+'/stop',{})} busy={busy} stoppable={!submitting.current||!turns.at(-1)?.id.startsWith('pending-')} disabled={!meta||Boolean(report)}/>
+</section>)}</div>{showLatest&&<button className="chat-jump" onClick={()=>{nearBottom.current=true;chatRef.current?.scrollTo({top:chatRef.current.scrollHeight,behavior:'smooth'});setShowLatest(false);}}>回到最新消息</button>}<PatentComposer text={text} onText={setText} onSend={()=>send()} onStop={()=>api('runs/'+currentRun.current+'/stop',{})} busy={busy} stoppable={!submitting.current||!turns.at(-1)?.id.startsWith('pending-')} disabled={!meta||Boolean(report)||Boolean(readOnly)} callLimit={modelCallLimit} onCallLimit={setModelCallLimit}/>
 </aside>
 </div>
 </div>
@@ -405,6 +478,9 @@ export default function Workbench(){
 <div className="patent-content">
 <span className="patent-id">{patent.id}</span>
 <h2>{patent.title}</h2>
+{patentEvidence&&<PatentEvidence patent={patent} location={patentEvidence}/>}
+{patentDatasetId&&<PatentAnnotations key={patentDatasetId+':'+patent.id} datasetId={patentDatasetId} patentId={patent.id} readOnly={Boolean(readOnly)}/>}
+{patentDatasetId&&<SourceVersions key={'versions:'+patentDatasetId+':'+patent.id} datasetId={patentDatasetId} patentId={patent.id}/>}
 <dl>
 <dt>申请人</dt>
 <dd>{patent.applicants.join('; ')||'未提供'}</dd>
@@ -419,10 +495,8 @@ export default function Workbench(){
 </dl>
 <h3>摘要</h3>
 <p>{patent.abstract}</p>
-<h3>权利要求原文 · {patent.claims.length} 项</h3>{patent.claims.map((claim,i)=>
-<section className="claim" key={i}>
-<strong>权利要求 {claim.number}</strong>
-<p>{claim.text}</p>{claim.sourceStart!==undefined&&<small>来源文本位置 {claim.sourceStart}—{claim.sourceEnd}</small>}</section>)}<details>
+{!readOnly&&<div className="record-actions"><button disabled={busy||toolBusy||patentDatasetId!==meta?.id} onClick={()=>void runTool({tool:'analyze_patent_reading',params:{patent_numbers:[patent.id]},question:'整理 '+patent.id+' 的技术问题、解决手段与技术效果，逐项保留原文依据。'})}>分析技术问题、手段与效果</button>{patentDatasetId!==meta?.id&&<span className="muted">请先切换到此专利所属数据集。</span>}</div>}
+<ClaimReader key={patent.id} claims={patent.claims} onAnalyze={readOnly?undefined:number=>void runTool({tool:'analyze_claim_elements',params:{patent_numbers:[patent.id],claim_numbers:[number]},question:'提取 '+patent.id+' 权利要求 '+number+' 的技术要素并保留原文依据。'})} analysisDisabled={busy||toolBusy||patentDatasetId!==meta?.id} analysisNote={patentDatasetId!==meta?.id?'请先切换到此专利所属数据集。':undefined}/><details>
 <summary>说明书全文</summary>
 <pre className="original-text">{patent.description}</pre>
 </details>

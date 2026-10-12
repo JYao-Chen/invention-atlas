@@ -1,0 +1,118 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {postgresPool,migratePostgres} from '../src/server/postgres';
+import {IdentityStore,passwordHash,verifyPassword} from '../src/server/identity';
+
+test('identity initialization, session revocation and project membership boundaries',async()=>{
+ const pool=postgresPool(process.env.DATABASE_URL),identity=new IdentityStore(pool);
+ try{
+  await migratePostgres(pool);
+  const initialized=await identity.initializeAdmin('administrator','initial-password-123','测试组织');
+  assert.ok(initialized.user);
+  const admin=initialized.user!;
+  assert.equal(admin.platformRole,'admin');
+  assert.equal('passwordHash' in admin,false);
+  await assert.rejects(identity.initializeAdmin('replacement','replacement-password','其他组织'),/不可覆盖/);
+  assert.equal(await identity.authenticate('administrator','wrong-password'),undefined);
+  assert.equal((await identity.authenticate('administrator','initial-password-123'))?.id,admin.id);
+  const token=await identity.createSession(admin.id);
+  assert.equal((await identity.sessionUser(token))?.id,admin.id);
+  await identity.changePassword(admin.id,'initial-password-123','changed-password-123');
+  assert.equal(await identity.sessionUser(token),undefined);
+  assert.equal(await identity.authenticate('administrator','initial-password-123'),undefined);
+  assert.equal((await identity.authenticate('administrator','changed-password-123'))?.id,admin.id);
+  await assert.rejects(identity.setEnabled(admin.id,admin.id,false),/不能停用自己/);
+
+  const memberId=randomUUID();
+  await pool.query('INSERT INTO users(id,username,display_name,password_hash) VALUES($1,$2,$2,$3)',[memberId,'member',await passwordHash('member-password-123')]);
+  await pool.query("INSERT INTO organization_members(organization_id,user_id,role) VALUES($1,$2,'member')",[initialized.organizationId,memberId]);
+  const memberSession=await identity.createSession(memberId);
+  assert.equal((await identity.users(admin.id)).length,2);
+  assert.equal('passwordHash' in (await identity.users(admin.id))[0],false);
+  await assert.rejects(identity.users(memberId),/管理员权限/);
+  assert.equal((await identity.organizationMembers(admin.id,initialized.organizationId)).length,2);
+  await assert.rejects(identity.organizationMembers(memberId,initialized.organizationId),/本组织管理员权限/);
+  await assert.rejects(identity.setEnabled(memberId,admin.id,false),/管理员权限/);
+  await identity.setEnabled(admin.id,memberId,false);
+  assert.equal(await identity.sessionUser(memberSession),undefined);
+  assert.equal(await identity.authenticate('member','member-password-123'),undefined);
+  await assert.rejects(identity.createSession(memberId),/不可用/);
+  await identity.setEnabled(admin.id,memberId,true);
+  assert.ok(await identity.authenticate('member','member-password-123'));
+  const resetSession=await identity.createSession(memberId);
+  await identity.resetPassword(admin.id,memberId,'reset-member-password-123');
+  assert.equal(await identity.sessionUser(resetSession),undefined);
+  assert.equal(await identity.authenticate('member','member-password-123'),undefined);
+  assert.ok(await identity.authenticate('member','reset-member-password-123'));
+
+  const otherOrg=randomUUID(),otherProject=randomUUID();
+  await pool.query('INSERT INTO organizations(id,name) VALUES($1,$2)',[otherOrg,'另一组织']);
+  await pool.query('INSERT INTO projects(id,organization_id,name) VALUES($1,$2,$3)',[otherProject,otherOrg,'私有项目']);
+  await assert.rejects(pool.query("INSERT INTO project_members(organization_id,project_id,user_id,role) VALUES($1,$2,$3,'reader')",[otherOrg,otherProject,memberId]),{code:'23503'});
+
+  const invite=await identity.createInvite(admin.id,initialized.organizationId);
+  const registered=await identity.registerInvitation(invite.token,'invited-user','invited-password-123','受邀成员');
+  assert.equal(registered.organizationId,initialized.organizationId);
+  assert.equal(await identity.projectRole(registered.user.id,initialized.projectId),undefined);
+  assert.deepEqual(await identity.projects(registered.user.id),[]);
+  await identity.setProjectMember(admin.id,initialized.projectId,registered.user.id,'reader');
+  await assert.rejects(identity.projectCandidates(registered.user.id,initialized.projectId),/负责人权限/);
+  await identity.setProjectMember(admin.id,initialized.projectId,memberId,'owner');
+  assert.equal(await identity.organizationRole(memberId,initialized.organizationId),'member');
+  const candidates=await identity.projectCandidates(memberId,initialized.projectId);
+  assert.ok(candidates.some(candidate=>candidate.id===registered.user.id));
+  assert.equal('passwordHash' in candidates[0],false);
+  await identity.removeProjectMember(admin.id,initialized.projectId,memberId);
+  await assert.rejects(identity.setProjectMember(admin.id,initialized.projectId,admin.id,'reader'),/至少一名负责人/);
+  assert.equal(await identity.projectRole(registered.user.id,initialized.projectId),'reader');
+  assert.equal((await identity.projects(registered.user.id)).length,1);
+
+  assert.equal((await identity.projectMembers(admin.id,initialized.projectId)).length,2);
+  await assert.rejects(identity.projectMembers(memberId,initialized.projectId),/访问权限/);
+  await assert.rejects(identity.removeProjectMember(admin.id,initialized.projectId,admin.id),/至少一名负责人/);
+  await assert.rejects(identity.removeProjectMember(registered.user.id,initialized.projectId,admin.id),/负责人权限/);
+  const selectedSession=await identity.createSession(registered.user.id);
+  assert.equal((await identity.session(selectedSession))?.projectId,initialized.projectId);
+  await identity.removeProjectMember(admin.id,initialized.projectId,registered.user.id);
+  assert.equal((await identity.session(selectedSession))?.projectId,null);
+  assert.equal(await identity.projectRole(registered.user.id,initialized.projectId),undefined);
+  await identity.setProjectMember(admin.id,initialized.projectId,registered.user.id,'reader');
+  await assert.rejects(identity.setProjectMember(registered.user.id,initialized.projectId,memberId,'owner'),/负责人权限/);
+  await assert.rejects(identity.createInvite(registered.user.id,initialized.organizationId),/管理员权限/);
+  await assert.rejects(identity.registerInvitation(invite.token,'reused-invite','different-password-123','重复'),/已使用/);
+  assert.equal(await identity.authenticate('reused-invite','different-password-123'),undefined);
+  const expired=await identity.createInvite(admin.id,initialized.organizationId);
+  await pool.query("UPDATE invites SET expires_at=now()-interval '1 minute' WHERE token=$1",[expired.token]);
+  await assert.rejects(identity.registerInvitation(expired.token,'expired-user','expired-password-123','过期'),/过期/);
+  assert.equal(await identity.authenticate('expired-user','expired-password-123'),undefined);
+  assert.equal((await identity.projects(admin.id)).some(project=>project.id===otherProject),false);
+  const project=await identity.createProject(admin.id,initialized.organizationId,'新项目');
+  assert.equal(await identity.projectRole(admin.id,project.id),'owner');
+  await assert.rejects(identity.createProject(memberId,initialized.organizationId,'不应创建'),/管理员权限/);
+  const createdOrganization=await identity.createOrganization(admin.id,'管理员创建组织');
+  assert.equal(await identity.organizationRole(admin.id,createdOrganization.id),'admin');
+  await assert.rejects(identity.createOrganization(memberId,'不应创建组织'),/管理员权限/);
+  const secondInvite=await identity.createInvite(admin.id,createdOrganization.id);
+  await identity.acceptInvite(secondInvite.token,registered.user.id);
+  assert.equal((await identity.organizations(registered.user.id)).length,2);
+  assert.equal((await identity.projects(registered.user.id)).length,1);
+  await assert.rejects(identity.updateOrganizationMember(admin.id,initialized.organizationId,admin.id,'member'),/至少一名管理员/);
+  await assert.rejects(identity.updateOrganizationMember(registered.user.id,initialized.organizationId,memberId,null),/管理员权限/);
+  await identity.updateOrganizationMember(admin.id,initialized.organizationId,registered.user.id,'admin');
+  assert.equal(await identity.organizationRole(registered.user.id,initialized.organizationId),'admin');
+  await assert.rejects(identity.updateOrganizationMember(registered.user.id,initialized.organizationId,admin.id,null),/另一名负责人/);
+  await identity.updateOrganizationMember(admin.id,initialized.organizationId,registered.user.id,null);
+  assert.equal(await identity.organizationRole(registered.user.id,initialized.organizationId),undefined);
+  assert.equal(await identity.projectRole(registered.user.id,initialized.projectId),undefined);
+  assert.equal((await identity.organizations(registered.user.id)).length,1);
+ }finally{await pool.end();}
+});
+
+test('password storage uses independent salts, enforces supported length and verifies exact passwords',async()=>{
+ const first=await passwordHash('test-password-123'),second=await passwordHash('test-password-123');
+ assert.notEqual(first,second);
+ assert.equal(await verifyPassword('test-password-123',first),true);
+ assert.equal(await verifyPassword('wrong-password',first),false);
+ await assert.rejects(passwordHash('short'),/密码长度/);
+});

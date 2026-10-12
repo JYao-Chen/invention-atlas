@@ -10,8 +10,8 @@ export function examplePatent(records:Patent[]){
 }
 export function toolDefaults(tool:string,records:Patent[]):Params{
  if(tool==='compare_claims'){const first=examplePatent(records);const second=examplePatent(records.filter(p=>p.id!==first?.id));return {patent_numbers:[first,second].filter((p):p is Patent=>Boolean(p)).map(p=>p.id),claim_numbers:[1]};}
- if(tool==='search_patents')return {query:'digital identity authentication',top_k:10};
- if(['read_patent_details','analyze_claim_elements','analyze_tech_matrix'].includes(tool)){const p=examplePatent(records);return {patent_numbers:p?[p.id]:[]};}
+ if(['search_patents','search_patent_passages'].includes(tool))return {query:'digital identity authentication',top_k:10};
+ if(['read_patent_details','analyze_claim_elements','analyze_tech_matrix','analyze_patent_reading'].includes(tool)){const p=examplePatent(records);return {patent_numbers:p?[p.id]:[]};}
  if(tool==='monitor_patent_changes')return {query:'blockchain',strategy_id:'blockchain-monitor',top_k:20};
  if(tool==='audit_search_strategy')return {strategies:[{name:'blockchain',query:'blockchain'},{name:'identity',query:'blockchain identity authentication'}],top_k:20};
  if(tool==='analyze_clustering')return {k:6};
@@ -22,8 +22,8 @@ export function completeRecommendedStep(step:{tool:string;params?:Params},questi
  return {tool:step.tool,params:recommendedTool(question)===step.tool?toolDefaults(step.tool,records):step.params||{}};
 }
 export function requiredParameters(tool:string){
- if(tool==='search_patents')return ['query'];
- if(tool==='read_patent_details')return ['patent_numbers'];
+ if(['search_patents','search_patent_passages'].includes(tool))return ['query'];
+ if(['read_patent_details','analyze_patent_reading'].includes(tool))return ['patent_numbers'];
  if(tool==='monitor_patent_changes')return ['query','strategy_id'];
  if(tool==='audit_search_strategy')return ['strategies'];
  if(tool==='compare_claims')return ['patent_numbers'];

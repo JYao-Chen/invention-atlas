@@ -4,7 +4,7 @@ import {dltPatent,datasetMeta} from '../src/server/importers';
 import {saveDataset,datasets,dataRoot} from '../src/server/db';
 import type {Patent} from '../src/lib/types';
 const root=resolve(dataRoot,'sources/dlt');mkdirSync(root,{recursive:true});
-if(datasets().some(d=>d.source.includes('DLT-Patents'))){console.log('真实样本数据已导入，未重复创建');process.exit(0);}
+if((await datasets()).some(d=>d.source.includes('DLT-Patents'))){console.log('真实样本数据已导入，未重复创建');process.exit(0);}
 const meta=await (await fetch('https://huggingface.co/api/datasets/ExponentialScience/DLT-Patents')).json();
 const source='https://huggingface.co/datasets/ExponentialScience/DLT-Patents';
 const selected:Patent[]=[];const ids=new Set<string>();const fetched:{offset:number;url:string;count:number}[]=[];
@@ -23,4 +23,4 @@ const sampling='从49,025条公开语料的6个分散位置各读取100条候选
 const dataset=datasetMeta('专利样本库 · 原始版本',records,source,sampling);
 writeFileSync(resolve(root,'acquisition.json'),JSON.stringify({source,revision:meta.sha,retrievedAt:new Date().toISOString(),sampling,fetched,selected:records.map(p=>p.id),licenseNote:'Dataset publisher describes USPTO patent text as Public Domain; retain source attribution. No rights to practice patented inventions.'},null,2));
 writeFileSync(resolve(root,'patents.jsonl'),records.map(p=>JSON.stringify(p)).join('\n'));
-saveDataset(dataset,records);console.log(JSON.stringify(dataset,null,2));
+(await saveDataset(dataset,records));console.log(JSON.stringify(dataset,null,2));

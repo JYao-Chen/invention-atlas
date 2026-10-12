@@ -1,39 +1,41 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import type {Patent} from '@/lib/types';
+import BulkLabels from './BulkLabels';
 type Draft={id:string;title:string;abstract:string;applicants:string;publicationDate:string;ipc:string;description:string;claims:{number:number;text:string}[];sourceUrl:string};
 const empty:Draft={id:'',title:'',abstract:'',applicants:'',publicationDate:'',ipc:'',description:'',claims:[],sourceUrl:''};
-export default function DataRecords({datasetId,records,onPatent,onChanged}:{datasetId:string;records:Patent[];onPatent:(id:string)=>void;onChanged:()=>Promise<void>}){
+export default function DataRecords({datasetId,records,onPatent,onChanged,readOnly=false}:{datasetId:string;records:Patent[];onPatent:(id:string)=>void;onChanged:()=>Promise<void>;readOnly?:boolean}){
  const [selected,setSelected]=useState<string[]>([]),[draft,setDraft]=useState<Draft>(),[editing,setEditing]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);const dialog=useRef<HTMLDialogElement>(null);
  useEffect(()=>{setSelected([]);setDraft(undefined);setError('');},[datasetId]);useEffect(()=>{if(draft)dialog.current?.showModal();},[draft!==undefined]);
  async function request(path:string,method:string,body?:unknown){const r=await fetch('/api/'+path+'?dataset='+datasetId,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok)throw Error(d.error);return d;}
  async function edit(id:string){try{const p:Patent=await request('patents/'+id,'GET');setEditing(id);setDraft({id:p.id,title:p.title,abstract:p.abstract,applicants:p.applicants.join('; '),publicationDate:p.publicationDate,ipc:p.ipc.join('; '),description:p.description,claims:p.claims.map(c=>({number:c.number,text:c.text})),sourceUrl:p.sourceUrl});setError('');}catch(e){setError((e as Error).message);}}
  async function remove(ids:string[]){if(!confirm(`删除选中的 ${ids.length} 条专利记录？已保存报告和对话结果保留，原文详情将不再从当前数据集读取。`))return;setBusy(true);try{await request('patents','DELETE',{ids});setSelected([]);await onChanged();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  return <>
-<div className="record-actions">
+{!readOnly&&<div className="record-actions">
 <button onClick={()=>{setEditing('');setDraft({...empty});setError('');}}>新增专利</button>
 <button disabled={!selected.length||busy} onClick={()=>void remove(selected)}>删除选中（{selected.length}）</button>
-<small>勾选记录，可跨页批量删除。</small>
-</div>{error&&!draft&&<p className="error">{error}</p>}
+<BulkLabels key={datasetId} datasetId={datasetId} patentIds={selected} disabled={busy}/>
+<small>勾选记录，可跨页批量操作。</small>
+</div>}{error&&!draft&&<p className="error">{error}</p>}
  <div className="table-scroll">
 <table>
 <thead>
 <tr>
-<th>
+{!readOnly&&<th>
 <input type="checkbox" aria-label="选择本页记录" checked={records.length>0&&records.every(p=>selected.includes(p.id))} onChange={e=>setSelected(e.target.checked?[...new Set([...selected,...records.map(p=>p.id)])]:selected.filter(id=>!records.some(p=>p.id===id)))}/>
-</th>
+</th>}
 <th>公开编号与标题</th>
 <th>申请人</th>
 <th>公开日期</th>
 <th>IPC</th>
-<th>操作</th>
+{!readOnly&&<th>操作</th>}
 </tr>
 </thead>
 <tbody>{records.map(p=>
 <tr key={p.id}>
-<td>
+{!readOnly&&<td>
 <input type="checkbox" aria-label={'选择 '+p.id} checked={selected.includes(p.id)} onChange={e=>setSelected(e.target.checked?[...selected,p.id]:selected.filter(id=>id!==p.id))}/>
-</td>
+</td>}
 <td>
 <button className="patent-title" onClick={()=>onPatent(p.id)}>
 <span>{p.id}</span>
@@ -43,12 +45,12 @@ export default function DataRecords({datasetId,records,onPatent,onChanged}:{data
 <td>{p.applicants.join('; ')||'未提供'}</td>
 <td className="nowrap">{p.publicationDate}</td>
 <td>{p.ipc.slice(0,2).join('; ')||'未提供'}</td>
-<td>
+{!readOnly&&<td>
 <div className="record-row-actions">
 <button onClick={()=>void edit(p.id)}>编辑</button>
 <button disabled={busy} onClick={()=>void remove([p.id])}>删除</button>
 </div>
-</td>
+</td>}
 </tr>)}</tbody>
 </table>{!records.length&&<p className="empty">没有匹配的记录。</p>}</div>
  {draft&&<dialog ref={dialog} className="record-editor" onCancel={()=>setDraft(undefined)}>

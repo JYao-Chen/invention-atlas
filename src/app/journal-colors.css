@@ -148,6 +148,7 @@ td { border-bottom-color:#e1e6ee }
 .patent-composer textarea { display:block; padding:6px 92px 6px 2px; font-size:14px; line-height:1.6 }
 .patent-composer-box[data-busy="true"] textarea { padding-right:124px }
 .patent-composer-tools { position:absolute; right:10px; bottom:10px; gap:6px }
+.patent-composer-box[data-budget-open="true"] .patent-composer-tools { position:static; justify-content:flex-end; margin-top:8px }
 .patent-composer-tools button { min-height:32px; padding:5px 8px; border-radius:10px }
 .tool-specific-fields { margin-top:0 }
 .record-actions,.record-row-actions,.index-controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center }

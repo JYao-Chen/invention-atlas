@@ -12,7 +12,7 @@ export function starterCandidates(records:Patent[],datasetId:string,previous:str
  const readable=records.filter(p=>p.claims.length&&descriptionChars(p)).sort((a,b)=>descriptionChars(a)-descriptionChars(b)).slice(0,30);
  const dates=new Map(records.map(p=>[p.id,p.publicationDate]));
  const datedLink=citationGraph(records).edges.some(e=>dates.get(e.source)&&dates.get(e.target)&&dates.get(e.source)!==dates.get(e.target));
- const eligible=TOOL_DEFS.map(([name,title,group])=>({name,title,group,available:capability(name,records).available&&
+ const eligible=TOOL_DEFS.map(([name,title,group])=>({name,title,group,available:name!=='search_patent_passages'&&capability(name,records).available&&
   (!['search_patents','analyze_clustering'].includes(name)||records.every(p=>p.embedding?.length))&&
   (name!=='analyze_clustering'||records.length>=2)&&
   (!['read_patent_details','analyze_claim_elements','analyze_tech_matrix'].includes(name)||readable.length>0)&&

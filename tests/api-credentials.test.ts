@@ -1,0 +1,51 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {postgresPool,migratePostgres} from '../src/server/postgres';
+import {IdentityStore} from '../src/server/identity';
+import {ApiCredentials,bearerToken} from '../src/server/api-credentials';
+import {apiCredentialRequest} from '../src/server/api-access';
+import {currentAccess} from '../src/server/postgres';
+
+test('project API secrets expire, revoke and follow current membership without exposing stored secrets',async()=>{
+ const pool=postgresPool(process.env.DATABASE_URL),identity=new IdentityStore(pool),keys=new ApiCredentials(pool);
+ try{
+  await migratePostgres(pool);
+  const initialized=await identity.initializeAdmin('api-admin','api-password-123','API测试');
+  const user=initialized.user!;
+  const created=await keys.create(user.id,initialized.projectId,{name:'外部客户端',access:'write',days:1});
+  assert.equal((await keys.authenticate(created.token))?.projectId,initialized.projectId);
+  assert.equal((await keys.authenticate(created.token))?.apiAccess,'write');
+  const stored=(await pool.query('SELECT token_hash FROM project_api_credentials WHERE id=$1',[created.credential.id])).rows[0];
+  assert.notEqual(stored.token_hash,created.token);
+  assert.equal(stored.token_hash.length,64);
+  assert.equal(JSON.stringify(await keys.list(user.id,initialized.projectId)).includes(created.token),false);
+  assert.equal('token_hash' in (await keys.list(user.id,initialized.projectId))[0],false);
+  assert.equal(await keys.authenticate(created.token+'x'),undefined);
+  assert.equal(bearerToken(new Request('http://localhost',{headers:{authorization:'Bearer '+created.token}})),created.token);
+  const read=await keys.create(user.id,initialized.projectId,{name:'只读',access:'read'});
+  const request=(token:string,method='GET')=>new Request('http://localhost/api/datasets',{method,headers:{authorization:'Bearer '+token}});
+  const allowed=await apiCredentialRequest(request(read.token),['datasets'],async()=>Response.json(currentAccess()));
+  assert.equal(allowed.status,200);
+  assert.equal((await allowed.json()).projectId,initialized.projectId);
+  let called=false;const work=async()=>{called=true;return Response.json({ok:true});};
+  for(const path of [['settings'],['users'],['api-credentials'],['fulltext','search'],['starters'],['runs','run-id','stop'],['runs','run-id','retry-report']])assert.equal((await apiCredentialRequest(request(read.token),path,work)).status,403);
+  assert.equal((await apiCredentialRequest(request(read.token,'POST'),['conversations'],work)).status,403);
+  assert.equal(called,false);
+  assert.equal((await apiCredentialRequest(request(created.token,'POST'),['conversations'],work)).status,200);
+  assert.equal(called,true);
+  await pool.query("UPDATE project_members SET role='reader' WHERE project_id=$1 AND user_id=$2",[initialized.projectId,user.id]);
+  assert.equal(await keys.authenticate(created.token),undefined);
+  assert.ok(await keys.authenticate(read.token));
+  await assert.rejects(keys.create(user.id,initialized.projectId,{name:'越权',access:'write'}),/只读/);
+  await pool.query("UPDATE project_members SET role='owner' WHERE project_id=$1 AND user_id=$2",[initialized.projectId,user.id]);
+  await keys.revoke(user.id,initialized.projectId,created.credential.id);
+  assert.equal(await keys.authenticate(created.token),undefined);
+  assert.equal((await apiCredentialRequest(request(created.token),['datasets'],work)).status,401);
+  await pool.query("UPDATE project_api_credentials SET expires_at=now()-interval '1 minute' WHERE id=$1",[read.credential.id]);
+  assert.equal(await keys.authenticate(read.token),undefined);
+  const removed=await keys.create(user.id,initialized.projectId,{name:'移除成员',access:'read'});
+  await pool.query('DELETE FROM project_members WHERE project_id=$1 AND user_id=$2',[initialized.projectId,user.id]);
+  assert.equal(await keys.authenticate(removed.token),undefined);
+  assert.equal((await keys.list(user.id,initialized.projectId)).length,0);
+ }finally{await pool.end();}
+});

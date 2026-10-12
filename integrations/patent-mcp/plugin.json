@@ -1,0 +1,7 @@
+{
+ "$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+ "name":"patent-mcp",
+ "version":"0.1.0",
+ "description":"使用项目凭据调用专利分析平台的检索、统计与持久分析任务。",
+ "author":{"name":"JYao-Chen"}
+}

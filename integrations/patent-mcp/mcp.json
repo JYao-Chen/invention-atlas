@@ -1,0 +1,12 @@
+{
+ "$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+ "mcpServers":{
+  "invention-atlas":{
+   "type":"stdio",
+   "command":"node",
+   "args":["${PLUGIN_ROOT}/server.mjs"],
+   "cwd":"${PLUGIN_ROOT}",
+   "env":{"ATLAS_API_URL":"${ATLAS_API_URL}","ATLAS_API_TOKEN":"${ATLAS_API_TOKEN}"}
+  }
+ }
+}

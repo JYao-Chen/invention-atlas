@@ -15,9 +15,17 @@ test('method consultation supports concepts, aliases and multi-method comparison
  assert.ok(manualChapters('请解释CR3和HHI').some(c=>c.tool==='analyze_concentration'));
  assert.ok(manualChapters('共引和耦合有什么区别？').some(c=>c.tool==='analyze_citation_network'));
  assert.ok(manualChapters('什么是PCA与K-means？').some(c=>c.tool==='analyze_clustering'));
- assert.equal(manualChapters('系统有哪些功能？').length,33);
+ assert.equal(manualChapters('系统有哪些功能？').length,35);
 });
 test('analysis requests and recommendations never get replaced by manual answers',()=>{
+ assert.deepEqual(manualChapters('请调用全文片段检索工具 search_patent_passages 针对 US20210042826A1 检索 blockchain network 的原文证据，并基于工具实际结果简要解释'),[]);
  for(const q of Object.values(questions))assert.equal(manualChapters(q).length,0);
  for(const q of ['分析这批专利的生命周期并解释结果','介绍公开趋势并运行一下','请运行生命周期统计','对当前数据集计算HHI并说明含义','生成年度关键词报告'])assert.equal(manualChapters(q).length,0,q);
+});
+test('corpus comparisons with explanatory clauses execute tools rather than returning the manual',()=>{
+ for(const question of [
+  '比较当前数据集2018年至2025年每年的主要关键词，每年展示10个关键词，说明不同年份的技术关注变化，引用年度关键词图表。',
+  '对比这批专利的年度关键词并解释差异',
+  '展示当前数据集的IPC分布，说明主要分类',
+ ])assert.deepEqual(manualChapters(question),[],question);
 });

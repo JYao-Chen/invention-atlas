@@ -22,8 +22,8 @@ export function dltPatent(row:Record<string,unknown>):Patent{
  const description=[section('Background/Summary'),section('Description'),section('Detailed Description')].filter(Boolean).join('\n\n');
  const ipcBlock=/Int\. Cl\.:([\s\S]*?)(?:U\.S\. Cl\.:|### |$)/i.exec(raw)?.[1]||'';
  const ipc=[...ipcBlock.matchAll(/\b([A-H]\d{2}[A-Z]\s*\d+\s*\/\s*\d+)/g)].map(m=>m[1].replace(/\s/g,''));
- const claimParts=claimsText.split(/(?=^\s*\d+\.\s)/m).filter(x=>x.trim());
- const claims=claimParts.map((part,index)=>{const start=raw.indexOf(part,locations.Claims?.start||0);return {number:Number(/^\s*(\d+)\./.exec(part)?.[1]||index+1),text:part.trim(),sourceStart:start,sourceEnd:start+part.length};});
+ const claimParts=claimsText.split(/(?=^[ \t]*(?:\*\*\d+\*\*|\d+)\.\s)/m).filter(x=>x.trim());
+ const claims=claimParts.map((part,index)=>{const value=part.trim(),position=raw.indexOf(part,locations.Claims?.start||0),start=position+part.indexOf(value),heading=/^\s*(?:\*\*(\d+)\*\*|(\d+))\./.exec(part);return {number:Number(heading?.[1]||heading?.[2]||index+1),text:value,sourceStart:start,sourceEnd:start+value.length};});
  const citesBlock=/### References Cited([\s\S]*?)(?:### Background|### Description|### Claims|$)/.exec(raw)?.[1]||'';
  const usBlock=/#### U\.S\. PATENT DOCUMENTS([\s\S]*?)(?:#### |$)/.exec(citesBlock)?.[1]||'';
  const citations=[...usBlock.matchAll(/^\s*(\d{4}\/\d{7}|\d{6,8})\s*(?:[AB]\d)?\s*$/gm)].map(m=>'US'+m[1].replace('/',''));

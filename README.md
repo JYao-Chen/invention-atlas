@@ -185,13 +185,19 @@ npm run dev
 ## 10 开发与部署
 
 ```sh
-npm test
+PG_TEST_DATABASE_URL=postgresql://user:password@127.0.0.1:5432/atlas_test npm test
 npm run typecheck
 npm run build
 npm start
 ```
 
-应用采用 Next.js App Router、React、TypeScript、LangGraph 和 SQLite，不需要 Python 服务、Redis 或独立 Agent 服务。任务事件通过 SSE 传输，模型密钥只由服务端读取。当前采用单账号登录，未提供多租户权限体系。
+应用采用 Next.js App Router、React、TypeScript、LangGraph 和 PostgreSQL。Web与后台工作进程分别运行，持久任务保存在PG队列中，不依赖Python或Redis服务。任务事件通过SSE传输；关闭页面不停止后台任务，用户取消后可按保存的阶段续跑。
+
+账户采用邀请制，组织与项目分别管理成员，项目提供负责人、分析成员和只读成员角色。原始材料、专利、对话、报告及任务按项目隔离。组织管理员可配置本组织聊天模型；密钥在服务器加密保存，界面不回显。未配置的组织沿用平台模型，全文嵌入保持平台索引模型。
+
+专业任务包括技术全景、竞争主体分析、技术方案查新和专利布局分析。各流程保留输入、研究范围及阶段产物；需确认的阶段允许用户选择、编辑、保存后继续。布局使用原文措施—效果关系形成矩阵，候选方向可选择是否纳入报告；查新支持从PDF、Word或文本材料创建输入，并可选择已完成OCR的原文件页码。
+
+开放接口使用项目凭据，支持OpenAPI、stdio与HTTP MCP。构建接入包用`node scripts/build-patent-mcp.mjs`，配置和权限说明见[integrations/patent-mcp](integrations/patent-mcp/README.md)。部署后台与迁移脚本用`node scripts/build-runtime.mjs`，普通Web连接与队列维护连接不得混用。
 
 工具目录提供输入字段和参数说明，返回结果包含研究范围、逐行专利关联及原文证据。已保存结果可通过 `/api/results/{id}` 按 `offset`、`limit` 分页，按 `word`、`year` 筛选；`section=graph` 读取真实图谱边。报告传递指标定义与预览覆盖情况，必要时由模型选择补读最多四页，每页最多一百行。省略量明确记录，不把预览当作全部结果。
 

@@ -1,0 +1,31 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {db,saveDataset} from '../src/server/db';
+import {ChunkStore} from '../src/server/chunk-store';
+import {fulltextEndpoint} from '../src/server/fulltext-api';
+import {normalize,datasetMeta} from '../src/server/importers';
+import {executeTool} from '../src/server/tools';
+import {PostgresStore} from '../src/server/postgres-store';
+
+test('fulltext endpoints expose absent/keyword-only indexes and reject foreign patent scope',async()=>{
+ const p=normalize({id:'US9991B1',abstract:'Authentication network'},'TEST'),meta=datasetMeta('API fixture',[p],'fixture','fixture');
+ await saveDataset(meta,[p]);const store=new ChunkStore(db);
+ const jobs=await fulltextEndpoint(new Request('http://localhost/api/fulltext/jobs?dataset='+meta.id),['fulltext','jobs']);assert.deepEqual((await jobs!.json()).jobs,[]);assert.equal(jobs!.headers.get('Cache-Control'),'no-store');
+ assert.equal((await fulltextEndpoint(new Request('http://localhost/api/fulltext/jobs',{method:'DELETE'}),['fulltext','jobs']))!.status,405);
+ const search=(version:string)=>fulltextEndpoint(new Request('http://localhost/api/fulltext/search?dataset='+meta.id+'&version='+version+'&q=authentication'),['fulltext','search']);
+ assert.equal((await (await search('absent'))!.json()).status,'unavailable');
+ await store.saveDocument(meta.id,p,'v1');
+ const source=await fulltextEndpoint(new Request('http://localhost/api/fulltext/source?dataset='+meta.id+'&version=v1&patent='+p.id+'&ordinal=0'),['fulltext','source']);
+ assert.equal((await source!.json()).sourceText,p.abstract);
+ const versions=await fulltextEndpoint(new Request('http://localhost/api/fulltext/versions?dataset='+meta.id),['fulltext','versions']);
+ assert.equal((await versions!.json()).versions[0].version,'v1');
+ const result=await (await search('v1'))!.json();assert.equal(result.method,'keyword-only');assert.equal(result.hits.length,1);assert.deepEqual(result.hits[0].matches,['keyword']);
+ const tool=await executeTool('search_patent_passages',{query:'authentication',index_version:'v1'},meta,[p],{semantic:false});
+ assert.equal(tool.status,'completed');assert.equal(tool.rows[0].quote,p.abstract);assert.equal(tool.rowSources?.[0].representatives[0].quote,p.abstract);
+ assert.equal((await fulltextEndpoint(new Request('http://localhost/api/fulltext/index',{method:'POST'}),['fulltext','index']))!.status,405);
+ await new PostgresStore(db).savePatent(meta.id,{...p,abstract:'Updated current version'});
+ const stale=await (await search('v1'))!.json();assert.equal(stale.status,'unavailable');assert.equal(stale.alignment.changed,1);assert.deepEqual(stale.hits,[]);
+ const historical=await fulltextEndpoint(new Request('http://localhost/api/fulltext/search?dataset='+meta.id+'&version=v1&q=authentication&scope=historical'),['fulltext','search']);const old=await historical!.json();assert.equal(old.hits[0].chunk.text,p.abstract);assert.equal(old.scope,'historical');assert.match(old.warning,/历史原文/);
+ const staleTool=await executeTool('search_patent_passages',{query:'authentication',index_version:'v1'},meta,[{...p,abstract:'Updated current version'}],{semantic:false});assert.equal(staleTool.status,'unavailable');assert.deepEqual(staleTool.rows,[]);
+ await store.saveDocument(meta.id,{...p,abstract:'Updated current version'},'v2');const current=await fulltextEndpoint(new Request('http://localhost/api/fulltext/search?dataset='+meta.id+'&version=v2&q=updated'),['fulltext','search']);assert.equal((await current!.json()).hits[0].chunk.text,'Updated current version');
+});

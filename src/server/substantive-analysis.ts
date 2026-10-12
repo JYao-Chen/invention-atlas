@@ -2,7 +2,7 @@ import type {Patent,Graph,Row} from '@/lib/types';
 import {citationGraph,pagerank} from './algorithms';
 import {chat,jsonResponse} from './model';
 import {modelConfig} from './config';
-import {db,fullPatent} from './db';
+import {store,fullPatent} from './db';
 
 // SPC counts every source-to-sink path through an edge, without enumerating paths.
 // References: Batagelj, Efficient Algorithms for Citation Network Analysis (2003).
@@ -67,18 +67,17 @@ const modelExtract:EffectExtractor=async(text,signal)=>{
  }throw new Error(error);
 };
 export async function extractEffects(datasetId:string,records:Patent[],signal?:AbortSignal,extract:EffectExtractor=modelExtract,onProgress?:(done:number,total:number)=>void,options:{cache?:boolean;onCheckpoint?:(done:number,total:number,reused:number)=>void}={}){
- db.exec('CREATE TABLE IF NOT EXISTS effect_checkpoints(dataset_id TEXT,patent_id TEXT,method TEXT,section TEXT,chunk_start INTEGER,payload TEXT,PRIMARY KEY(dataset_id,patent_id,method,section,chunk_start))');
- const method='full-text-evidence-v3:'+modelConfig().model,cache=options.cache??extract===modelExtract,results:Row[][]=Array.from({length:records.length},()=>[]),totalChunks=records.reduce((s,p)=>s+sourceChunks(fullPatent(datasetId,p)).length,0);let cursor=0,done=0,completedChunks=0,reused=0,stopped=false;
- const worker=async()=>{while(!stopped){const index=cursor++;if(index>=records.length)return;const p=fullPatent(datasetId,records[index]);try{
+ const method='full-text-evidence-v3:'+modelConfig().model,cache=options.cache??extract===modelExtract,results:Row[][]=Array.from({length:records.length},()=>[]),totalChunks=(await Promise.all(records.map(async p=>sourceChunks(await fullPatent(datasetId,p)).length))).reduce((sum,count)=>sum+count,0);let cursor=0,done=0,completedChunks=0,reused=0,stopped=false;
+ const worker=async()=>{while(!stopped){const index=cursor++;if(index>=records.length)return;const p=(await fullPatent(datasetId,records[index]));try{
   signal?.throwIfAborted();const rows:Row[]=[],seen=new Set<string>();for(const chunk of sourceChunks(p)){
     if(stopped)return;signal?.throwIfAborted();
-    const cached=cache?db.prepare('SELECT payload FROM effect_checkpoints WHERE dataset_id=? AND patent_id=? AND method=? AND section=? AND chunk_start=?').get(datasetId,p.id,method,chunk.section,chunk.start) as {payload:string}|undefined:undefined;
-    const relations:EffectRelation[]=cached?JSON.parse(cached.payload):await extract(chunk.text,signal);
+    const cached=cache?await store.effectCheckpoint(datasetId,p.id,method,chunk.section,chunk.start):undefined;
+    const relations:EffectRelation[]=cached?cached:await extract(chunk.text,signal);
     for(const r of relations){if(typeof r.technology!=='string'||!r.technology.trim()||typeof r.effect!=='string'||!r.effect.trim()||typeof r.quote!=='string'||!r.quote.trim()||!chunk.text.includes(r.quote))throw new Error(`${p.id}：技术效果引文不能定位到原文`);
      const offset=chunk.start+chunk.text.indexOf(r.quote),key=chunk.section+':'+offset+':'+r.quote;if(seen.has(key))continue;seen.add(key);
      rows.push({patent:p.id,function:r.technology,effect:r.effect,quote:r.quote,section:chunk.section,section_offset:offset,source_offset:chunk.rawStart===undefined?null:chunk.rawStart+offset,source:p.sourceUrl,assessment:'专利原文声明，非独立实验验证'});
     }
-    if(cache&&!cached)db.prepare('INSERT OR REPLACE INTO effect_checkpoints VALUES(?,?,?,?,?,?)').run(datasetId,p.id,method,chunk.section,chunk.start,JSON.stringify(relations));
+    if(cache&&!cached)await store.saveEffectCheckpoint(datasetId,p.id,method,chunk.section,chunk.start,relations);
     completedChunks++;if(cached)reused++;options.onCheckpoint?.(completedChunks,totalChunks,reused);
    }results[index]=rows;done++;onProgress?.(done,records.length);
  }catch(e){stopped=true;throw e;}}};

@@ -10,19 +10,32 @@ const {clusters,citationGraph,pagerank,concentration}=await import('../src/serve
 // These small invented fixtures exercise algorithms only. They are never imported into the app.
 const fixtures=[0,1,2].map(i=>({...normalize({id:`US${900+i}B1`,title:`Blockchain authentication ${i}`,abstract:'Encrypted transaction security privacy',applicants:i===0?['Alpha','Beta']:['Alpha'],assignees:['Different owner'],publication_date:`202${i}-01-01`,ipc:['G06F16/00'],cpc:['H04L9/32'],claims:[{number:1,text:'A method comprising verifying a transaction.'}],description:'Test fixture description',citations:i===0?['US901','US999']:['US999'],family_members:['US900B1','EP900A1'],legal_status:'Granted',legal_status_as_of:'2025-01-01'},'UNIT TEST ONLY'),embedding:i===2?[0,1]:[1,0]}));
 const meta=datasetMeta('UNIT TEST ONLY',fixtures,'test','test only');
+test('mechanism reading requires explicit in-scope patents before model execution',async()=>{
+ await assert.rejects(executeTool('analyze_patent_reading',{},meta,fixtures),/需要指定/);
+ await assert.rejects(executeTool('analyze_patent_reading',{patent_numbers:['FOREIGN']},meta,fixtures),/不在当前研究范围/);
+});
+test('element tool validates and counts split source clauses rather than the merged item',async()=>{
+ const text='**1**. A sensor.\n\n**2**. The sensor of claim 1 includes a valve.',record={...fixtures[0],claims:[{number:1,text}]};
+ const result=await executeTool('analyze_claim_elements',{patent_numbers:[record.id],claim_numbers:[2]},meta,[record],{extract:async()=>[{patent:record.id,claim:2,element:'阀门',quote:'The sensor of claim 1 includes a valve.'}]});assert.equal(result.status,'completed');assert.match(result.summary,/1 项权利要求/);assert.equal(result.rows[0].claim,2);assert.equal(result.rows[0].claim_offset,'**2**. '.length);
+});
+test('patent reading returns claim relationships without altering source claims',async()=>{
+ const claims=[{number:1,text:'A device.'},{number:2,text:'The device of claim 1.'}],record={...fixtures[0],claims};
+ const result=await executeTool('read_patent_details',{patent_numbers:[record.id]},meta,[record]);
+ assert.deepEqual(result.rows[0].claims,claims);const structure=result.rows[0].claim_structure as {edges:{from:number;to:number}[]};assert.deepEqual(structure.edges,[{from:2,to:1}]);
+});
 test('empty filtered ranges are not reported as an unimported dataset',async()=>{
  const filtered=await executeTool('analyze_burst_terms',{ipc:'H04L'},meta,fixtures);
  assert.match(filtered.summary,/筛选条件没有匹配/);assert.equal(filtered.scope?.analyzedCount,0);
  const unimported=await executeTool('analyze_burst_terms',{}, {...meta,count:0},[]);
  assert.equal(unimported.summary,'尚未导入专利');
 });
-const parameters:Record<string,object>={search_patents:{query:'blockchain',top_k:2},read_patent_details:{patent_numbers:['US900B1']},audit_search_strategy:{strategies:[{name:'a',query:'blockchain'},{name:'b',query:'authentication'}]},monitor_patent_changes:{query:'blockchain',strategy_id:'unit-test'}};
+const parameters:Record<string,object>={search_patent_passages:{query:'network'},search_patents:{query:'blockchain',top_k:2},read_patent_details:{patent_numbers:['US900B1']},audit_search_strategy:{strategies:[{name:'a',query:'blockchain'},{name:'b',query:'authentication'}]},monitor_patent_changes:{query:'blockchain',strategy_id:'unit-test'}};
 for(const [name] of TOOL_DEFS){
- if(name==='compare_claims')continue; // Evidence matching is covered with a model stub in claim-comparison.test.ts and real-model acceptance.
+ if(name==='compare_claims'||name==='analyze_patent_reading')continue; // Model-backed reading/comparison have separate extractor and scope tests.
  test(`${name}: valid input and empty scope`,async()=>{
   const ctx={extract:async()=>[{patent:'US900B1',claim:1,element:'验证',quote:'verifying a transaction',claim_offset:20}],effectExtract:async()=>[]};
   const result=await executeTool(name,parameters[name]||{},meta,fixtures,ctx);
-  assert.equal(result.status,name==='analyze_tech_roadmap'?'unavailable':'completed');assert.equal(result.datasetId,meta.id);assert.ok(result.method);assert.ok(Array.isArray(result.rows));
+  assert.equal(result.status,['analyze_tech_roadmap','search_patent_passages'].includes(name)?'unavailable':'completed');assert.equal(result.datasetId,meta.id);assert.ok(result.method);assert.ok(Array.isArray(result.rows));
   const empty=await executeTool(name,{...parameters[name],year_start:2099},meta,fixtures,ctx);assert.equal(empty.status,'unavailable');assert.equal(empty.rows.length,0);
  });
 }
@@ -30,7 +43,7 @@ test('zero changes are valid, not failure',async()=>{const params={query:'blockc
 test('different research scopes and filters establish independent monitor baselines',async()=>{const params={query:'blockchain',strategy_id:'research-scope-test'};await executeTool('monitor_patent_changes',params,meta,fixtures,{monitorScope:'dataset'});const scoped=await executeTool('monitor_patent_changes',params,meta,fixtures.slice(0,1),{monitorScope:'search:authentication'});assert.ok(scoped.rows.every(row=>row.change==='基线收录'));const filtered=await executeTool('monitor_patent_changes',{...params,year_start:2022},meta,fixtures);assert.ok(filtered.rows.every(row=>row.change==='基线收录'));});
 test('canonical applicant filter runs after confirmed alias normalization',async()=>{const result=await executeTool('analyze_entity_portfolio',{applicant:'Confirmed name'},meta,fixtures,{entityRules:[{alias:'Alpha',canonical:'Confirmed name',basis:'UNIT TEST ONLY'}]});assert.equal(result.status,'completed');assert.ok(result.rows.some(row=>row.applicant==='Confirmed name'));const raw=await executeTool('read_patent_details',{patent_numbers:['US900B1']},meta,fixtures,{entityRules:[{alias:'Alpha',canonical:'Confirmed name',basis:'UNIT TEST ONLY'}]});assert.ok((raw.rows[0].applicants as string[]).includes('Alpha'));});
 test('monitor baselines belong to a dataset and initial records are not new patents',async()=>{const params={query:'blockchain',strategy_id:'dataset-isolation'};const first=await executeTool('monitor_patent_changes',params,{...meta,id:'monitor-source-a'},fixtures);const second=await executeTool('monitor_patent_changes',params,{...meta,id:'monitor-source-b'},fixtures);assert.ok(first.rows.every(r=>r.change==='基线收录'));assert.equal(second.rows.length,first.rows.length);assert.match(second.summary,/首次运行不表示新增专利/);const repeated=await executeTool('monitor_patent_changes',params,{...meta,id:'monitor-source-b'},fixtures);assert.equal(repeated.rows.length,0);});
-test('monitor detects claim and classification changes, not only titles',async()=>{const params={query:'blockchain',strategy_id:'all-fields'};await executeTool('monitor_patent_changes',params,meta,fixtures);const changed=fixtures.map((p,i)=>i===0?{...p,ipc:['H04L9/00'],claims:[{number:1,text:'Changed actual claim.'}]}:p);const r=await executeTool('monitor_patent_changes',params,meta,changed);assert.deepEqual(r.rows,[{patent:'US900B1',change:'记录变化'}]);});
+test('monitor detects claim and classification changes, not only titles',async()=>{const params={query:'blockchain',strategy_id:'all-fields'};await executeTool('monitor_patent_changes',params,meta,fixtures);const changed=fixtures.map((p,i)=>i===0?{...p,ipc:['H04L9/00'],claims:[{number:1,text:'Changed actual claim.'}]}:p);const r=await executeTool('monitor_patent_changes',params,meta,changed);assert.equal(r.rows.length,1);assert.equal(r.rows[0].patent,'US900B1');assert.equal(r.rows[0].change,'记录变化');assert.deepEqual(r.rows[0].changed_fields,['claims','ipc']);assert.deepEqual(r.rows[0].field_changes,[{field:'claims',before:fixtures[0].claims,after:changed[0].claims},{field:'ipc',before:fixtures[0].ipc,after:changed[0].ipc}]);});
 test('legal capability requires status and date on the same source record',async()=>{const records=fixtures.map((p,i)=>({...p,legalStatus:i===0?'Granted':'',legalAsOf:i===1?'2025-01-01':''}));assert.equal((await executeTool('analyze_legal_status',{},meta,records)).status,'unavailable');});
 test('year filtering, missing fields, no invented citation/family/legal facts',async()=>{
  const r=await executeTool('analyze_patent_trend',{year_start:2021,year_end:2021},meta,fixtures);assert.deepEqual(r.rows,[{period:'2021',count:1}]);

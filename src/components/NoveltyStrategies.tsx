@@ -1,0 +1,10 @@
+'use client';
+import {useState} from 'react';
+export type EditableStrategy={name:string;query:string;featureIds:string[];rationale:string};
+export default function NoveltyStrategies({strategies,features,disabled,onSave}:{strategies:EditableStrategy[];features:{id:string;feature:string}[];disabled:boolean;onSave:(strategies:EditableStrategy[])=>Promise<void>}){
+ const [rows,setRows]=useState(strategies);
+ function update(index:number,change:Partial<EditableStrategy>){setRows(value=>value.map((row,i)=>i===index?{...row,...change}:row));}
+ return <form className="professional-feature-editor" onSubmit={event=>{event.preventDefault();void onSave(rows);}}><h3>编辑查新策略</h3><p className="muted">自然语言检索返回语义候选；布尔检索支持 AND、OR、NOT、括号及字段约束，例如 title:(sensor OR detector)。</p>
+ {rows.map((row,index)=><fieldset key={index}><legend>策略 {index+1}</legend><label>名称<input required maxLength={100} disabled={disabled} value={row.name} onChange={event=>update(index,{name:event.target.value})}/></label><label>检索式<textarea required rows={3} maxLength={2000} disabled={disabled} value={row.query} onChange={event=>update(index,{query:event.target.value})}/></label><div>对应特征{features.map(feature=><label className="professional-alias-option" key={feature.id}><input type="checkbox" disabled={disabled} checked={row.featureIds.includes(feature.id)} onChange={event=>update(index,{featureIds:event.target.checked?[...row.featureIds,feature.id]:row.featureIds.filter(id=>id!==feature.id)})}/><span>{feature.id} · {feature.feature}</span></label>)}</div><label>检索理由<textarea required rows={2} maxLength={1000} disabled={disabled} value={row.rationale} onChange={event=>update(index,{rationale:event.target.value})}/></label><button type="button" disabled={disabled||rows.length<=2} onClick={()=>setRows(value=>value.filter((_,i)=>i!==index))}>移除此策略</button></fieldset>)}
+ <div className="professional-actions"><button type="button" disabled={disabled||rows.length>=10} onClick={()=>setRows(value=>[...value,{name:'',query:'',featureIds:[],rationale:''}])}>添加策略</button><button disabled={disabled||rows.some(row=>!row.featureIds.length)}>保存策略修改</button></div></form>;
+}

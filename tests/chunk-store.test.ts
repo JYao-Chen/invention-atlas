@@ -1,0 +1,54 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {postgresPool} from '../src/server/postgres';
+import {PostgresStore} from '../src/server/postgres-store';
+import {ChunkStore} from '../src/server/chunk-store';
+import {normalize,datasetMeta} from '../src/server/importers';
+
+test('versioned chunks resume embeddings and never mix models, scopes or revisions',async()=>{
+ const pool=postgresPool(process.env.DATABASE_URL),store=new PostgresStore(pool),chunks=new ChunkStore(pool);
+ try{
+  const p=normalize({id:'US2000B1',abstract:'network authentication',description:'A private network authenticates messages.'},'FIXTURE');
+  const meta=datasetMeta('chunk fixture',[p],'fixture','fixture');await store.saveDataset(meta,[p]);
+  assert.equal((await chunks.saveDocument(meta.id,p,'v1')).reused,false);
+  assert.equal((await chunks.saveDocument(meta.id,p,'v1')).reused,true);
+  await assert.rejects(chunks.saveDocument(meta.id,{...p,abstract:'changed'},'v1'),/新版本/);
+  const pending=await chunks.pending(meta.id,'v1','model-a',3);assert.equal(pending.length,2);
+  assert.deepEqual((await chunks.pending(meta.id,'v1','model-a',3,10,undefined,{patentId:p.id,ordinal:pending[0].ordinal})).map(chunk=>chunk.ordinal),[pending[1].ordinal]);
+  assert.deepEqual(await chunks.pending(meta.id,'v1','model-a',3,10,undefined,{patentId:p.id,ordinal:pending[1].ordinal}),[]);
+  assert.equal(await chunks.saveEmbeddings(meta.id,'model-a',3,[{chunk:pending[0],embedding:[1,0,0]}]),1);
+  assert.equal(await chunks.saveEmbeddings(meta.id,'model-a',3,[{chunk:pending[0],embedding:[1,0,0]}]),0);
+  assert.equal((await chunks.pending(meta.id,'v1','model-a',3)).length,1);
+  await assert.rejects(chunks.saveEmbeddings(meta.id,'model-a',3,[{chunk:pending[1],embedding:[1,0,0]},{chunk:{...pending[1],ordinal:99999},embedding:[1,0,0]}]),{code:'23503'});
+  assert.equal((await chunks.pending(meta.id,'v1','model-a',3)).length,1,'failed bulk insert cannot leave a partial vector batch');
+  assert.equal((await chunks.pending(meta.id,'v1','model-b',3)).length,2);
+  assert.equal((await chunks.semantic(meta.id,'v1','model-a',[1,0,0]))[0].chunk.text,p.abstract);
+  assert.deepEqual(await chunks.semantic(meta.id,'v1','model-b',[1,0,0]),[]);
+  assert.deepEqual(await chunks.semantic(meta.id,'v1','model-a',[1,0,0],20,[]),[]);
+  await assert.rejects(chunks.saveEmbeddings(meta.id,'model-a',3,[{chunk:pending[1],embedding:[1,0]}]),/维度无效/);
+  await chunks.saveDocument(meta.id,{...p,abstract:'changed'},'v2');
+  const source=await chunks.source(meta.id,p.id,'v1',0);
+  assert.equal(source?.sourceText,p.abstract);assert.equal(source?.chunk.text,p.abstract);
+  assert.equal((await chunks.source(meta.id,p.id,'v2',0))?.sourceText,'changed');
+  assert.equal(await chunks.source(meta.id,p.id,'v3',0),undefined);
+  assert.deepEqual((await chunks.versions(meta.id,'model-a',3)).map(v=>[v.version,v.done]),[['v1',1],['v2',0]]);
+  assert.equal((await chunks.semantic(meta.id,'v1','model-a',[1,0,0]))[0].chunk.documentVersion,'v1');
+  assert.deepEqual(await chunks.semantic(meta.id,'v2','model-a',[1,0,0]),[]);
+  const hybrid=await chunks.hybrid(meta.id,'v1','network','model-a',[1,0,0]);
+  assert.equal(hybrid.hits[0].chunk.section,'abstract');
+  assert.deepEqual(hybrid.hits[0].matches,['keyword','semantic']);
+  assert.equal(hybrid.keywordCandidates,2);assert.equal(hybrid.semanticCandidates,1);
+  assert.equal((await chunks.hybrid(meta.id,'v1','network','model-a',[1,0,0],20,[])).hits.length,0);
+  const chinese={...p,id:'CN2000A',abstract:'用于身份验证的区块链网络',description:''};
+  await chunks.saveDocument(meta.id,chinese,'v1');
+  assert.equal((await chunks.keyword(meta.id,'v1','身份验证'))[0].chunk.patentId,'CN2000A');
+  assert.deepEqual(await chunks.keyword(meta.id,'v1','%'),[]);
+  assert.deepEqual(await chunks.alignment(meta.id,'v1',[p.id]),{documents:1,current:1,changed:0,removed:0});
+  await store.savePatent(meta.id,{...p,abstract:'Updated current abstract',description:'Updated current description'});
+  assert.deepEqual(await chunks.alignment(meta.id,'v1',[p.id]),{documents:1,current:0,changed:1,removed:0});
+  assert.deepEqual(await chunks.keyword(meta.id,'v1','network',20,[p.id],true),[]);assert.deepEqual(await chunks.semantic(meta.id,'v1','model-a',[1,0,0],20,[p.id],true),[]);assert.equal((await chunks.hybrid(meta.id,'v1','network','model-a',[1,0,0],20,[p.id],true)).hits.length,0);
+  assert.ok((await chunks.keyword(meta.id,'v1','network',20,[p.id],false)).length);assert.equal((await chunks.source(meta.id,p.id,'v1',0))!.sourceText,p.abstract);
+  await chunks.saveDocument(meta.id,{...p,abstract:'Updated current abstract',description:'Updated current description'},'current-v3');assert.equal((await chunks.alignment(meta.id,'current-v3')).current,1);assert.ok((await chunks.keyword(meta.id,'current-v3','updated',20,[p.id],true)).length);
+  await pool.query('DELETE FROM patents WHERE dataset_id=$1 AND id=$2',[meta.id,p.id]);assert.equal((await chunks.alignment(meta.id,'v1',[p.id])).removed,1);assert.ok(await chunks.source(meta.id,p.id,'v1',0));
+ }finally{await pool.end();}
+});

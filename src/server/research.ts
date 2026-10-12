@@ -20,3 +20,13 @@ export function datasetAudit(records:Iterable<Patent>){
  }
  return rows;
 }
+
+export async function datasetAuditAsync(records:AsyncIterable<Patent>){
+ const ids=new Set<string>(),rows:Record<string,unknown>[]=[];
+ for await(const record of records){
+  if(ids.has(record.id))rows.push({patent:record.id,issue:'重复公开编号',field:'id'});
+  ids.add(record.id);
+  rows.push(...datasetAudit([record]));
+ }
+ return rows;
+}

@@ -6,9 +6,33 @@ import {reportResult} from '../src/server/report-input';
 import {retrieveResults} from '../src/server/report-retrieval';
 import {TOOL_DEFS} from '../src/server/tools';
 import {sourceBundle} from '../src/server/agent';
+import {monitorBrief} from '../src/server/monitor-brief';
 const p=(id:string,year:string,title:string,abstract:string):Patent=>({id,title,abstract,applicants:['Alpha'],assignees:[],inventors:[],publicationDate:year+'-01-01',filingDate:'',ipc:['G06F16/00'],cpc:[],claims:[],description:'',citations:[],familyId:'',familyMembers:[],legalStatus:'',legalAsOf:'',sourceUrl:'https://example.org/'+id,sourceName:'test',rawText:'',locations:{}});
 const records=[p('US1','2020','Vehicle identity','vehicle vehicle ledger'),p('US2','2021','Identity','ledger identity'),p('US3','2021','Vehicles','vehicle ledger')];
 const result=(tool:string,rows:AnalysisResult['rows']):AnalysisResult=>({id:tool,tool,title:tool,status:'completed',datasetId:'test',params:{},summary:'computed',rows,evidence:[],warnings:[],method:'actual method',createdAt:'2026-10-09'});
+test('monitor field changes remain available with their provenance semantics',()=>{
+ const row={patent:'US1',change:'记录变化',changed_fields:['description'],field_changes:[{field:'description',before:'previous literal source',after:'updated literal source'}]};
+ const saved=result('monitor_patent_changes',[row]);
+ const response=readResult(saved);
+ assert.deepEqual(response.rows,[row]);
+ assert.match(response.contract.fields.find(field=>field.name==='field_changes')!.definition,/上次基线保存值/);
+ assert.match(response.contract.fields.find(field=>field.name==='field_changes')!.definition,/不自动表示官方更正/);
+ assert.deepEqual(reportResult(saved).rows,[row]);
+});
+test('monitor brief paginates events without changing full-result counts or report snapshot',()=>{
+ const rows=[{patent:'US1',change:'新增'},{patent:'US2',change:'移出返回集'}];
+ const saved=result('monitor_patent_changes',rows);
+ saved.monitorBrief=monitorBrief(rows,false,records);
+ const page=readResult(saved,{offset:1,limit:1});
+ assert.equal(page.monitorBrief!.totalEvents,2);
+ assert.deepEqual(page.monitorBrief!.counts,{baseline:0,added:1,removed:1,updated:0});
+ assert.equal(page.monitorBrief!.events.length,1);
+ assert.equal(page.monitorBrief!.events[0].patent,'US2');
+ assert.deepEqual(reportResult(saved).monitorBrief,saved.monitorBrief);
+ assert.equal(saved.monitorBrief.events.length,2);
+ assert.deepEqual(readResult(saved,{year:'2099'}).monitorBrief!.events,[]);
+ assert.deepEqual(readResult(saved,{year:'2099'}).monitorBrief!.counts,page.monitorBrief!.counts);
+});
 test('keyword linkage uses exact same tokenizer, year and source excerpts, not arbitrary dataset IDs',()=>{
  const r=result('analyze_yearly_keywords',[{year:'2020',word:'vehicle',documents:1},{year:'2021',word:'vehicle',documents:1},{word:'unknown'}]);r.rowSources=linkRows(r,records);
  assert.deepEqual(r.rowSources.map(s=>s.patentIds),[['US1'],['US3']]);assert.equal(r.rowSources[0].representatives[0].field,'title');

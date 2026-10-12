@@ -1,8 +1,14 @@
 import './config';
-import {randomBytes,timingSafeEqual,scryptSync} from 'node:crypto';
-import {db} from './db';
+import {db,store} from './db';
+import {IdentityStore} from './identity';
+import {ApiCredentials,bearerToken} from './api-credentials';
+
 export const COOKIE='patent_session';
-export function authenticate(username:string,password:string){const expected=process.env.PATENT_PASSWORD;if(!expected)throw new Error('请先配置独立登录密码');const salt='mini-patent-local-login';return username===(process.env.PATENT_USERNAME||'jyao')&&timingSafeEqual(scryptSync(password,salt,32),scryptSync(expected,salt,32));}
-export function login(){const token=randomBytes(32).toString('hex');db.prepare('INSERT INTO sessions VALUES(?,?)').run(token,Date.now()+7*86400000);return token;}
-export function authorized(request:Request){const token=request.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1)||'';const session=db.prepare('SELECT expires_at FROM sessions WHERE token=?').get(token) as {expires_at:number}|undefined;return Boolean(session&&session.expires_at>Date.now());}
-export function logout(request:Request){const token=request.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1)||'';db.prepare('DELETE FROM sessions WHERE token=?').run(token);}
+export const identity=new IdentityStore(db);
+export const apiCredentials=new ApiCredentials(db);
+export function sessionToken(request:Request){return request.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1)||'';}
+export const authenticate=identity.authenticate.bind(identity);
+export const login=identity.createSession.bind(identity);
+export function currentSession(request:Request){return request.headers.has('authorization')?apiCredentials.authenticate(bearerToken(request)):identity.session(sessionToken(request));}
+export async function authorized(request:Request){return Boolean(await currentSession(request));}
+export async function logout(request:Request){await store.deleteSession(sessionToken(request));}
