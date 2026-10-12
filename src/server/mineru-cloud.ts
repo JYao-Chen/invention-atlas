@@ -1,12 +1,13 @@
 import {setTimeout as delay} from 'node:timers/promises';
+import {mineruSettings} from './mineru-settings';
 
 export type MineruCheckpoint={batchId:string;uploadUrl?:string;uploaded:boolean};
 export type MineruResult={markdown?:string;content?:string;text?:string;full_zip_url?:string;state:string;err_msg?:string};
 /** Uploaded batches survive cancellation and worker restart; terminal failures are cleared. */
 export async function parseMineruCloud(bytes:Buffer,name:string,options:{signal?:AbortSignal;checkpoint?:MineruCheckpoint;save:(value:MineruCheckpoint|null)=>Promise<void>;fetch?:typeof fetch;pollMs?:number}):Promise<MineruResult>{
- const request=options.fetch||fetch,key=process.env.PATENT_MINERU_API_KEY;
+ const cfg=mineruSettings(),request=options.fetch||fetch,key=cfg.apiKey;
  if(!key)throw new Error('尚未配置MinerU API凭据');
- const base=(process.env.PATENT_MINERU_BASE_URL||'https://mineru.net/api/v4').replace(/\/$/,''),headers={Authorization:'Bearer '+key,'Content-Type':'application/json'};
+ const base=cfg.base.replace(/\/$/,''),headers={Authorization:'Bearer '+key,'Content-Type':'application/json'};
  const signal=AbortSignal.any([AbortSignal.timeout(30*60*1000),...(options.signal?[options.signal]:[])]);
  let saved=options.checkpoint;
  async function json(url:string,init:RequestInit={}){
@@ -14,7 +15,7 @@ export async function parseMineruCloud(bytes:Buffer,name:string,options:{signal?
   const value=await response.json();if(value.code!==0)throw new Error('MinerU请求失败：'+(value.msg||value.code));return value.data;
  }
  if(!saved){
-  const data=await json(base+'/file-urls/batch',{method:'POST',headers,body:JSON.stringify({files:[{name}],model_version:process.env.PATENT_MINERU_MODEL||'vlm',is_ocr:true,enable_formula:true,enable_table:true,language:process.env.PATENT_MINERU_LANGUAGE||'ch'})});
+  const data=await json(base+'/file-urls/batch',{method:'POST',headers,body:JSON.stringify({files:[{name}],model_version:cfg.model,is_ocr:true,enable_formula:true,enable_table:true,language:cfg.language})});
   if(!data.batch_id||!data.file_urls?.[0])throw new Error('MinerU未返回上传批次');
   saved={batchId:data.batch_id,uploadUrl:data.file_urls[0],uploaded:false};await options.save(saved);
  }

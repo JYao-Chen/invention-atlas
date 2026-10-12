@@ -14,6 +14,7 @@ import AccountSettings from './AccountSettings';
 import ModelUsage from './ModelUsage';
 import ApiCredentials from './ApiCredentials';
 import OrganizationModel from './OrganizationModel';
+import OcrSettings from './OcrSettings';
 import OrganizationManager from './OrganizationManager';
 import UserManager from './UserManager';
 import PatentAnnotations from './PatentAnnotations';
@@ -200,6 +201,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 {workspace&&<AccountSettings username={workspace.user.username} displayName={workspace.user.displayName}/>}
 {workspace?.current&&<ApiCredentials key={'credentials:'+workspace.current.id} projectName={workspace.projects.find(project=>project.id===workspace.current?.id)?.name||workspace.current.id} readOnly={Boolean(readOnly)} openRequest={credentialsOpen}/>}
 {workspace?.current&&<OrganizationModel key={'organization-model:'+workspace.current.id}/>}
+<OcrSettings/>
 {workspace&&<OrganizationManager platformAdmin={workspace.user.platformRole==='admin'} onProjectCreated={selectProject} onChanged={async()=>{await refreshWorkspace();}}/>}
 {workspace?.user.platformRole==='admin'&&<UserManager currentUserId={workspace.user.id}/>}
 </div></details>}

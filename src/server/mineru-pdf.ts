@@ -5,6 +5,7 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {parseMineruCloud,type MineruCheckpoint} from './mineru-cloud';
 import type {OcrPage} from './material-ocr';
+import {mineruSettings} from './mineru-settings';
 type Part={pages:number[];checkpoint?:MineruCheckpoint;results?:OcrPage[]};
 export function mineruContentPages(content:unknown,pages:number[]):OcrPage[]{
  if(!Array.isArray(content))throw new Error('MinerU结果缺少逐页内容，不能可靠对应原文页码');
@@ -15,7 +16,7 @@ export function mineruContentPages(content:unknown,pages:number[]):OcrPage[]{
   if(item.type==='equation'&&item.text)blocks[0]='$$\n'+item.text+'\n$$';
   text[index].push(...blocks);
  }
- return pages.map((page,index)=>({page,text:text[index].join('\n\n'),method:'ocr',engine:'mineru-cloud',language:process.env.PATENT_MINERU_LANGUAGE||'ch',meanWordConfidence:null,status:text[index].length?'recognized':'unreadable'}));
+ return pages.map((page,index)=>({page,text:text[index].join('\n\n'),method:'ocr',engine:'mineru-cloud',language:mineruSettings().language,meanWordConfidence:null,status:text[index].length?'recognized':'unreadable'}));
 }
 export async function recognizeMineruPdf(bytes:Buffer,pages:number[],options:{signal?:AbortSignal;load:(part:number)=>Promise<Part|undefined>;save:(part:number,value:Part)=>Promise<void>;onPage?:(page:OcrPage)=>Promise<void>}):Promise<OcrPage[]>{
  const dir=await mkdtemp(join(tmpdir(),'atlas-mineru-')),run=promisify(execFile),results:OcrPage[]=[];

@@ -1,4 +1,5 @@
 import {NextResponse} from 'next/server';
+import {publicMineruSettings,saveMineruSettings} from '@/server/mineru-settings';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {exportReportHtml} from '@/server/report-export';
@@ -235,7 +236,9 @@ if(id&&action==='tasks'){const tasks=new ReportTasks(db);if(method==='GET'&&path
  return NextResponse.json({error:'接口不存在'},{status:404});
  }catch(e){return NextResponse.json({error:e instanceof z.ZodError?e.issues[0]?.message||'请检查输入字段':(e as Error).message||'请求失败'},{status:400});}}
 async function handle(request:Request,context:{params:Promise<{path:string[]}>}){try{
- const {path}=await context.params;if(request.headers.has('authorization'))return await apiCredentialRequest(request,path,()=>withOrganizationModel(db,()=>resources(request,context)));const response=await identityEndpoint(request,path);
+ const {path}=await context.params;
+ if(path[0]==='ocr-settings'&&path.length===1){const session=await currentSession(request);if(!session)return NextResponse.json({error:'请先登录'},{status:401});if(session.platformRole!=='admin')return NextResponse.json({error:'需要平台管理员权限'},{status:403});const headers={'Cache-Control':'no-store'};if(request.method==='GET')return NextResponse.json({settings:publicMineruSettings()},{headers});if(request.method==='PATCH')return NextResponse.json({settings:saveMineruSettings(await request.json())},{headers});return NextResponse.json({error:'不支持该操作'},{status:405});}
+ if(request.headers.has('authorization'))return await apiCredentialRequest(request,path,()=>withOrganizationModel(db,()=>resources(request,context)));const response=await identityEndpoint(request,path);
  if(!response&&path[0]==='shared-reports'&&request.method==='GET'){
   const session=await currentSession(request);if(!session)return NextResponse.json({error:'请先登录'},{status:401});
 return await withAccess({userId:session.id,organizationId:'',projectId:''},async()=>{const shares=new ReportShares(db);if(!path[1])return NextResponse.json({reports:await shares.received()});const snapshot=await shares.read(path[1]);if(path[2]==='html'||path[2]==='view')return new Response(exportReportHtml(snapshot),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',...(path[2]==='html'?{'Content-Disposition':'attachment; filename="shared-report.html"'}:{})}});return NextResponse.json(snapshot);});

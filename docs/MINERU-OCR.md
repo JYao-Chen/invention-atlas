@@ -2,7 +2,7 @@
 
 本系统迁移了 WeKnora v0.8.2 集成工作树中修改过的 MinerU Cloud 调用流程：申请上传批次、上传 PDF、轮询解析状态、下载结果包。使用 `vlm` 模型，启用 OCR、表格和公式识别。
 
-配置 `PATENT_MINERU_API_KEY` 后，新建材料 OCR 任务使用 MinerU Cloud；未配置时保留本地 Tesseract。任务保存所选引擎，运行失败不会切换引擎。密钥只由服务器读取，不进入浏览器、任务记录或报告。可选参数见 `.env.example`。
+平台管理员可在“管理 → OCR 配置”设置 MinerU 服务地址、模型、识别语言和 API Key。已有环境密钥显示为已配置，留空保存会将现有密钥加密保存到共享数据目录的 `mineru-config.json`；页面不回传密钥。网页保存配置优先于环境配置，Web 和后台 worker 每次调用读取，无需重启。服务器需要配置 `PATENT_MODEL_CREDENTIAL_KEY` 作为凭据加密密钥，与组织模型使用同一配置。也可通过 `PATENT_MINERU_API_KEY` 配置，新建材料 OCR 任务使用 MinerU Cloud；未配置时保留本地 Tesseract。任务保存所选引擎，运行失败不会切换引擎。密钥只由服务器读取，不进入浏览器、任务记录或报告。可选参数见 `.env.example`。
 
 PDF 使用 Poppler 的 `pdfseparate`、`pdfunite` 提取并合并所选原始页，不转成图片。每片最多 100 页、10 MiB；超过大小限制的分片继续二分。单页仍超过限制时提示压缩原材料。结果包通过 `unzip` 读取逐页 `content_list`，将分片页码映射回用户选择的原始 PDF 页码，保留文本、表格及公式。不会把整份 Markdown 当成某一页；缺少逐页结果时明确失败。
 

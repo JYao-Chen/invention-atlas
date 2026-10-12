@@ -5,6 +5,7 @@ import {JobStore,type Job} from './job-store';
 import {ProjectMaterials} from './project-materials';
 import {recognizePdfPages} from './material-ocr';
 import {recognizeMineruPdf} from './mineru-pdf';
+import {mineruSettings} from './mineru-settings';
 const input=z.object({materialId:z.string().min(1),pages:z.array(z.number().int().positive()).min(1).optional()}).strict();
 export async function submitMaterialOcr(pool:Pool,value:unknown){
  const data=input.parse(value);
@@ -18,7 +19,7 @@ export async function submitMaterialOcr(pool:Pool,value:unknown){
   if(pages.some(page=>!available.some(item=>item.page===page)))throw new Error('OCR页码超出原PDF范围');
   if((await client.query("SELECT id FROM jobs WHERE material_id=$1 AND state IN('queued','running')",[data.materialId])).rowCount)throw new Error('该材料已有OCR任务');
   const job=await new JobStore(pool).enqueueMaterial(data.materialId,pages);
-  const ocrEngine=process.env.PATENT_MINERU_API_KEY?'mineru-cloud':'tesseract';
+  const ocrEngine=mineruSettings().apiKey?'mineru-cloud':'tesseract';
   await client.query("UPDATE jobs SET payload=payload||jsonb_build_object('ocrEngine',$2::text) WHERE id=$1",[job.id,ocrEngine]);
   job.payload.ocrEngine=ocrEngine;
   return job;
