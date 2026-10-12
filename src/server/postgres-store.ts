@@ -208,11 +208,11 @@ export class PostgresStore {
  }
 
  async comparisonCheckpoint(key:string):Promise<unknown>{
-  return (await this.connection.query('SELECT payload FROM comparison_checkpoints WHERE key=$1',[key])).rows[0]?.payload;
+  return (await this.connection.query('SELECT payload FROM comparison_checkpoints WHERE key_hash=md5($1) AND key=$1',[key])).rows[0]?.payload;
  }
 
  async saveComparisonCheckpoint(key:string,value:unknown){
-  await this.connection.query('INSERT INTO comparison_checkpoints(key,payload) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload',[key,JSON.stringify(value)]);
+  await this.connection.query('INSERT INTO comparison_checkpoints(key,payload) VALUES($1,$2) ON CONFLICT(key_hash) DO UPDATE SET payload=excluded.payload WHERE comparison_checkpoints.key=excluded.key',[key,JSON.stringify(value)]);
  }
 
  async clearCheckpoints(datasetId:string,patentId?:string){

@@ -21,6 +21,7 @@ MIGRATIONS.push('038_model_call_counters');
 MIGRATIONS.push('039_organization_models');
 MIGRATIONS.push('040_material_ocr_parts');
 MIGRATIONS.push('041_historical_events');
+MIGRATIONS.push('042_comparison_checkpoint_keys');
 
 export function assertRuntimeRole(pool:Pool){
  let check=runtimeChecks.get(pool);

@@ -1,8 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,randomBytes} from 'node:crypto';
 import {postgresPool,withAccess,connection} from '../src/server/postgres';
 import {IdentityStore} from '../src/server/identity';
+import {PostgresStore} from '../src/server/postgres-store';
+test('long proposal checkpoint keys preserve full originals and remain reusable',async()=>{
+ const pool=postgresPool(),store=new PostgresStore(pool),key=JSON.stringify(['v3','historical-dataset',randomBytes(12000).toString('hex')]);
+ await store.saveComparisonCheckpoint(key,{original:'first'});
+ assert.deepEqual(await store.comparisonCheckpoint(key),{original:'first'});
+ await store.saveComparisonCheckpoint(key,{original:'updated'});
+ assert.deepEqual(await store.comparisonCheckpoint(key),{original:'updated'});
+ const saved=(await pool.query('SELECT key FROM comparison_checkpoints WHERE key_hash=md5($1)',[key])).rows[0];assert.equal(saved.key,key);
+});
 test('legacy detached events are preserved by maintenance but hidden and unwritable at runtime',async()=>{
  const owner=postgresPool(),identity=await new IdentityStore(owner).initializeAdmin('legacy-admin','legacy-password-123','Legacy event test');
  const scope={userId:identity.user!.id,organizationId:identity.organizationId,projectId:identity.projectId};
