@@ -166,6 +166,16 @@ async function resources(request:Request,{params}:{params:Promise<{path:string[]
   if(method==='GET')return NextResponse.json(publicModelSettings());
   return NextResponse.json({error:'不支持此操作'},{status:405});
  }
+ if(resource==='patents'&&id&&action==='papers'&&path.length===3){
+  if(method!=='GET')return NextResponse.json({error:'仅支持读取'},{status:405});
+  const reader=new ExternalReferenceReader(db),links=await reader.paperLinks([id]),papers=await reader.papers([...new Set(links.map(l=>l.work_id as string))]);
+  // One work can appear in several rows (front page and in-text); merge them per work.
+  type Work={workId:string;confidence:number|null;referenceTypes:string[];whereFound:string[];paper:Record<string,unknown>|null};
+  const works=new Map<string,Work>();
+  for(const link of links){const work:Work=works.get(link.work_id)||{workId:link.work_id,confidence:null,referenceTypes:[],whereFound:[],paper:papers.find(p=>p.work_id===link.work_id)||null};work.confidence=Math.max(work.confidence??0,Number(link.confidence??0));if(link.reference_type&&!work.referenceTypes.includes(link.reference_type))work.referenceTypes.push(link.reference_type);if(link.where_found&&!work.whereFound.includes(link.where_found))work.whereFound.push(link.where_found);works.set(link.work_id,work);}
+  const sources=(await reader.sources()).filter(source=>['science','openalex'].includes(source.name));
+  return NextResponse.json({patent:id,papers:[...works.values()].sort((a,b)=>(b.confidence??0)-(a.confidence??0)||Number(b.paper?.cited_by_count??0)-Number(a.paper?.cited_by_count??0)),sources:sources.map(s=>({name:s.name,version:s.version,license:s.license}))},{headers:{'Cache-Control':'no-store'}});
+ }
  if(resource==='datasets'&&id&&action==='external-coverage'&&path.length===3){
   if(method!=='GET')return NextResponse.json({error:'仅支持读取'},{status:405});
   const reader=new ExternalReferenceReader(db);

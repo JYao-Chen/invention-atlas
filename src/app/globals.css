@@ -17,6 +17,7 @@
 .professional-form button { justify-self:start }
 .help-example { padding-block:18px; margin-block:18px; border-block:1px solid var(--line) }
 .help-example p:last-child { margin:10px 0 0 }
+.help-example-actions { display:flex; flex-wrap:wrap; gap:8px }
 .professional-demo { margin:16px 0; overflow-wrap:anywhere }
 .professional-entity-input { grid-column:1/-1 }
 .professional-feature-editor { display:grid; gap:12px; margin:20px 0 }
@@ -1074,3 +1075,88 @@ td { border-bottom-color:var(--rule) }
 .index-progress:empty { display:none }
 .dataset-actions { margin-bottom:8px }
 .monitor-subscriptions:not([open]),.source-updates:not([open]) { padding:4px 0; margin-bottom:12px }
+/* Report views: body and paragraph review */
+.report-tabs { display:flex; gap:4px; margin:0 0 20px; border-bottom:1px solid var(--line) }
+.report-tabs button { border:0; border-bottom:2px solid transparent; border-radius:0; background:none; padding:10px 14px; margin-bottom:-1px; color:var(--muted); font-weight:500 }
+.report-tabs button:hover { color:var(--ink); background:none }
+.report-tabs button.active { color:var(--ink); border-bottom-color:var(--action) }
+.report-review { display:grid; gap:20px }
+.report-review-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap }
+.report-review-head h3 { margin:0 0 4px }
+.report-review-head p { margin:0 }
+.review-filter { display:inline-flex; padding:3px; background:var(--sunk); border-radius:var(--radius-control) }
+.review-filter button { border:0; background:none; padding:6px 12px; font-size:13px; color:var(--muted) }
+.review-filter button.active { background:var(--paper); color:var(--ink); box-shadow:var(--shadow-panel) }
+.review-summary { background:var(--paper); box-shadow:var(--shadow-panel); border-radius:var(--radius-panel); padding:18px 20px }
+.review-summary details { margin-top:12px; border-top:1px solid var(--rule); padding-top:10px }
+.review-summary summary { font-size:13px; color:var(--muted); cursor:pointer }
+.review-summary table { margin-top:10px }
+.review-totals { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:0 }
+.review-totals dt { font-size:12px; color:var(--muted) }
+.review-totals dd { margin:4px 0 0; font-size:22px; font-variant-numeric:tabular-nums; color:var(--ink) }
+.review-list { list-style:none; margin:0; padding:0; background:var(--paper); box-shadow:var(--shadow-panel); border-radius:var(--radius-panel) }
+.review-item { padding:18px 20px; border-bottom:1px solid var(--rule) }
+.review-item:last-child { border-bottom:0 }
+.review-item.is-open { background:var(--band) }
+.review-item-meta { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--muted) }
+.review-decision { color:var(--action) }
+.review-item[data-decision="accept"] .review-decision { color:var(--green) }
+.review-item[data-decision="reject"] .review-decision { color:var(--danger) }
+.review-item[data-decision="modify"] .review-decision { color:var(--warning) }
+.review-item-text { margin:8px 0 10px; font-size:14px; line-height:1.75 }
+.review-item-text > :first-child { margin-top:0 }
+.review-item-text > :last-child { margin-bottom:0 }
+.review-evidence { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px }
+.evidence-chip { display:inline-flex; align-items:center; min-height:26px; padding:2px 9px; border:1px solid var(--line); border-radius:999px; background:var(--paper); font-size:12px; color:var(--ink); font-family:var(--font-mono) }
+button.evidence-chip:hover { border-color:var(--selected-line); background:var(--selected) }
+.evidence-chip.is-result { font-family:inherit; background:var(--sunk); border-color:transparent; color:var(--muted) }
+.review-previous { font-size:13px; color:var(--muted); border-left:2px solid var(--line); padding-left:12px; margin-bottom:10px }
+.review-previous p { margin:4px 0; white-space:pre-wrap }
+.review-previous strong { font-weight:500; color:var(--ink); margin-right:8px }
+.review-form { display:grid; gap:12px; margin-top:6px }
+.review-form label { display:grid; gap:6px; font-size:13px }
+.review-form fieldset { border:0; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px 18px }
+.review-form legend { font-size:13px; margin-bottom:6px; padding:0 }
+.review-form fieldset label { display:inline-flex; align-items:center; gap:6px }
+.review-form .record-actions { margin:0 }
+@media(max-width:700px) {
+ .review-totals { grid-template-columns:repeat(3,minmax(0,1fr)) }
+ .review-item,.review-summary { padding:16px }
+}
+/* Retrieval experiments */
+.retrieval-experiments { margin-top:40px; display:grid; gap:14px }
+.retrieval-experiments > p { margin:0 }
+.experiment-form { display:grid; gap:12px; background:var(--paper); box-shadow:var(--shadow-panel); border-radius:var(--radius-panel); padding:18px 20px }
+.experiment-form label,.experiment-compare label { display:grid; gap:6px; font-size:13px }
+.experiment-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px }
+.experiment-timer { display:flex; flex-wrap:wrap; align-items:center; gap:8px }
+.experiment-timer > span { font-variant-numeric:tabular-nums; color:var(--muted); font-size:13px; margin-right:auto }
+.link-button { border:0; background:none; padding:0; min-height:0; color:var(--action); font-size:inherit; text-decoration:underline; text-underline-offset:2px }
+.link-button:hover { background:none; color:var(--action-hover) }
+.experiment-record { padding:14px 18px; display:grid; gap:8px }
+.experiment-record-head { display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline; font-size:13px }
+.experiment-query { display:block; font-family:var(--font-mono); font-size:12px; background:var(--sunk); border-radius:var(--radius-control); padding:8px 10px; white-space:pre-wrap; overflow-wrap:anywhere }
+.experiment-metrics { display:flex; flex-wrap:wrap; gap:6px 28px; margin:0 }
+.experiment-metrics dt { font-size:12px; color:var(--muted) }
+.experiment-metrics dd { margin:2px 0 0; font-size:18px; font-variant-numeric:tabular-nums }
+.experiment-metrics p { flex-basis:100%; margin:0 }
+.experiment-record .record-actions { margin:0 }
+@media(max-width:700px) { .experiment-row { grid-template-columns:1fr } .experiment-form { padding:16px } }
+
+/* External reference data */
+.external-coverage { margin:28px 0 8px; display:grid; gap:10px }
+.external-coverage-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:0 }
+.external-coverage-grid > div { background:var(--paper); box-shadow:var(--shadow-panel); border-radius:var(--radius-panel); padding:14px 16px }
+.external-coverage-grid > div[data-empty] dd { color:var(--muted) }
+.external-coverage-grid dt { font-size:12px; color:var(--muted) }
+.external-coverage-grid dd { margin:4px 0 6px; font-size:20px; font-variant-numeric:tabular-nums }
+.external-coverage-grid dd small { font-size:12px; color:var(--muted) }
+.external-coverage-grid p { margin:0; font-size:12px; line-height:1.5; color:var(--muted) }
+.patent-papers { margin:24px 0; display:grid; gap:8px }
+.patent-papers h3 small { font-weight:400; color:var(--muted) }
+.patent-papers ol { margin:0; padding-left:1.4em; display:grid; gap:10px }
+.patent-papers li { line-height:1.5 }
+.patent-papers li .muted { font-size:12px }
+.patent-paper-title a { color:var(--ink); text-decoration:underline; text-decoration-color:var(--line-strong); text-underline-offset:3px }
+.patent-paper-title a svg { vertical-align:-1px; margin-left:3px }
+.patent-papers .link-button { justify-self:start }

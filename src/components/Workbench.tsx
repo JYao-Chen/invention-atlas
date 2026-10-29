@@ -31,6 +31,9 @@ import FulltextSearch from './FulltextSearch';
 import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params,Starter,StarterPool} from '@/lib/types';
 import ResultView from './ResultView';
 import ExecutionProgress from './ExecutionProgress';
+import ReportReview from './ReportReview';
+import RetrievalExperiments from './RetrievalExperiments';
+import {ExternalCoverage,PatentPapers} from './ExternalReferences';
 import SuggestedQuestions from './SuggestedQuestions';
 import PatentComposer from './PatentComposer';
 import PatentNarrative from './PatentNarrative';
@@ -66,19 +69,27 @@ export default function Workbench(){
  const [modelCallLimit,setModelCallLimit]=useState('');
  const guideSequence=useRef(0),management=useRef<HTMLDetailsElement>(null);
  const [professionalLaunch,setProfessionalLaunch]=useState<ProfessionalLaunch>(),[workspaceOpen,setWorkspaceOpen]=useState<number>(),[credentialsOpen,setCredentialsOpen]=useState<number>(),[materialsOpen,setMaterialsOpen]=useState<{id:number;part:'materials'|'disclosures'}>();
- async function openGuideFunction(chapter:GuideChapter,example=false){
+ async function openGuideFunction(chapter:GuideChapter,mode?:'fill'|'run'){
+  const example=Boolean(mode);
   const id=++guideSequence.current;setReport(undefined);setError('');
   if(chapter.example){if(!meta){setError('请先选择数据集，再打开专业任务。');return;}try{const sample=example?(await api('patents?'+new URLSearchParams({dataset:meta.id,page:'1',q:''}))).records:[];if(id!==guideSequence.current)return;setProfessionalLaunch({id,workflow:chapter.example.workflow,preset:example?professionalPreset(chapter.example.workflow,meta,sample):{datasetId:meta.id},question:example?chapter.example.question:undefined});}catch(error){setError('读取演示参数失败：'+(error as Error).message);}return;}
   if(chapter.module==='workspace'||chapter.module==='credentials'){if(management.current)management.current.open=true;if(chapter.module==='workspace')setWorkspaceOpen(id);else setCredentialsOpen(id);return;}
   if(chapter.module==='materials'||chapter.module==='disclosures'){setView('reports');setMobileFocus(false);setMaterialsOpen({id,part:chapter.module});return;}
+  if(chapter.module==='review'){history.replaceState(null,'',location.pathname);setMobileFocus(false);const latest=reports[0];if(latest){nextReportTab.current='review';setReport(latest);setView('analysis');}else{setView('reports');setNotice('报告库还没有已保存报告。先在分析助手完成一次分析并保存报告，再打开逐条复核。');}return;}
   setView(chapter.target==='assistant'?'analysis':chapter.target);setMobileFocus(chapter.target==='assistant');
-  if(chapter.tool){const initial=tools.find(tool=>tool.name===chapter.tool)?.defaultParams||defaults(chapter.tool,records[0]?.id);setSelectedTool(chapter.tool);setParameters(JSON.stringify(example?toolExampleParams(chapter.tool,initial,records):initial));}
   history.replaceState(null,'',location.pathname);
+  if(chapter.tool){
+   const tool=tools.find(t=>t.name===chapter.tool),initial=tool?.defaultParams||defaults(chapter.tool,records[0]?.id),params=example?toolExampleParams(chapter.tool,initial,records):initial;
+   setSelectedTool(chapter.tool);setParameters(JSON.stringify(params,null,2));
+   if(mode==='run'){if(tool&&!tool.available){setError('当前数据集缺少“'+tool.title+'”所需字段，示例无法运行。');return;}void runTool({steps:[{tool:chapter.tool,params}],title:tool?.title});}
+   return;
+  }
+  if(chapter.target==='assistant'&&chapter.question){if(mode==='run')void send(chapter.question);else if(mode==='fill')setText(chapter.question);}
  }
  const chosenStarter=useRef<Starter|undefined>(undefined);
  const [starterPool,setStarterPool]=useState<StarterPool>({version:'',batches:[]});
  const [logged,setLogged]=useState<boolean|null>(null),[view,setView]=useState<keyof typeof titles>('data'),[meta,setMeta]=useState<Dataset>(),[catalog,setCatalog]=useState<Dataset[]>([]),[tools,setTools]=useState<Tool[]>([]),[records,setRecords]=useState<Patent[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState('');
- const [conversations,setConversations]=useState<Conversation[]>([]),[conversationId,setConversationId]=useState(''),[turns,setTurns]=useState<Run[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState(''),[results,setResults]=useState<AnalysisResult[]>([]),[selectedTool,setSelectedTool]=useState('search_patents'),[parameters,setParameters]=useState(JSON.stringify(defaults('search_patents'),null,2)),[toolBusy,setToolBusy]=useState(false),[mobileFocus,setMobileFocus]=useState(false),[toolRun,setToolRun]=useState<Run>();
+ const [conversations,setConversations]=useState<Conversation[]>([]),[conversationId,setConversationId]=useState(''),[turns,setTurns]=useState<Run[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState(''),[results,setResults]=useState<AnalysisResult[]>([]),[selectedTool,setSelectedTool]=useState('search_patents'),[parameters,setParameters]=useState(JSON.stringify(defaults('search_patents'),null,2)),[toolBusy,setToolBusy]=useState(false),[mobileFocus,setMobileFocus]=useState(false),[toolRun,setToolRun]=useState<Run>(),[reportTab,setReportTab]=useState<'body'|'review'>('body');
 const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;run:Run}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run;revision?:number}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
  const [historyPage,setHistoryPage]=useState(1);
@@ -97,6 +108,8 @@ const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:st
  useEffect(()=>{const latest=turns.at(-1);if(report||busy||!latest||latest.followups?.length===5||!latest.answer.trim()||!['completed','partial'].includes(latest.status)||requestedFollowups.current.has(latest.id))return;void suggest(latest);},[turns,busy,report]);
  useEffect(()=>{if(nearBottom.current)chatRef.current?.scrollTo({top:chatRef.current.scrollHeight});},[turns,phase,mobileFocus]);
  useEffect(()=>{contentRef.current?.scrollTo({top:0});},[view,report?.id]);
+ const nextReportTab=useRef<'body'|'review'>('body');
+ useEffect(()=>{setReportTab(nextReportTab.current);nextReportTab.current='body';},[report?.id]);
 async function loadData(id?:string){const request=++dataRequest.current,recordRequest=++recordsRequest.current;setRecordLabel(null);setQuery('');setRecords([]);setTotal(0);const [d,config]=await Promise.all([api('datasets'),api('settings')]);if(request!==dataRequest.current)return;setSettings(config);setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){const starters=await api('starters?dataset='+selected.id);if(request!==dataRequest.current)return;setStarterPool(starters);setMeta(selected);const t=await api('tools?dataset='+selected.id);if(request!==dataRequest.current)return;setTools(t.tools);if(recordRequest===recordsRequest.current)await loadRecords(selected.id,1,'',null);}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
  async function changeAfterEdit(id?:string){sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);clearToolRun();setQuery('');setReport(undefined);await loadData(id);}
  async function refreshHistory(){const conversations=(await api('conversations')).conversations,reports=(await api('reports')).reports;setConversations(conversations);setReports(reports);setHistorySelection(ids=>ids.filter(id=>conversations.some((c:Conversation)=>c.id===id)));setReportSelection(ids=>ids.filter(id=>reports.some((r:{id:string})=>r.id===id)));}
@@ -189,6 +202,8 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
  const visible=report?report.run.results:results;const shownTurns=report?[report.run]:turns;const currentMeta=report?(report.run.datasetSnapshot||catalog.find(d=>d.id===report.run.datasetId)):meta;
  let scopeParams:Params={};try{const value=JSON.parse(parameters);if(value&&typeof value==='object'&&!Array.isArray(value))scopeParams=value;}catch{}
  function changeParam(key:keyof Params,value:string){try{const next=JSON.parse(parameters);if(!value.trim())delete next[key];else next[key]=key==='patent_numbers'?value.split(',').map(v=>v.trim()).filter(Boolean):['year_start','year_end','top_k','k'].includes(key)?Number(value):value;setParameters(JSON.stringify(next,null,2));}catch{setError('请先修正完整参数中的 JSON 格式。');}}
+ const lastSearch=[...results].reverse().find(r=>r.tool==='search_patents'&&r.status==='completed'&&r.params.query);
+ const latestSearch=lastSearch?{query:lastSearch.params.query!,patentNumbers:[...new Set(lastSearch.rows.map(row=>String(row.patent)))],boolean:/\b(AND|OR|NOT)\b/.test(lastSearch.params.query!)}:undefined;
  const toolTitle=toolRun?.progress?.tool==='request'?'提交工具任务':tools.find(t=>t.name===toolRun?.progress?.tool)?.title||'执行分析任务';
  return <div className={`app-shell ${sidebarCollapsed?'sidebar-collapsed':''}`}>
 <AtlasNavigation page={view} assistant={mobileFocus} collapsed={sidebarCollapsed} onToggle={toggleSidebar} onNavigate={key=>{setView(key);setMobileFocus(false);setReport(undefined);if(key!=='help')history.replaceState(null,'',location.pathname);}} onAssistant={()=>{setMobileFocus(true);}} username={settings?.username||'jyao'} onLogout={()=>void logout()}/>
@@ -230,7 +245,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <X size={15}/>
 </button>
 </div>}
- {view==='help'&&<HelpManual toolsReady={tools.length>0} onOpen={openGuideFunction} onDemo={question=>{setView('analysis');setMobileFocus(true);setText(question);history.replaceState(null,'',location.pathname);}}/>}
+ {view==='help'&&<HelpManual toolsReady={tools.length>0} readOnly={Boolean(readOnly)} onOpen={openGuideFunction} onDemo={question=>{setView('analysis');setMobileFocus(true);setText(question);history.replaceState(null,'',location.pathname);}}/>}
  {view==='data'&&<>
  <MonitorSubscriptions key={'monitor:'+workspace?.current?.id} datasets={catalog} readOnly={Boolean(readOnly)} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>
 <section className="data-header">
@@ -256,6 +271,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 {!readOnly&&<div className="dataset-actions">
 <IndexProgress key={'index:'+meta.id} datasetId={meta.id} indexed={meta.indexed} total={meta.count} onUpdated={()=>loadData(meta.id)}/>
 <details key={'manage:'+meta.id} className="dataset-management"><summary>数据集管理</summary><div className="dataset-danger-actions"><span>删除“{meta.name}”及其 {meta.count} 条记录；对话和已保存报告保留。</span><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></div></details></div>}
+<ExternalCoverage key={'external:'+meta.id} datasetId={meta.id}/>
 <SourceUpdates key={'source:'+meta.id} datasetId={meta.id} readOnly={Boolean(readOnly)} onChanged={()=>void loadData(meta.id)} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>
 <div className="list-heading">
 <h3>专利记录 <small>{total} 条</small>
@@ -303,7 +319,9 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
  {view==='analysis'&&<>{!report&&toolRun?.status==='running'&&<ExecutionProgress run={toolRun} title={toolTitle} onStop={()=>{if(!toolRun.id.startsWith('pending-'))void api('runs/'+toolRun.id+'/stop',{});}}/>
 } {report&&<div className="replay-banner">
 <Play size={16}/>
-历史运行 · 数据集 {report.run.datasetId.slice(0,8)} · {new Date(report.run.createdAt).toLocaleString('zh-CN')}</div>}{report&&<article className="markdown report-narrative">
+历史运行 · 数据集 {report.run.datasetId.slice(0,8)} · {new Date(report.run.createdAt).toLocaleString('zh-CN')}</div>}{report&&<div className="report-tabs" role="tablist" aria-label="报告视图">{(['body','review'] as const).map(key=><button key={key} type="button" role="tab" aria-selected={reportTab===key} className={reportTab===key?'active':''} onClick={()=>setReportTab(key)}>{key==='body'?'报告正文':'逐条复核'}</button>)}</div>}
+{report&&reportTab==='review'&&<ReportReview key={report.id+':'+(report.revision||0)} reportId={report.id} revision={report.revision||0} results={report.run.results} readOnly={Boolean(readOnly)} currentUserId={workspace?.user.id} toolTitle={name=>tools.find(t=>t.name===name)?.title||name} onPatent={id=>void openPatent(id,report.run.datasetId)}/>}
+{report&&reportTab==='body'&&<article className="markdown report-narrative">
 <ReportDraftEditor key={report.id} reportId={report.id} selectedRevision={report.revision||0} readOnly={Boolean(readOnly)} onRead={version=>setReport(current=>current?{...current,revision:version.revision,title:version.title,run:{...current.run,answer:version.answer}}:current)}/>
 <Markdown>{report.run.answer.replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>
 </article>}{!report&&<>
@@ -316,13 +334,13 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <Play size={16}/>
 综合分析</button>
 </div>
-</>}<div className={report?'analysis-workspace':'analysis-workspace has-picker'}>{!report&&<ToolPicker tools={tools} selectedTool={selectedTool} params={scopeParams} years={meta?.years||[]} samplePatent={records[0]?.id} busy={false} toolBusy={toolBusy} onSelect={chooseTool} onParam={changeParam} onParams={value=>setParameters(JSON.stringify(value,null,2))} onRun={()=>void runTool()}/>
+</>}{(!report||reportTab==='body')&&<div className={report?'analysis-workspace':'analysis-workspace has-picker'}>{!report&&<ToolPicker tools={tools} selectedTool={selectedTool} params={scopeParams} years={meta?.years||[]} samplePatent={records[0]?.id} busy={false} toolBusy={toolBusy} onSelect={chooseTool} onParam={changeParam} onParams={value=>setParameters(JSON.stringify(value,null,2))} onRun={()=>void runTool()}/>
 }{visible.length?<div className="results">{visible.map(result=>
 <ResultView key={result.id} result={result} onPatent={(id,location)=>openPatent(id,result.datasetId,location)}/>
 )}</div>:<div className="analysis-empty">
 <h3>{toolRun?.status==='running'?'正在运行':'尚无分析结果'}</h3>
 <p>{toolRun?.status==='running'?'结果会在完成后显示在这里。':'选择工具并运行后，可在这里查看图表和数据。分析助手的对话结果显示在助手面板中。'}</p>
-</div>}</div></>
+</div>}</div>}</>
 }
  {view==='history'&&<>
 <div className="list-heading">
@@ -366,10 +384,12 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <p>{new Date(item.createdAt).toLocaleString('zh-CN')} · {item.run.results.length} 项工具</p>
 </div>
 <button onClick={()=>{setReport(item);setView('analysis');setMobileFocus(false);}}>查看报告</button>
+<button onClick={()=>{nextReportTab.current='review';setReport(item);setView('analysis');setMobileFocus(false);}}>逐条复核</button>
 <a className="button" href={'/api/reports/'+item.id+'/html'}>HTML</a>
 <a className="button" href={'/api/reports/'+item.id+'/markdown'}>Markdown</a>
 <button className="danger-action" disabled={deleting} onClick={()=>void removeSaved('reports',[item.id])}>删除</button>
 </section>)}{!reports.length&&<p className="empty">还没有报告。分析结束后，点击回答下方的“保存报告”。</p>}</div>
+<RetrievalExperiments key={'experiments:'+workspace?.current?.id} datasetId={meta?.id} datasetName={meta?.name} readOnly={Boolean(readOnly)} latestSearch={latestSearch}/>
 </>
 }
  {view==='settings'&&!settings&&<p className="muted" role="status">正在读取模型配置…</p>}
@@ -429,6 +449,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 {patentEvidence&&<PatentEvidence patent={patent} location={patentEvidence}/>}
 {patentDatasetId&&<PatentAnnotations key={patentDatasetId+':'+patent.id} datasetId={patentDatasetId} patentId={patent.id} readOnly={Boolean(readOnly)}/>}
 {patentDatasetId&&<SourceVersions key={'versions:'+patentDatasetId+':'+patent.id} datasetId={patentDatasetId} patentId={patent.id}/>}
+<PatentPapers key={'papers:'+patent.id} patentId={patent.id}/>
 <dl>
 <dt>申请人</dt>
 <dd>{patent.applicants.join('; ')||'未提供'}</dd>
