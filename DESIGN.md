@@ -1,15 +1,16 @@
 ---
 name: Invention Atlas
-description: 沿用 TallyBear 的暖白纸面、柔和操作色、圆角面板与可折叠导航。
+description: 布局、控件与可折叠导航沿用 TallyBear；配色采用用户提供的科研图表配色。
 colors:
-  canvas: "#faf7f2"
-  paper: "#fffdfa"
-  ink: "#453d38"
-  muted: "#776c64"
-  line: "#e9e1d8"
-  action: "#365f58"
-  selected: "#eaf0eb"
-  method: "#f4eef6"
+  canvas: "#f7f9fc"
+  paper: "#ffffff"
+  ink: "#2c323b"
+  muted: "#606975"
+  line: "#dfe5ed"
+  action: "#416397"
+  selected: "#eaf1fa"
+  method: "#f3eff8"
+  warning: "#865a24"
 typography:
   body: Geist, PingFang SC, Microsoft YaHei, sans-serif
   heading: LXGW WenKai, PingFang SC, sans-serif
@@ -26,11 +27,11 @@ rounded:
 
 用户指定整体参考 TallyBear。界面复用其实际导航、配色、控件与字体模式，不再沿用之前的蓝白顶部导航设计。保留专利功能，不引入财务模块、小熊形象或营销插画。TallyBear 源码只读，适配代码在本项目维护。
 
-相关实现为 `AtlasNavigation.tsx`、`globals.css` 和 `tally-ui.css`。新增样式使用 Atlas 的组件作用域，不导入 TallyBear 的全局 aside/header 选择器，避免影响原文窗和助手。
+相关实现为 `AtlasNavigation.tsx`、`globals.css`、`tally-ui.css` 和最后加载的 `journal-colors.css`。新增样式使用 Atlas 的组件作用域，不导入 TallyBear 的全局 aside/header 选择器，避免影响原文窗和助手。
 
 ## Colors
 
-暖白背景 #faf7f2、近白内容 #fffdfa、褐灰正文 #453d38、说明 #776c64、米色边框 #e9e1d8，沿用 TallyBear 的基础色。主按钮 #365f58，次按钮及选中态 #eaf0eb；主按钮悬停 #665078。计划和方法采用柔和淡紫底。
+TallyBear 的暖白配色已由用户提供的科研图表配色取代，见 [科研图表配色](docs/JOURNAL-PALETTE.md)，实现位于 `journal-colors.css`。浅灰蓝背景 #f7f9fc、白色内容 #ffffff、深灰正文 #2c323b、说明 #606975、浅灰边框 #dfe5ed；主按钮与选中强调 #416397，选中底 #eaf1fa；计划和方法采用淡紫底 #f3eff8；警告文字 #865a24 配浅琥珀底。颜色用于功能组和数据类别，不作装饰。
 
 图表保留12色分类、主题对应关系和图谱节点类型配色，不把全部数据改成单一主题色。来源限制与状态仍有文字说明。
 
@@ -62,11 +63,14 @@ rounded:
 - 进度保持紧凑状态行，详情按需展开，不恢复横向大进度条。
 - 数据概况为独立指标、实际年份与两列覆盖率；异构工具结果继续分表，真实缺失保留“—”。
 - 表格和原文中的长内容局部滚动，不靠截断丢弃数据。
+- 表格只用浅灰隔行，不再按5行轮换彩色底。
+- 工具返回的警告在结果摘要下以琥珀色列表显示；计算方法可展开查看；结果可下载 CSV（不同结构的行分块，带 BOM）与 JSON。
+- 手机端工具目录改为按分组的下拉选择，桌面端工具目录随页面滚动保持可见。
 
 ## Do's and Don'ts
 
-- 保留真实数据、24项工具、模型配置、停止任务、历史恢复及报告导出。
+- 保留真实数据、28项工具、模型配置、停止任务、历史恢复及报告导出。
 - 保留字体许可与MIT代码来源说明，不修改TallyBear的源码或配置。
-- 不恢复顶部五入口导航与蓝白主题；本轮用户指定的TallyBear参考优先。
+- 不恢复顶部五入口导航；布局沿用 TallyBear，配色以科研图表配色为准。
 - 不带入小熊、财务组件、主题切换或与专利任务无关的功能。
 - 不以颜色代替来源、状态与数据限制，不伪造实时结果。

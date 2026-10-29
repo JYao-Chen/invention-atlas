@@ -39,13 +39,13 @@ import RunBudget from './RunBudget';
 import AtlasNavigation,{atlasPages} from './AtlasNavigation';
 import DataResearchPanel from './DataResearchPanel';
 import SourceAcquisition from './SourceAcquisition';
-import ToolParameters from './ToolParameters';
+import ToolPicker,{type Tool} from './ToolPicker';
+import ModelSettings from './ModelSettings';
 import IndexProgress from './IndexProgress';
 import DataRecords from './DataRecords';
 import HelpManual from './HelpManual';
 import {restoredNavigation} from '@/lib/navigation-state';
 import {readEventStream as readSSE} from '@/lib/event-stream';
-type Tool={name:string;title:string;group:string;available:boolean;defaultParams?:Params;reason:string};
 const DEMO='分析当前数据集的主要申请人、技术主题和代表专利，展示引证关系，并拆解一项代表专利的权利要求，生成报告。';
 async function api(path:string,body?:unknown,method?:string){const response=await fetch('/api/'+path,{method:method||(body?'POST':'GET'),headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw new Error(data.error||'请求失败');return data;}
 const titles=atlasPages;
@@ -88,7 +88,6 @@ const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:st
  useEffect(()=>{if(navigationReady){sessionStorage.setItem('atlas-navigation',JSON.stringify({page:view,assistant:mobileFocus,reportId:report?.id}));if(view!=='help'&&(location.hash.startsWith('#guide/')||location.hash.startsWith('#section-')))history.replaceState(null,'',location.pathname);}},[navigationReady,view,mobileFocus,report?.id]);
  function toggleSidebar(){setSidebarCollapsed(value=>{localStorage.setItem('atlas-sidebar-collapsed',String(!value));return !value;});}
  async function logout(){await api('logout',{});setLogged(false);newChat();}
- const [modelForm,setModelForm]=useState({model:'',base:'',apiKey:''});
  const stream=useRef<AbortController|null>(null),currentRun=useRef(''),contentRef=useRef<HTMLElement|null>(null),chatRef=useRef<HTMLDivElement|null>(null),nearBottom=useRef(true);
  const [showLatest,setShowLatest]=useState(false);
  const requestedFollowups=useRef(new Set<string>());
@@ -97,7 +96,7 @@ const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:st
  useEffect(()=>{const latest=turns.at(-1);if(report||busy||!latest||latest.followups?.length===5||!latest.answer.trim()||!['completed','partial'].includes(latest.status)||requestedFollowups.current.has(latest.id))return;void suggest(latest);},[turns,busy,report]);
  useEffect(()=>{if(nearBottom.current)chatRef.current?.scrollTo({top:chatRef.current.scrollHeight});},[turns,phase,mobileFocus]);
  useEffect(()=>{contentRef.current?.scrollTo({top:0});},[view,report?.id]);
-async function loadData(id?:string){const request=++dataRequest.current,recordRequest=++recordsRequest.current;setRecordLabel(null);setQuery('');setRecords([]);setTotal(0);const [d,config]=await Promise.all([api('datasets'),api('settings')]);if(request!==dataRequest.current)return;setSettings(config);setModelForm({model:config.model,base:config.base,apiKey:''});setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){const starters=await api('starters?dataset='+selected.id);if(request!==dataRequest.current)return;setStarterPool(starters);setMeta(selected);const t=await api('tools?dataset='+selected.id);if(request!==dataRequest.current)return;setTools(t.tools);if(recordRequest===recordsRequest.current)await loadRecords(selected.id,1,'',null);}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
+async function loadData(id?:string){const request=++dataRequest.current,recordRequest=++recordsRequest.current;setRecordLabel(null);setQuery('');setRecords([]);setTotal(0);const [d,config]=await Promise.all([api('datasets'),api('settings')]);if(request!==dataRequest.current)return;setSettings(config);setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){const starters=await api('starters?dataset='+selected.id);if(request!==dataRequest.current)return;setStarterPool(starters);setMeta(selected);const t=await api('tools?dataset='+selected.id);if(request!==dataRequest.current)return;setTools(t.tools);if(recordRequest===recordsRequest.current)await loadRecords(selected.id,1,'',null);}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
  async function changeAfterEdit(id?:string){sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setResults([]);setQuery('');setRestored(false);setReport(undefined);await loadData(id);}
  async function refreshHistory(){const conversations=(await api('conversations')).conversations,reports=(await api('reports')).reports;setConversations(conversations);setReports(reports);setHistorySelection(ids=>ids.filter(id=>conversations.some((c:Conversation)=>c.id===id)));setReportSelection(ids=>ids.filter(id=>reports.some((r:{id:string})=>r.id===id)));}
  function selectSaved(kind:'reports'|'conversations',id:string,selected:boolean){const update=kind==='reports'?setReportSelection:setHistorySelection;update(ids=>selected?[...new Set([...ids,id])]:ids.filter(value=>value!==id));}
@@ -142,6 +141,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
  const maxModelCalls=modelCallLimit.trim()?Number(modelCallLimit):undefined;
  if(maxModelCalls!==undefined&&(!Number.isInteger(maxModelCalls)||maxModelCalls<1||maxModelCalls>2147483647)){setError('调用上限须为正整数');return;}
  const pendingId='pending-'+crypto.randomUUID();submitting.current=pendingId;const pending:Run={id:pendingId,conversationId,datasetId:meta.id,question,status:'running',plan:[],results:[],answer:'',error:'',model:'',createdAt:new Date().toISOString(),progress:{tool:'request',unit:'正在提交问题并创建分析任务'}};nearBottom.current=true;setShowLatest(false);setBusy(true);setError('');setReport(undefined);setView('analysis');setMobileFocus(true);setRestored(false);setTurns(value=>[...value,pending]);setText('');try{let id=conversationId;if(!id){const c=await api('conversations',{datasetId:meta.id});id=c.id;sessionStorage.setItem('patent-conversation',id);setConversationId(id);}const starter=chosenStarter.current;const r=await api('runs',{conversationId:id,datasetId:meta.id,question,...(maxModelCalls!==undefined?{maxModelCalls}:{}),...(starter?.datasetId===meta.id&&starter.question===question?{steps:[{tool:starter.name,params:starter.params}]}:{})});if(submitting.current!==pendingId)return;chosenStarter.current=undefined;setTurns(value=>value.map(t=>t.id===pendingId?r:t));await follow(r.id);}catch(e){if(submitting.current!==pendingId)return;const message=(e as Error).message;setTurns(value=>value.map(t=>t.id===pendingId?{...t,status:'failed',error:message}:t));setError(message);setBusy(false);}finally{if(submitting.current===pendingId)submitting.current='';}}
+ function chooseTool(name:string){const tool=tools.find(t=>t.name===name);if(!tool)return;setSelectedTool(name);setParameters(JSON.stringify(tool.defaultParams||defaults(name,records[0]?.id),null,2));}
  async function runTool(input?:{tool:string;params:Params;question:string}){
   if(!meta||readOnly||toolBusy||busy||submitting.current)return;
   const tool=input?.tool||selectedTool,title=tools.find(t=>t.name===tool)?.title||tool;let params:Params;
@@ -312,36 +312,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <Play size={16}/>
 综合分析</button>
 </div>
-<details className="tool-picker" open>
-<summary>分析工具 <span>{tools.filter(t=>t.available).length}/{tools.length} 项可用</span>
-</summary>
-<div className="tool-layout">
-<div className="tool-groups">{[...new Set(tools.map(t=>t.group))].map(group=>
-<details key={group} data-group={group} open={group===tools.find(t=>t.name===selectedTool)?.group}>
-<summary>{group}</summary>{tools.filter(t=>t.group===group).map(t=>
-<button key={t.name} className={selectedTool===t.name?'active':''} onClick={()=>{setSelectedTool(t.name);setParameters(JSON.stringify(t.defaultParams||defaults(t.name,records[0]?.id),null,2));}}>
-<span>{t.title}</span>{!t.available&&<small>缺少数据</small>}</button>)}</details>)}</div>
-<div className="tool-params" data-group={tools.find(t=>t.name===selectedTool)?.group}>
-<h3>{tools.find(t=>t.name===selectedTool)?.title}</h3>{selectedTool==='analyze_tech_matrix'&&!scopeParams.patent_numbers?.length&&<p className="notice">未指定编号，将完整读取当前筛选范围的全部专利。可填入编号缩小范围，运行中可停止并续跑。</p>}<p>{tools.find(t=>t.name===selectedTool)?.reason||'默认分析当前数据集。需要限定范围时，可修改下面的参数。'}</p>
-<div className="scope-fields">{['search_patents','search_patent_passages','monitor_patent_changes'].includes(selectedTool)&&<label className="query-field">检索词<input value={typeof scopeParams.query==='string'?scopeParams.query:''} onChange={e=>changeParam('query',e.target.value)} placeholder="关键词、技术问题或公开编号"/>
-</label>}{['read_patent_details','analyze_patent_reading','analyze_claim_elements','analyze_tech_matrix','compare_claims'].includes(selectedTool)&&<label className="query-field">公开编号<input value={Array.isArray(scopeParams.patent_numbers)?scopeParams.patent_numbers.join(', '):''} onChange={e=>changeParam('patent_numbers',e.target.value)} placeholder={records[0]?.id||'输入专利公开编号'}/>
-<span className="field-help">多个编号用逗号分隔，最多5条。默认选择原文完整、篇幅适中的一项；可自行修改编号。</span>
-</label>}
-<label>计数口径<select aria-label="计数口径" value={scopeParams.counting||'publication'} onChange={e=>changeParam('counting',e.target.value)}><option value="publication">公开件</option><option value="family">来源同族标识去重</option></select><span className="field-help">同族口径保留最早公开件；缺标识的记录独立保留。原文与权利要求工具仍按公开件读取。</span></label>
-<div className="year-fields">
-<label>公开年份，从<input type="number" value={scopeParams.year_start??''} onChange={e=>changeParam('year_start',e.target.value)} placeholder={meta?.years[0]}/>
-</label>
-<label>至<input type="number" value={scopeParams.year_end??''} onChange={e=>changeParam('year_end',e.target.value)} placeholder={meta?.years.at(-1)}/>
-</label>
-</div>
-<label>申请人<input value={typeof scopeParams.applicant==='string'?scopeParams.applicant:''} onChange={e=>changeParam('applicant',e.target.value)} placeholder="不限"/>
-</label>
-</div>
-<ToolParameters tool={selectedTool} params={scopeParams} onChange={value=>setParameters(JSON.stringify(value,null,2))}/>
-<button className="primary" disabled={busy||toolBusy||!tools.find(t=>t.name===selectedTool)?.available} onClick={()=>void runTool()}>{toolBusy?'正在运行…':'运行分析'}</button>
-</div>
-</div>
-</details>
+<ToolPicker tools={tools} selectedTool={selectedTool} params={scopeParams} years={meta?.years||[]} samplePatent={records[0]?.id} busy={busy} toolBusy={toolBusy} onSelect={chooseTool} onParam={changeParam} onParams={value=>setParameters(JSON.stringify(value,null,2))} onRun={()=>void runTool()}/>
 </>
 }{visible.length?<div className="results">{visible.map(result=>
 <ResultView key={result.id} result={result} onPatent={(id,location)=>openPatent(id,result.datasetId,location)}/>
@@ -399,47 +370,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 </>
 }
  {view==='settings'&&!settings&&<p className="muted" role="status">正在读取模型配置…</p>}
- {view==='settings'&&settings&&<>
-<h2>对话模型</h2>
-<p className="muted">用于任务规划和报告生成，支持 OpenAI 兼容接口。</p>
-<form className="settings-panel model-form" onSubmit={async e=>{e.preventDefault();setError('');setNotice('');setToolBusy(true);try{const saved=await api('settings',modelForm,'PATCH');setSettings(saved);setModelForm({model:saved.model,base:saved.base,apiKey:''});setNotice('模型配置已保存，下次分析将使用新配置。');}catch(e){setError((e as Error).message);}finally{setToolBusy(false);}}}>
-<label>模型名称<input name="model" value={modelForm.model} onChange={e=>setModelForm({...modelForm,model:e.target.value})} placeholder="例如 qwen3.8-flash" required disabled={toolBusy||busy}/>
-</label>
-<label>接口地址<input name="base" type="url" value={modelForm.base} onChange={e=>setModelForm({...modelForm,base:e.target.value})} placeholder="https://…/v1" required disabled={toolBusy||busy}/>
-</label>
-<label>API Key<input name="apiKey" type="password" autoComplete="new-password" value={modelForm.apiKey} onChange={e=>setModelForm({...modelForm,apiKey:e.target.value})} placeholder={settings?.configured?'已配置，留空保留现有密钥':'输入模型服务的 API Key'} disabled={toolBusy||busy}/>
-<span className="field-help">密钥仅保存在服务端，不会在页面回显。</span>
-</label>
-<div className="settings-actions">
-<button className="primary" disabled={toolBusy||busy}>{toolBusy?'正在处理…':'保存配置'}</button>
-<button type="button" disabled={toolBusy||busy||!modelForm.model.trim()||!modelForm.base.trim()} onClick={async()=>{setError('');setNotice('');setToolBusy(true);try{const tested=await api('settings',modelForm);setNotice('连接正常：'+tested.model+'。测试不会保存配置。');}catch(e){setError((e as Error).message);}finally{setToolBusy(false);}}}>
-<RefreshCw size={16}/>
-测试连接</button>
-</div>
-<p>保存后无需重启。已有对话记录和报告不会改写。</p>
-</form>
-<section className="settings-panel embedding-settings">
-<h3>语义检索</h3>
-<dl>
-<dt>嵌入模型</dt>
-<dd>{settings?.embedding}</dd>
-<dt>向量维度</dt>
-<dd>{settings?.dimensions}</dd>
-</dl>
-<p>现有索引使用此嵌入配置。对话模型的修改不会影响它；更换嵌入模型需重新建立索引。</p>
-</section>
-{workspace?.current&&<ModelUsage key={workspace.current.id} projectName={workspace.projects.find(project=>project.id===workspace.current?.id)?.name||workspace.current.id}/>}
-<details className="settings-environment">
-<summary>账号与运行环境</summary>
-<dl>
-<dt>登录账号</dt>
-<dd>{settings?.username}</dd>
-<dt>运行方式</dt>
-<dd>Next.js 与 PostgreSQL</dd>
-</dl>
-</details>
-</>
-}
+ {view==='settings'&&settings&&<ModelSettings settings={settings} request={api} disabled={toolBusy||busy} pending={toolBusy} setPending={setToolBusy} onSaved={setSettings} onError={setError} onNotice={setNotice} usage={workspace?.current&&<ModelUsage key={workspace.current.id} projectName={workspace.projects.find(project=>project.id===workspace.current?.id)?.name||workspace.current.id}/>}/>}
  {view==='settings'&&<button onClick={async()=>{await api('logout',{});setLogged(false);newChat();}}>
 <LogOut size={16}/>
 退出登录</button>}
