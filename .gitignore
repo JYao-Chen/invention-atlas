@@ -38,3 +38,6 @@ docs/local/
 integrations/patent-mcp/server.mjs
 integrations/patent-mcp/http-server.mjs
 integrations/patent-mcp/THIRD-PARTY-LICENSES.txt
+
+!scripts/external/
+!scripts/external/**

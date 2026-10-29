@@ -1,3 +1,4 @@
+import {ExternalReferenceReader} from '@/server/external/store';
 import {NextResponse} from 'next/server';
 import {publicMineruSettings,saveMineruSettings} from '@/server/mineru-settings';
 import {randomUUID} from 'node:crypto';
@@ -162,6 +163,12 @@ async function resources(request:Request,{params}:{params:Promise<{path:string[]
   if(method==='POST'){const body=await request.json();const cfg=Object.keys(body).length?resolveModelSettings(body):modelConfig();await chat('只回复：连接正常','测试模型连接',{config:cfg});return NextResponse.json({ok:true,model:cfg.model});}
   if(method==='GET')return NextResponse.json(publicModelSettings());
   return NextResponse.json({error:'不支持此操作'},{status:405});
+ }
+ if(resource==='datasets'&&id&&action==='external-coverage'&&path.length===3){
+  if(method!=='GET')return NextResponse.json({error:'仅支持读取'},{status:405});
+  const reader=new ExternalReferenceReader(db);
+  if(!await dataset(id))return NextResponse.json({error:'数据集不存在或没有读取权限'},{status:404});
+  return NextResponse.json(await reader.coverage(id),{headers:{'Cache-Control':'no-store'}});
  }
  if(resource==='datasets'){
   if(method==='DELETE'&&id){await mutable(id);return NextResponse.json((await deleteDataset(id)));}
