@@ -46,7 +46,8 @@ import DataRecords from './DataRecords';
 import HelpManual from './HelpManual';
 import {restoredNavigation} from '@/lib/navigation-state';
 import {readEventStream as readSSE} from '@/lib/event-stream';
-const DEMO='分析当前数据集的主要申请人、技术主题和代表专利，展示引证关系，并拆解一项代表专利的权利要求，生成报告。';
+// Workbench overview runs these tools directly; the assistant's demo question lives in the help manual.
+const OVERVIEW_TOOLS=['get_dataset_summary','analyze_entity_portfolio','analyze_clustering','analyze_patent_valuation','analyze_citation_network','analyze_claim_elements'];
 async function api(path:string,body?:unknown,method?:string){const response=await fetch('/api/'+path,{method:method||(body?'POST':'GET'),headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw new Error(data.error||'请求失败');return data;}
 const titles=atlasPages;
 function defaults(tool:string,first?:string):Params{if(tool==='search_patents')return {query:'blockchain digital identity authentication',top_k:10};if(tool==='read_patent_details'||tool==='analyze_claim_elements')return {patent_numbers:first?[first]:[]};if(tool==='audit_search_strategy')return {strategies:[{name:'v1',query:'blockchain'},{name:'v2',query:'blockchain identity authentication'}],top_k:20};if(tool==='monitor_patent_changes')return {query:'blockchain',strategy_id:'blockchain-monitor',top_k:20};if(tool==='analyze_clustering')return {k:6};return {};}
@@ -71,13 +72,13 @@ export default function Workbench(){
   if(chapter.module==='workspace'||chapter.module==='credentials'){if(management.current)management.current.open=true;if(chapter.module==='workspace')setWorkspaceOpen(id);else setCredentialsOpen(id);return;}
   if(chapter.module==='materials'||chapter.module==='disclosures'){setView('reports');setMobileFocus(false);setMaterialsOpen({id,part:chapter.module});return;}
   setView(chapter.target==='assistant'?'analysis':chapter.target);setMobileFocus(chapter.target==='assistant');
-  if(chapter.tool){const initial=tools.find(tool=>tool.name===chapter.tool)?.defaultParams||defaults(chapter.tool,records[0]?.id);setSelectedTool(chapter.tool);setParameters(JSON.stringify(example?toolExampleParams(chapter.tool,initial,records):initial));setRestored(false);}
+  if(chapter.tool){const initial=tools.find(tool=>tool.name===chapter.tool)?.defaultParams||defaults(chapter.tool,records[0]?.id);setSelectedTool(chapter.tool);setParameters(JSON.stringify(example?toolExampleParams(chapter.tool,initial,records):initial));}
   history.replaceState(null,'',location.pathname);
  }
  const chosenStarter=useRef<Starter|undefined>(undefined);
  const [starterPool,setStarterPool]=useState<StarterPool>({version:'',batches:[]});
  const [logged,setLogged]=useState<boolean|null>(null),[view,setView]=useState<keyof typeof titles>('data'),[meta,setMeta]=useState<Dataset>(),[catalog,setCatalog]=useState<Dataset[]>([]),[tools,setTools]=useState<Tool[]>([]),[records,setRecords]=useState<Patent[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState('');
- const [conversations,setConversations]=useState<Conversation[]>([]),[conversationId,setConversationId]=useState(''),[turns,setTurns]=useState<Run[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState(''),[results,setResults]=useState<AnalysisResult[]>([]),[selectedTool,setSelectedTool]=useState('search_patents'),[parameters,setParameters]=useState(JSON.stringify(defaults('search_patents'),null,2)),[restored,setRestored]=useState(false),[toolBusy,setToolBusy]=useState(false),[mobileFocus,setMobileFocus]=useState(false);
+ const [conversations,setConversations]=useState<Conversation[]>([]),[conversationId,setConversationId]=useState(''),[turns,setTurns]=useState<Run[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState(''),[results,setResults]=useState<AnalysisResult[]>([]),[selectedTool,setSelectedTool]=useState('search_patents'),[parameters,setParameters]=useState(JSON.stringify(defaults('search_patents'),null,2)),[toolBusy,setToolBusy]=useState(false),[mobileFocus,setMobileFocus]=useState(false),[toolRun,setToolRun]=useState<Run>();
 const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;run:Run}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run;revision?:number}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
  const [historyPage,setHistoryPage]=useState(1);
@@ -88,7 +89,7 @@ const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:st
  useEffect(()=>{if(navigationReady){sessionStorage.setItem('atlas-navigation',JSON.stringify({page:view,assistant:mobileFocus,reportId:report?.id}));if(view!=='help'&&(location.hash.startsWith('#guide/')||location.hash.startsWith('#section-')))history.replaceState(null,'',location.pathname);}},[navigationReady,view,mobileFocus,report?.id]);
  function toggleSidebar(){setSidebarCollapsed(value=>{localStorage.setItem('atlas-sidebar-collapsed',String(!value));return !value;});}
  async function logout(){await api('logout',{});setLogged(false);newChat();}
- const stream=useRef<AbortController|null>(null),currentRun=useRef(''),contentRef=useRef<HTMLElement|null>(null),chatRef=useRef<HTMLDivElement|null>(null),nearBottom=useRef(true);
+ const stream=useRef<AbortController|null>(null),toolStream=useRef<AbortController|null>(null),currentRun=useRef(''),contentRef=useRef<HTMLElement|null>(null),chatRef=useRef<HTMLDivElement|null>(null),nearBottom=useRef(true);
  const [showLatest,setShowLatest]=useState(false);
  const requestedFollowups=useRef(new Set<string>());
  const [suggesting,setSuggesting]=useState('');
@@ -97,7 +98,7 @@ const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:st
  useEffect(()=>{if(nearBottom.current)chatRef.current?.scrollTo({top:chatRef.current.scrollHeight});},[turns,phase,mobileFocus]);
  useEffect(()=>{contentRef.current?.scrollTo({top:0});},[view,report?.id]);
 async function loadData(id?:string){const request=++dataRequest.current,recordRequest=++recordsRequest.current;setRecordLabel(null);setQuery('');setRecords([]);setTotal(0);const [d,config]=await Promise.all([api('datasets'),api('settings')]);if(request!==dataRequest.current)return;setSettings(config);setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){const starters=await api('starters?dataset='+selected.id);if(request!==dataRequest.current)return;setStarterPool(starters);setMeta(selected);const t=await api('tools?dataset='+selected.id);if(request!==dataRequest.current)return;setTools(t.tools);if(recordRequest===recordsRequest.current)await loadRecords(selected.id,1,'',null);}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}await refreshHistory();}
- async function changeAfterEdit(id?:string){sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setResults([]);setQuery('');setRestored(false);setReport(undefined);await loadData(id);}
+ async function changeAfterEdit(id?:string){sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);clearToolRun();setQuery('');setReport(undefined);await loadData(id);}
  async function refreshHistory(){const conversations=(await api('conversations')).conversations,reports=(await api('reports')).reports;setConversations(conversations);setReports(reports);setHistorySelection(ids=>ids.filter(id=>conversations.some((c:Conversation)=>c.id===id)));setReportSelection(ids=>ids.filter(id=>reports.some((r:{id:string})=>r.id===id)));}
  function selectSaved(kind:'reports'|'conversations',id:string,selected:boolean){const update=kind==='reports'?setReportSelection:setHistorySelection;update(ids=>selected?[...new Set([...ids,id])]:ids.filter(value=>value!==id));}
  async function removeSaved(kind:'reports'|'conversations',ids:string[]){
@@ -107,54 +108,60 @@ async function loadData(id?:string){const request=++dataRequest.current,recordRe
   setDeleting(true);setError('');
   try{
    await api(kind,{ids},'DELETE');
-   if(kind==='conversations'&&ids.includes(conversationId)){stream.current?.abort();sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setResults([]);setRestored(false);setBusy(false);setPhase('');}
+   if(kind==='conversations'&&toolRun&&ids.includes(toolRun.conversationId))clearToolRun();
+   if(kind==='conversations'&&ids.includes(conversationId)){stream.current?.abort();sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setBusy(false);setPhase('');}
    if(kind==='reports'&&report&&ids.includes(report.id)){setReport(undefined);setView('reports');setMobileFocus(false);}
    await refreshHistory();setNotice(`已删除 ${ids.length} ${unit}${noun}。`);
   }catch(error){setError((error as Error).message);}finally{setDeleting(false);}
  }
 async function loadRecords(id:string,p:number,q:string,label:RecordLabelSelection=recordLabel){const request=++recordsRequest.current;const params=new URLSearchParams({dataset:id,page:String(p),q,...(label?{label:label.id,includeChildren:String(label.includeChildren)}:{})});const data=await api('patents?'+params);if(request!==recordsRequest.current)return;setRecords(data.records);setTotal(data.total);setPage(p);}
-useEffect(()=>{let current=true;const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);api('workspace').then(async(next:Workspace)=>{if(!current)return;setWorkspace(next);setLogged(true);if(!next.current)return;await loadData();if(!current)return;if(saved.reportId&&saved.page==='analysis'){const item=(await api('reports')).reports.find((r:{id:string})=>r.id===saved.reportId);if(item){setReport(item);return;}}const remembered=sessionStorage.getItem('patent-conversation');if(remembered&&(saved.page==='analysis'||saved.assistant)){const items=(await api('conversations')).conversations;const c=items.find((item:Conversation)=>item.id===remembered);if(c){await openConversation(c,false);setRestored(true);}else sessionStorage.removeItem('patent-conversation');}}).catch(()=>{if(current)setLogged(false);});return()=>{current=false;stream.current?.abort();};},[]);
+useEffect(()=>{let current=true;const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);api('workspace').then(async(next:Workspace)=>{if(!current)return;setWorkspace(next);setLogged(true);if(!next.current)return;await loadData();if(!current)return;if(saved.reportId&&saved.page==='analysis'){const item=(await api('reports')).reports.find((r:{id:string})=>r.id===saved.reportId);if(item){setReport(item);return;}}const toolRunId=sessionStorage.getItem('atlas-tool-run');if(toolRunId&&saved.page==='analysis'){try{const run:Run=await api('runs/'+toolRunId);if(!current)return;setToolRun(run);setResults(run.results);if(run.status==='running')void follow(run.id,'tool');}catch{sessionStorage.removeItem('atlas-tool-run');}}const remembered=sessionStorage.getItem('patent-conversation');if(remembered&&(saved.page==='analysis'||saved.assistant)){const items=(await api('conversations')).conversations;const c=items.find((item:Conversation)=>item.id===remembered);if(c){await openConversation(c,false);}else sessionStorage.removeItem('patent-conversation');}}).catch(()=>{if(current)setLogged(false);});return()=>{current=false;stream.current?.abort();toolStream.current?.abort();};},[]);
 useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElement;const dialog=document.querySelector<HTMLElement>('.patent-detail');dialog?.querySelector<HTMLElement>('button')?.focus();const handle=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPatent(undefined);return;}if(event.key==='Tab'&&dialog){const controls=[...dialog.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],summary,input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')];const visible=controls.filter(control=>control.getClientRects().length>0);const first=visible[0],last=visible.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};document.addEventListener('keydown',handle);return()=>{document.removeEventListener('keydown',handle);opener?.focus();};},[Boolean(patent)]);
- async function changeDataset(id:string){stream.current?.abort();await api('datasets',{id},'PATCH');sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setResults([]);setReport(undefined);await loadData(id);}
+ async function changeDataset(id:string){stream.current?.abort();await api('datasets',{id},'PATCH');sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);clearToolRun();setReport(undefined);await loadData(id);}
  async function openPatent(id:string,datasetId=meta?.id,location?:PatentEvidenceLocation){try{const record=await api(`patents/${id}?dataset=${datasetId}`);setPatentEvidence(location);setPatentDatasetId(datasetId);setPatent(record);}catch(e){setError((e as Error).message);}}
- async function openConversation(c:Conversation,openAssistant=true){stream.current?.abort();setBusy(false);if(openAssistant){setView('analysis');setMobileFocus(true);}try{await loadData(c.datasetId);const detail=await api('conversations/'+c.id);sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setRestored(true);setTurns(detail.runs);setReport(undefined);setResults(detail.runs.flatMap((r:Run)=>r.results));const pending=detail.runs.find((r:Run)=>r.status==='running');if(pending)await follow(pending.id);}catch(e){setError('打开对话失败：'+(e as Error).message);}}
- function newChat(){submitting.current='';chosenStarter.current=undefined;nearBottom.current=true;setShowLatest(false);if(!meta)void loadData();stream.current?.abort();sessionStorage.removeItem('patent-conversation');setRestored(false);setConversationId('');setTurns([]);setReport(undefined);setResults([]);setText('');setError('');setBusy(false);setToolBusy(false);setPhase('');setMobileFocus(true);}
- async function follow(id:string){stream.current?.abort();const controller=new AbortController();stream.current=controller;currentRun.current=id;setBusy(true);setTurns(value=>value.map(r=>r.id===id?{...r,answer:''}:r));try{
+ async function openConversation(c:Conversation,openAssistant=true){if(c.title.startsWith('工具 · ')){await openToolRun(c);return;}stream.current?.abort();setBusy(false);if(openAssistant){setView('analysis');setMobileFocus(true);}try{await loadData(c.datasetId);const detail=await api('conversations/'+c.id);sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setTurns(detail.runs);setReport(undefined);const pending=detail.runs.find((r:Run)=>r.status==='running');if(pending)await follow(pending.id);}catch(e){setError('打开对话失败：'+(e as Error).message);}}
+ async function openToolRun(c:Conversation){try{await loadData(c.datasetId);const run:Run|undefined=(await api('conversations/'+c.id)).runs.at(-1);setReport(undefined);setView('analysis');setMobileFocus(false);if(!run)return;sessionStorage.setItem('atlas-tool-run',run.id);setToolRun(run);setResults(run.results);if(run.status==='running')await follow(run.id,'tool');}catch(e){setError('打开工具记录失败：'+(e as Error).message);}}
+ function clearToolRun(){toolStream.current?.abort();sessionStorage.removeItem('atlas-tool-run');setToolRun(undefined);setResults([]);}
+ function newChat(){submitting.current='';chosenStarter.current=undefined;nearBottom.current=true;setShowLatest(false);if(!meta)void loadData();stream.current?.abort();sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);setReport(undefined);setText('');setError('');setBusy(false);setToolBusy(false);setPhase('');setMobileFocus(true);}
+ async function follow(id:string,target:'chat'|'tool'='chat'){const channel=target==='chat'?stream:toolStream;channel.current?.abort();const controller=new AbortController();channel.current=controller;
+ // Chat turns and workbench tool runs keep separate state so neither surface shows the other's work.
+ const patch=(change:(r:Run)=>Run)=>target==='chat'?setTurns(value=>value.map(r=>r.id===id?change(r):r)):setToolRun(r=>r?.id===id?change(r):r);const say=(message:string)=>{if(target==='chat')setPhase(message);};
+ if(target==='chat'){currentRun.current=id;setBusy(true);}patch(r=>({...r,answer:''}));try{
   const response=await fetch('/api/runs/'+id+'/events',{signal:controller.signal});if(!response.ok||!response.body)throw new Error('无法读取任务进度');const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';
   while(true){const chunk=await reader.read();buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});let end;while((end=buffer.indexOf('\n\n'))>=0){const block=buffer.slice(0,end);buffer=buffer.slice(end+2);const name=block.split('\n').find(line=>line.startsWith('event: '))?.slice(7);const raw=block.split('\n').find(line=>line.startsWith('data: '))?.slice(6);if(!raw)continue;const data=JSON.parse(raw);
-   if(name==='progress')setTurns(value=>value.map(r=>r.id===id?{...r,progress:data}:r));
-   if(name==='status'){setPhase(data.message);setTurns(value=>value.map(r=>r.id===id?{...r,progress:{...r.progress,tool:r.progress?.tool||data.phase,unit:data.message}}:r));}
-   if(name==='plan')setTurns(value=>value.map(r=>r.id===id?{...r,plan:data.steps}:r));
-   if(name==='scope')setTurns(value=>value.map(r=>r.id===id?{...r,scope:data.scope}:r));
-   if(name==='research-review')setTurns(value=>value.map(r=>r.id===id?{...r,reviews:[...(r.reviews||[]),data.review]}:r));
-   if(name==='audit')setTurns(value=>value.map(r=>r.id===id?{...r,audit:data.audit}:r));
-   if(name==='report-preparation')setTurns(value=>value.map(r=>r.id===id?{...r,reportPreparation:data.preparation}:r));
-   if(name==='tool-start'){const message='正在运行 '+(tools.find(t=>t.name===data.tool)?.title||data.tool);setPhase(message);setTurns(value=>value.map(r=>r.id===id?{...r,progress:{tool:data.tool,unit:message}}:r));}
-   if(name==='tool-result'){setResults(value=>value.some(r=>r.id===data.result.id)?value:[...value,data.result]);setTurns(value=>value.map(r=>r.id===id?{...r,results:r.results.some(item=>item.id===data.result.id)?r.results:[...r.results,data.result]}:r));}
-   if(name==='text-delta')setTurns(value=>value.map(r=>r.id===id?{...r,answer:r.answer+data.text}:r));
-   if(name==='text-reset')setTurns(value=>value.map(r=>r.id===id?{...r,answer:''}:r));
+   if(name==='progress')patch(r=>({...r,progress:data}));
+   if(name==='status'){say(data.message);patch(r=>({...r,progress:{...r.progress,tool:r.progress?.tool||data.phase,unit:data.message}}));}
+   if(name==='plan')patch(r=>({...r,plan:data.steps}));
+   if(name==='scope')patch(r=>({...r,scope:data.scope}));
+   if(name==='research-review')patch(r=>({...r,reviews:[...(r.reviews||[]),data.review]}));
+   if(name==='audit')patch(r=>({...r,audit:data.audit}));
+   if(name==='report-preparation')patch(r=>({...r,reportPreparation:data.preparation}));
+   if(name==='tool-start'){const message='正在运行 '+(tools.find(t=>t.name===data.tool)?.title||data.tool);say(message);patch(r=>({...r,progress:{tool:data.tool,unit:message}}));}
+   if(name==='tool-result'){if(target==='tool')setResults(value=>value.some(r=>r.id===data.result.id)?value:[...value,data.result]);patch(r=>({...r,results:r.results.some(item=>item.id===data.result.id)?r.results:[...r.results,data.result]}));}
+   if(name==='text-delta')patch(r=>({...r,answer:r.answer+data.text}));
+   if(name==='text-reset')patch(r=>({...r,answer:''}));
    if(name==='error')setError(data.message);
   }if(chunk.done)break;}
-  const final=await api('runs/'+id);setTurns(value=>value.map(r=>r.id===id?final:r));setPhase(final.status==='completed'?'分析完成':final.status==='cancelled'?'任务已停止':'已保留工具结果，请查看说明');await refreshHistory();
- }catch(e){if(!controller.signal.aborted)setError((e as Error).message);}finally{if(currentRun.current===id)setBusy(false);}}
+  const final=await api('runs/'+id);patch(()=>final);say(final.status==='completed'?'分析完成':final.status==='cancelled'?'任务已停止':'已保留工具结果，请查看说明');await refreshHistory();
+ }catch(e){if(!controller.signal.aborted)setError((e as Error).message);}finally{if(target==='chat'&&currentRun.current===id)setBusy(false);}}
  async function send(question=text){if(!meta||busy||submitting.current||!question.trim())return;
  const maxModelCalls=modelCallLimit.trim()?Number(modelCallLimit):undefined;
  if(maxModelCalls!==undefined&&(!Number.isInteger(maxModelCalls)||maxModelCalls<1||maxModelCalls>2147483647)){setError('调用上限须为正整数');return;}
- const pendingId='pending-'+crypto.randomUUID();submitting.current=pendingId;const pending:Run={id:pendingId,conversationId,datasetId:meta.id,question,status:'running',plan:[],results:[],answer:'',error:'',model:'',createdAt:new Date().toISOString(),progress:{tool:'request',unit:'正在提交问题并创建分析任务'}};nearBottom.current=true;setShowLatest(false);setBusy(true);setError('');setReport(undefined);setView('analysis');setMobileFocus(true);setRestored(false);setTurns(value=>[...value,pending]);setText('');try{let id=conversationId;if(!id){const c=await api('conversations',{datasetId:meta.id});id=c.id;sessionStorage.setItem('patent-conversation',id);setConversationId(id);}const starter=chosenStarter.current;const r=await api('runs',{conversationId:id,datasetId:meta.id,question,...(maxModelCalls!==undefined?{maxModelCalls}:{}),...(starter?.datasetId===meta.id&&starter.question===question?{steps:[{tool:starter.name,params:starter.params}]}:{})});if(submitting.current!==pendingId)return;chosenStarter.current=undefined;setTurns(value=>value.map(t=>t.id===pendingId?r:t));await follow(r.id);}catch(e){if(submitting.current!==pendingId)return;const message=(e as Error).message;setTurns(value=>value.map(t=>t.id===pendingId?{...t,status:'failed',error:message}:t));setError(message);setBusy(false);}finally{if(submitting.current===pendingId)submitting.current='';}}
+ const pendingId='pending-'+crypto.randomUUID();submitting.current=pendingId;const pending:Run={id:pendingId,conversationId,datasetId:meta.id,question,status:'running',plan:[],results:[],answer:'',error:'',model:'',createdAt:new Date().toISOString(),progress:{tool:'request',unit:'正在提交问题并创建分析任务'}};nearBottom.current=true;setShowLatest(false);setBusy(true);setError('');setReport(undefined);setMobileFocus(true);setTurns(value=>[...value,pending]);setText('');try{let id=conversationId;if(!id){const c=await api('conversations',{datasetId:meta.id});id=c.id;sessionStorage.setItem('patent-conversation',id);setConversationId(id);}const starter=chosenStarter.current;const r=await api('runs',{conversationId:id,datasetId:meta.id,question,...(maxModelCalls!==undefined?{maxModelCalls}:{}),...(starter?.datasetId===meta.id&&starter.question===question?{steps:[{tool:starter.name,params:starter.params}]}:{})});if(submitting.current!==pendingId)return;chosenStarter.current=undefined;setTurns(value=>value.map(t=>t.id===pendingId?r:t));await follow(r.id);}catch(e){if(submitting.current!==pendingId)return;const message=(e as Error).message;setTurns(value=>value.map(t=>t.id===pendingId?{...t,status:'failed',error:message}:t));setError(message);setBusy(false);}finally{if(submitting.current===pendingId)submitting.current='';}}
  function chooseTool(name:string){const tool=tools.find(t=>t.name===name);if(!tool)return;setSelectedTool(name);setParameters(JSON.stringify(tool.defaultParams||defaults(name,records[0]?.id),null,2));}
- async function runTool(input?:{tool:string;params:Params;question:string}){
-  if(!meta||readOnly||toolBusy||busy||submitting.current)return;
-  const tool=input?.tool||selectedTool,title=tools.find(t=>t.name===tool)?.title||tool;let params:Params;
-  try{params=input?.params||JSON.parse(parameters);}catch{setError('参数格式不正确。请检查分析参数。');return;}
-  const question=input?.question||'直接运行：'+title,pendingId='pending-'+crypto.randomUUID();submitting.current=pendingId;
-  const pending:Run={id:pendingId,conversationId:'',datasetId:meta.id,question,status:'running',plan:[{tool,params}],results:[],answer:'',error:'',model:'',createdAt:new Date().toISOString(),progress:{tool:'request',unit:'正在提交工具任务'}};
-  setError('');setToolBusy(true);setBusy(true);setPatent(undefined);setReport(undefined);setView('analysis');setMobileFocus(true);setResults([]);setRestored(false);setPhase('');setTurns([pending]);nearBottom.current=true;setShowLatest(false);
+ async function runTool(input?:{steps:{tool:string;params:Params}[];question?:string;title?:string}){
+  if(!meta||readOnly||toolBusy)return;
+  let steps=input?.steps;if(!steps){try{steps=[{tool:selectedTool,params:JSON.parse(parameters)}];}catch{setError('参数格式不正确。请检查分析参数。');return;}}
+  const title=input?.title||tools.find(t=>t.name===steps[0].tool)?.title||steps[0].tool,question=input?.question||'直接运行：'+title;
+  const pending:Run={id:'pending-'+crypto.randomUUID(),conversationId:'',datasetId:meta.id,question,status:'running',plan:steps,results:[],answer:'',error:'',model:'',createdAt:new Date().toISOString(),progress:{tool:'request',unit:'正在提交工具任务'}};
+  setError('');setToolBusy(true);setPatent(undefined);setReport(undefined);setView('analysis');setMobileFocus(false);setResults([]);setToolRun(pending);
   try{
-   const c=await api('conversations',{datasetId:meta.id,title:'工具 · '+title}),r=await api('runs',{conversationId:c.id,datasetId:meta.id,question,mode:'tool',steps:[{tool,params}]});
-   if(submitting.current!==pendingId)return;sessionStorage.setItem('patent-conversation',c.id);setConversationId(c.id);setTurns([r]);await follow(r.id);setNotice('任务已结束，结果与已完成分段已保存。');
-  }catch(e){if(submitting.current!==pendingId)return;const message=(e as Error).message;setTurns(value=>value.map(run=>run.id===pendingId?{...run,status:'failed',error:message}:run));setError(message);setBusy(false);}
-  finally{if(submitting.current===pendingId){submitting.current='';setToolBusy(false);}}
+   const c=await api('conversations',{datasetId:meta.id,title:'工具 · '+title}),r:Run=await api('runs',{conversationId:c.id,datasetId:meta.id,question,mode:'tool',steps});
+   sessionStorage.setItem('atlas-tool-run',r.id);setToolRun(r);await follow(r.id,'tool');setNotice('任务已结束，结果与已完成分段已保存。');
+  }catch(e){const message=(e as Error).message;setToolRun(run=>run&&{...run,status:'failed',error:message});setError(message);}
+  finally{setToolBusy(false);}
  }
+ function runOverview(){const steps=OVERVIEW_TOOLS.flatMap(name=>{const tool=tools.find(t=>t.name===name);return tool?.available?[{tool:name,params:tool.defaultParams||defaults(name,records[0]?.id)}]:[];});if(!steps.length){setError('当前数据没有可运行的概览工具。');return;}void runTool({steps,question:'综合概览：'+steps.map(s=>tools.find(t=>t.name===s.tool)?.title||s.tool).join('、'),title:'综合概览'});}
  async function save(r:Run){try{await api('reports',{runId:r.id});await refreshHistory();setNotice('报告已保存。可在报告库查看或下载。');}catch(e){setError((e as Error).message);}}
  async function retry(r:Run){try{await api('runs/'+r.id+'/retry-report',{});requestedFollowups.current.delete(r.id);setTurns(value=>value.map(t=>t.id===r.id?{...t,status:'running',answer:'',error:'',followups:undefined}:t));await follow(r.id);}catch(e){setError((e as Error).message);}}
  if(logged===null)return <div className="boot">正在打开专利分析工作台…</div>;
@@ -182,7 +189,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
  const visible=report?report.run.results:results;const shownTurns=report?[report.run]:turns;const currentMeta=report?(report.run.datasetSnapshot||catalog.find(d=>d.id===report.run.datasetId)):meta;
  let scopeParams:Params={};try{const value=JSON.parse(parameters);if(value&&typeof value==='object'&&!Array.isArray(value))scopeParams=value;}catch{}
  function changeParam(key:keyof Params,value:string){try{const next=JSON.parse(parameters);if(!value.trim())delete next[key];else next[key]=key==='patent_numbers'?value.split(',').map(v=>v.trim()).filter(Boolean):['year_start','year_end','top_k','k'].includes(key)?Number(value):value;setParameters(JSON.stringify(next,null,2));}catch{setError('请先修正完整参数中的 JSON 格式。');}}
- const activeTask=turns.find(r=>r.id===currentRun.current);const progressTitle=activeTask?.kind==='help'?'查阅功能说明':activeTask?.progress?.tool==='report'?'生成报告':tools.find(t=>t.name===activeTask?.progress?.tool)?.title||'执行分析任务';
+ const toolTitle=toolRun?.progress?.tool==='request'?'提交工具任务':tools.find(t=>t.name===toolRun?.progress?.tool)?.title||'执行分析任务';
  return <div className={`app-shell ${sidebarCollapsed?'sidebar-collapsed':''}`}>
 <AtlasNavigation page={view} assistant={mobileFocus} collapsed={sidebarCollapsed} onToggle={toggleSidebar} onNavigate={key=>{setView(key);setMobileFocus(false);setReport(undefined);if(key!=='help')history.replaceState(null,'',location.pathname);}} onAssistant={()=>{setMobileFocus(true);}} username={settings?.username||'jyao'} onLogout={()=>void logout()}/>
 
@@ -207,7 +214,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 </div></details>}
 {workspace&&<ProfessionalTasks datasets={catalog} readOnly={Boolean(readOnly)} launch={professionalLaunch} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>}
 {mobileFocus&&<button aria-label="对话历史" onClick={()=>{setView('history');setMobileFocus(false);setReport(undefined);}}><MessagesSquare size={16}/><span className="mobile-action-label">对话历史</span></button>}
-<button aria-label="新对话" onClick={()=>{newChat();setView('analysis');}}>
+<button aria-label="新对话" onClick={newChat}>
 <Plus size={15}/>
 <span className="mobile-action-label">新对话</span></button>
 <button className="assistant-toggle" aria-label={mobileFocus?'收起助手':'打开助手'} aria-expanded={mobileFocus} aria-controls="analysis-assistant" onClick={()=>setMobileFocus(!mobileFocus)}>
@@ -293,10 +300,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 </details>
 </>
 }
- {view==='analysis'&&<>{!report&&restored&&<div className="replay-banner">
-<RefreshCw size={16}/>
-已恢复记录 · 当前对话的历史结果<button onClick={newChat}>开始新分析</button>
-</div>}{!report&&activeTask&&<ExecutionProgress run={activeTask} title={progressTitle} onStop={()=>api('runs/'+activeTask.id+'/stop',{})}/>
+ {view==='analysis'&&<>{!report&&toolRun?.status==='running'&&<ExecutionProgress run={toolRun} title={toolTitle} onStop={()=>{if(!toolRun.id.startsWith('pending-'))void api('runs/'+toolRun.id+'/stop',{});}}/>
 } {report&&<div className="replay-banner">
 <Play size={16}/>
 历史运行 · 数据集 {report.run.datasetId.slice(0,8)} · {new Date(report.run.createdAt).toLocaleString('zh-CN')}</div>}{report&&<article className="markdown report-narrative">
@@ -308,22 +312,22 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <h2>运行查询与分析</h2>
 <p>选择工具，设定范围，查看结果。</p>
 </div>
-<button className="primary" disabled={busy} onClick={()=>send(DEMO)}>
+<button className="primary" disabled={toolBusy||readOnly||!tools.length} title="在本页依次运行数据概况、申请人组合、主题聚类、引证指标、引证网络和权利要求要素" onClick={runOverview}>
 <Play size={16}/>
 综合分析</button>
 </div>
-</>}<div className={report?'analysis-workspace':'analysis-workspace has-picker'}>{!report&&<ToolPicker tools={tools} selectedTool={selectedTool} params={scopeParams} years={meta?.years||[]} samplePatent={records[0]?.id} busy={busy} toolBusy={toolBusy} onSelect={chooseTool} onParam={changeParam} onParams={value=>setParameters(JSON.stringify(value,null,2))} onRun={()=>void runTool()}/>
+</>}<div className={report?'analysis-workspace':'analysis-workspace has-picker'}>{!report&&<ToolPicker tools={tools} selectedTool={selectedTool} params={scopeParams} years={meta?.years||[]} samplePatent={records[0]?.id} busy={false} toolBusy={toolBusy} onSelect={chooseTool} onParam={changeParam} onParams={value=>setParameters(JSON.stringify(value,null,2))} onRun={()=>void runTool()}/>
 }{visible.length?<div className="results">{visible.map(result=>
 <ResultView key={result.id} result={result} onPatent={(id,location)=>openPatent(id,result.datasetId,location)}/>
 )}</div>:<div className="analysis-empty">
-<h3>尚无分析结果</h3>
-<p>选择工具并运行后，可在这里查看图表和数据。</p>
+<h3>{toolRun?.status==='running'?'正在运行':'尚无分析结果'}</h3>
+<p>{toolRun?.status==='running'?'结果会在完成后显示在这里。':'选择工具并运行后，可在这里查看图表和数据。分析助手的对话结果显示在助手面板中。'}</p>
 </div>}</div></>
 }
  {view==='history'&&<>
 <div className="list-heading">
 <h2>已保存的对话</h2>
-<button onClick={()=>{newChat();setView('analysis');}}>
+<button onClick={newChat}>
 <Plus size={16}/>
 新对话</button>
 </div>
@@ -439,8 +443,8 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 </dl>
 <h3>摘要</h3>
 <p>{patent.abstract}</p>
-{!readOnly&&<div className="record-actions"><button disabled={busy||toolBusy||patentDatasetId!==meta?.id} onClick={()=>void runTool({tool:'analyze_patent_reading',params:{patent_numbers:[patent.id]},question:'整理 '+patent.id+' 的技术问题、解决手段与技术效果，逐项保留原文依据。'})}>分析技术问题、手段与效果</button>{patentDatasetId!==meta?.id&&<span className="muted">请先切换到此专利所属数据集。</span>}</div>}
-<ClaimReader key={patent.id} claims={patent.claims} onAnalyze={readOnly?undefined:number=>void runTool({tool:'analyze_claim_elements',params:{patent_numbers:[patent.id],claim_numbers:[number]},question:'提取 '+patent.id+' 权利要求 '+number+' 的技术要素并保留原文依据。'})} analysisDisabled={busy||toolBusy||patentDatasetId!==meta?.id} analysisNote={patentDatasetId!==meta?.id?'请先切换到此专利所属数据集。':undefined}/><details>
+{!readOnly&&<div className="record-actions"><button disabled={toolBusy||patentDatasetId!==meta?.id} onClick={()=>void runTool({steps:[{tool:'analyze_patent_reading',params:{patent_numbers:[patent.id]}}],question:'整理 '+patent.id+' 的技术问题、解决手段与技术效果，逐项保留原文依据。'})}>分析技术问题、手段与效果</button>{patentDatasetId!==meta?.id&&<span className="muted">请先切换到此专利所属数据集。</span>}</div>}
+<ClaimReader key={patent.id} claims={patent.claims} onAnalyze={readOnly?undefined:number=>void runTool({steps:[{tool:'analyze_claim_elements',params:{patent_numbers:[patent.id],claim_numbers:[number]}}],question:'提取 '+patent.id+' 权利要求 '+number+' 的技术要素并保留原文依据。'})} analysisDisabled={toolBusy||patentDatasetId!==meta?.id} analysisNote={patentDatasetId!==meta?.id?'请先切换到此专利所属数据集。':undefined}/><details>
 <summary>说明书全文</summary>
 <pre className="original-text">{patent.description}</pre>
 </details>
