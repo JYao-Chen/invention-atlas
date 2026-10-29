@@ -61,19 +61,13 @@ input::placeholder,textarea::placeholder { color:#6e7682 }
 .import-panel input,.research-settings input,.research-settings textarea { border-radius:9px; padding:11px 13px; min-height:44px }
 .import-panel button { border:0; background:var(--accent); color:#fff; border-radius:10px; padding:12px 18px; min-height:44px }
 .import-panel button+button { margin-left:10px; background:var(--selected); color:var(--ink) }
-.dataset-facts>span { padding:5px 12px; border-radius:6px; background:#eef4fb; color:#365783 }
-.dataset-facts>span:nth-child(2) { background:#edf7f5; color:#326c63 }
-.dataset-facts>span:nth-child(3) { background:#f3eff9; color:#705a8a }
-.dataset-facts strong { color:inherit }
+.dataset-facts>span { padding:5px 12px; border-radius:6px; background:var(--soft) }
 .dataset-overview>div:nth-child(1) { background:#eef4fb }
 .dataset-overview>div:nth-child(2) { background:#fdf0ed }
 .dataset-overview>div:nth-child(3) { background:#edf7f5 }
 .dataset-overview>div { padding:10px 14px; border-radius:8px }
 th { background:#edf2f8; color:#3c4d65 }
-tbody tr:nth-child(15n+1),tbody tr:nth-child(15n+2),tbody tr:nth-child(15n+3),tbody tr:nth-child(15n+4),tbody tr:nth-child(15n+5) { background:#f1f6fc }
-tbody tr:nth-child(15n+6),tbody tr:nth-child(15n+7),tbody tr:nth-child(15n+8),tbody tr:nth-child(15n+9),tbody tr:nth-child(15n+10) { background:#f0f8f6 }
-tbody tr:nth-child(15n+11),tbody tr:nth-child(15n+12),tbody tr:nth-child(15n+13),tbody tr:nth-child(15n+14),tbody tr:nth-child(15n+15) { background:#f6f2fa }
-tbody tr:nth-child(5n+6) td { border-top:1px solid #ccd9e7 }
+tbody tr:nth-child(even) { background:#f6f8fb }
 tbody tr:hover { background:#e5eef9 }
 .result-data-section:nth-child(3n+1)>h4 { color:#365783; border-left:3px solid #6e99c8; padding-left:10px }
 .result-data-section:nth-child(3n+2)>h4 { color:#326c63; border-left:3px solid #73c5b7; padding-left:10px }
@@ -210,3 +204,10 @@ td { border-bottom-color:#e1e6ee }
 @media(max-width:900px){.help-manual{grid-template-columns:1fr}.help-directory{position:static}.help-desktop-chapters{display:none}.help-mobile-chapters{display:flex;flex-direction:column;gap:8px;margin-top:16px}.help-figure-controls{font-size:13px}}
 .word-cloud{position:relative}.word-cloud-detail{position:absolute;z-index:5;width:260px;max-width:calc(100% - 16px);padding:16px;background:#fff;border:1px solid #ded7e9;border-radius:16px;box-shadow:0 8px 28px #33415524;color:#334155}.word-cloud-detail header{display:flex;align-items:center;justify-content:space-between;gap:12px}.word-cloud-detail strong{font-size:18px;overflow-wrap:anywhere}.word-cloud-detail header button{padding:0;width:28px;height:28px;flex-shrink:0;border:0;background:#f3f0f8;font-size:22px;line-height:1}.word-cloud-detail dl{margin:12px 0 0}.word-cloud-detail dl>div{display:flex;justify-content:space-between;gap:12px;padding:5px 0}.word-cloud-detail dt{font-size:13px;color:#64748b}.word-cloud-detail dd{margin:0;font-variant-numeric:tabular-nums;font-size:14px}.word-cloud text[aria-pressed=true]{text-decoration:underline;stroke:#334155;stroke-width:.35px}
 .word-cloud .word-cloud-detail dl{display:block}.word-cloud .word-cloud-detail dt{flex:1;min-width:0}.word-cloud .word-cloud-detail dd{flex-shrink:0;white-space:nowrap}.word-cloud .word-cloud-detail header{padding:0;margin:0;border:0;background:transparent}.word-cloud .word-cloud-detail header button{padding:0;height:28px;min-height:28px;width:28px}
+.result-warnings { margin:8px 0 12px; padding:9px 14px 9px 30px; background:#fbf5ec; border:1px solid #ecdcc4; border-radius:8px; color:var(--warning); font-size:13px; line-height:1.7; max-width:100ch }
+.result-method-note { margin:6px 0 14px; font-size:13px; color:var(--muted); max-width:100ch }
+.result-method-note>summary { cursor:pointer; color:var(--action); width:max-content }
+.result-method-note>.markdown { margin-top:8px; padding:10px 14px; background:var(--soft); border-radius:8px; color:var(--ink) }
+.index-progress:empty { display:none }
+.dataset-actions { margin-bottom:8px }
+.monitor-subscriptions:not([open]),.source-updates:not([open]) { padding:4px 0; margin-bottom:12px }

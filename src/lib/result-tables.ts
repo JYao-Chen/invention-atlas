@@ -34,3 +34,20 @@ export function tableHeading(keys:string[],type?:string){
  if(keys.includes('internal_citations'))return '引证指标筛查';
  return '数据明细';
 }
+
+function csvCell(value:unknown){
+ const text=value===null||value===undefined?'':Array.isArray(value)?value.map(v=>typeof v==='object'?JSON.stringify(v):String(v)).join('; '):typeof value==='object'?JSON.stringify(value):String(value);
+ return /[",\r\n]/.test(text)?'"'+text.replaceAll('"','""')+'"':text;
+}
+
+// One CSV block per homogeneous row group, so heterogeneous tool output is not flattened into a sparse union table.
+// Starts with a UTF-8 BOM so Excel opens Chinese headers correctly.
+export function rowsToCsv(rows:Row[],labels:Record<string,string>={}){
+ const groups=partitionRows(rows);
+ const blocks=groups.map(group=>[
+  ...(groups.length>1?[csvCell(tableHeading(group.keys,group.type))]:[]),
+  group.keys.map(key=>csvCell(labels[key]||key)).join(','),
+  ...group.rows.map(row=>group.keys.map(key=>csvCell(row[key])).join(','))
+ ].join('\r\n'));
+ return '﻿'+blocks.join('\r\n\r\n')+'\r\n';
+}

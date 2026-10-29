@@ -3,7 +3,7 @@ import type {PatentEvidenceLocation} from '../lib/patent-evidence';
 import {useMemo,useState,useRef} from 'react';
 import {downloadChart} from '@/lib/chart-download';
 import MathMarkdown from './MathMarkdown';
-import {partitionRows,coveragePercent,tableHeading,plottedRows} from '@/lib/result-tables';
+import {partitionRows,coveragePercent,tableHeading,plottedRows,rowsToCsv} from '@/lib/result-tables';
 import {chartColors,graphColors,toolGroups} from './chart-colors';
 import ClusterView from './ClusterView';
 import ClaimComparison from './ClaimComparison';
@@ -152,6 +152,8 @@ return <section ref={panel} className="result-panel" data-group={toolGroups[resu
 <span className="result-status">{result.status==='completed'?'已完成':result.status==='unavailable'?'数据不足':'执行失败'}</span>
 </header>
 <p>{result.summary}</p>
+{result.warnings?.length>0&&<ul className="result-warnings">{result.warnings.map((warning,i)=><li key={i}>{warning}</li>)}</ul>}
+{!showMethod&&result.method&&<details className="result-method-note"><summary>计算方法</summary><div className="markdown"><MathMarkdown>{result.method}</MathMarkdown></div></details>}
 {result.tool==='analyze_patent_reading'&&<PatentReadingNotes rows={result.rows} onPatent={onPatent}/>}
 {showMethod&&result.method&&<div className="markdown result-method"><MathMarkdown>{result.method}</MathMarkdown></div>}
 <div className="result-tabs">{result.layoutMatrix&&<button type="button" className={tab==='layout'?'selected':''} onClick={()=>setTab('layout')}><Table2 size={15}/>布局矩阵</button>}{words&&metrics.length>0&&<button className={tab==='cloud'?'selected':''} onClick={()=>setTab('cloud')}><ChartColumn size={15}/>词云</button>}{result.clusterMap&&<button className={tab==='cluster'?'selected':''} onClick={()=>setTab('cluster')}>
@@ -163,7 +165,10 @@ return <section ref={panel} className="result-panel" data-group={toolGroups[resu
 图谱</button>}<button className={tab==='data'?'selected':''} onClick={()=>setTab('data')}>
 <Table2 size={15}/>
 数据表</button>
-<button className="push-right" onClick={()=>download(result.tool+'.json',JSON.stringify(result,null,2),'application/json')}>
+<button className="push-right" disabled={!result.rows.length} title="表格数据，Excel 可直接打开" onClick={()=>download(result.tool+'.csv',rowsToCsv(result.rows,label),'text/csv;charset=utf-8')}>
+<Download size={15}/>
+下载 CSV</button>
+<button onClick={()=>download(result.tool+'.json',JSON.stringify(result,null,2),'application/json')}>
 <Download size={15}/>
 下载 JSON</button>
 </div>

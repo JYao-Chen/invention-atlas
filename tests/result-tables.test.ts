@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {partitionRows,coveragePercent,tableHeading,plottedRows} from '../src/lib/result-tables';
+import {partitionRows,coveragePercent,tableHeading,plottedRows,rowsToCsv} from '../src/lib/result-tables';
 
 test('overview and coverage rows do not produce a sparse union table',()=>{
  const rows=[{records:300,period:'2019 / 2021',applicants:272,indexed:300},{field:'title',coverage:1},{field:'citations',coverage:140/300}];
@@ -29,3 +29,14 @@ test('citation and fit sections keep real row types separate',()=>{
  assert.equal(tableHeading(['type','r2'],'fit_diagnostics'),'拟合诊断');
 });
 test('time plots retain all periods and exclude fit diagnostics',()=>{const rows=Array.from({length:36},(_,i)=>({year:String(2000+i),cumulative:i}));const chart={kind:'line' as const,x:'year',y:'cumulative'};assert.equal(plottedRows([...rows,{type:'fit_diagnostics'}],chart).length,36);assert.equal(plottedRows(rows,chart).at(-1)?.year,'2035');});
+
+test('CSV export keeps groups apart, labels headers and escapes cells',()=>{
+ const csv=rowsToCsv([{patent:'US1',title:'A, "B"',score:0.5},{patent:'US2',title:'C\nD',score:null},{field:'title',coverage:1}],{patent:'公开编号',title:'标题'});
+ assert.ok(csv.startsWith('﻿'));
+ const [first,second]=csv.slice(1).trim().split('\r\n\r\n');
+ assert.equal(first.split('\r\n')[1],'公开编号,标题,score');
+ assert.ok(first.includes('US1,"A, ""B""",0.5'));
+ assert.ok(first.includes('US2,"C\nD",'));
+ assert.ok(second.includes('field,coverage'));
+ assert.equal(rowsToCsv([{word:'nft',tfidf:2}]).slice(1).split('\r\n')[0],'word,tfidf');
+});

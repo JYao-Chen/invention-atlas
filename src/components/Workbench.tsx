@@ -213,9 +213,6 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <button className="assistant-toggle" aria-label={mobileFocus?'收起助手':'打开助手'} aria-expanded={mobileFocus} aria-controls="analysis-assistant" onClick={()=>setMobileFocus(!mobileFocus)}>
 <PanelRight size={16}/>
 <span className="mobile-action-label">{mobileFocus?'返回工作区':'助手'}</span></button>
-<button className="mobile-account-action" aria-label="退出登录" onClick={()=>void logout()}>
-<LogOut size={16}/>
-</button>
 </div>
 </header>
  <div className="workspace">
@@ -233,11 +230,13 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <div>
 <h2>当前数据集</h2>
 <p>查看来源和字段覆盖，点击公开编号阅读原文。</p>
-<button onClick={async()=>{const name=prompt('新数据集名称');if(!name?.trim())return;try{const created=await api('datasets',{name});await changeAfterEdit(created.dataset.id);}catch(e){setError((e as Error).message);}}}>新建数据集</button>
 </div>
+<div className="data-header-controls">
 <label>数据集<select aria-label="当前数据集" value={meta?.id||''} onChange={e=>changeDataset(e.target.value)}>{catalog.map(d=>
 <option key={d.id} value={d.id}>{d.name}</option>)}</select>
 </label>
+<button onClick={async()=>{const name=prompt('新数据集名称');if(!name?.trim())return;try{const created=await api('datasets',{name});await changeAfterEdit(created.dataset.id);}catch(e){setError((e as Error).message);}}}><Plus size={15}/>新建数据集</button>
+</div>
 </section>{meta&&<>
 <div className="dataset-facts">
 <span>
@@ -248,8 +247,8 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 </span>
 </div>
 {!readOnly&&<div className="dataset-actions">
-<IndexProgress key={meta.id} datasetId={meta.id} indexed={meta.indexed} total={meta.count} onUpdated={()=>loadData(meta.id)}/>
-<details key={meta.id} className="dataset-management"><summary>数据集管理</summary><div className="dataset-danger-actions"><span>删除“{meta.name}”及其 {meta.count} 条记录；对话和已保存报告保留。</span><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></div></details></div>}
+<IndexProgress key={'index:'+meta.id} datasetId={meta.id} indexed={meta.indexed} total={meta.count} onUpdated={()=>loadData(meta.id)}/>
+<details key={'manage:'+meta.id} className="dataset-management"><summary>数据集管理</summary><div className="dataset-danger-actions"><span>删除“{meta.name}”及其 {meta.count} 条记录；对话和已保存报告保留。</span><button className="dataset-delete" onClick={async()=>{if(!confirm(`删除整个“${meta.name}”数据集及其 ${meta.count} 条记录？对话和已保存报告保留，但不能再读取该数据集原文。`))return;try{await api('datasets/'+meta.id,undefined,'DELETE');await changeAfterEdit();}catch(e){setError((e as Error).message);}}}>删除整个数据集</button></div></details></div>}
 <SourceUpdates key={'source:'+meta.id} datasetId={meta.id} readOnly={Boolean(readOnly)} onChanged={()=>void loadData(meta.id)} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>
 <div className="list-heading">
 <h3>专利记录 <small>{total} 条</small>
