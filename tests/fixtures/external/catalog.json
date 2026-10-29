@@ -1,0 +1,99 @@
+{
+  "patentsview": {
+    "source": "patentsview",
+    "version": "fixture-v2",
+    "url": "https://fixture.invalid/patentsview",
+    "license": "SYNTHETIC FIXTURE ONLY",
+    "files": [
+      {
+        "name": "g_patent.tsv.zip",
+        "url": "https://fixture.invalid/g_patent.tsv.zip",
+        "size": 200,
+        "updated": "2025-12-31"
+      },
+      {
+        "name": "g_application.tsv.zip",
+        "url": "https://fixture.invalid/g_application.tsv.zip",
+        "size": 189,
+        "updated": "2025-12-31"
+      },
+      {
+        "name": "g_us_patent_citation.tsv.zip",
+        "url": "https://fixture.invalid/g_us_patent_citation.tsv.zip",
+        "size": 224,
+        "updated": "2025-12-31"
+      },
+      {
+        "name": "g_cpc_current.tsv.zip",
+        "url": "https://fixture.invalid/g_cpc_current.tsv.zip",
+        "size": 188,
+        "updated": "2025-12-31"
+      },
+      {
+        "name": "g_assignee_disambiguated.tsv.zip",
+        "url": "https://fixture.invalid/g_assignee_disambiguated.tsv.zip",
+        "size": 281,
+        "updated": "2025-12-31"
+      },
+      {
+        "name": "g_location_disambiguated.tsv.zip",
+        "url": "https://fixture.invalid/g_location_disambiguated.tsv.zip",
+        "size": 197,
+        "updated": "2025-12-31"
+      },
+      {
+        "name": "g_us_application_citation.tsv.zip",
+        "url": "https://fixture.invalid/g_us_application_citation.tsv.zip",
+        "size": 226,
+        "updated": "2025-12-31"
+      },
+      {
+        "name": "g_foreign_citation.tsv.zip",
+        "url": "https://fixture.invalid/g_foreign_citation.tsv.zip",
+        "size": 213,
+        "updated": "2025-12-31"
+      }
+    ]
+  },
+  "maintenance": {
+    "source": "maintenance",
+    "version": "fixture-v2",
+    "url": "https://fixture.invalid/maintenance",
+    "license": "SYNTHETIC FIXTURE ONLY",
+    "files": [
+      {
+        "name": "maintenance.txt.gz",
+        "url": "https://fixture.invalid/maintenance.txt.gz",
+        "size": 120,
+        "updated": "2025-12-31"
+      },
+      {
+        "name": "maintenance.zip",
+        "url": "https://fixture.invalid/maintenance.zip",
+        "size": 416,
+        "updated": "2026-01-01"
+      }
+    ]
+  },
+  "science": {
+    "source": "science",
+    "version": "fixture-v2",
+    "url": "https://fixture.invalid/science",
+    "license": "SYNTHETIC FIXTURE ONLY",
+    "files": [
+      {
+        "name": "pcs_oa_uspto.csv",
+        "url": "https://fixture.invalid/pcs_oa_uspto.csv",
+        "size": 148,
+        "updated": "2025-12-31"
+      }
+    ]
+  },
+  "openalex": {
+    "source": "openalex",
+    "version": "fixture-v2",
+    "url": "https://fixture.invalid/openalex",
+    "license": "SYNTHETIC FIXTURE ONLY",
+    "files": []
+  }
+}

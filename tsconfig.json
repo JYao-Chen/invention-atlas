@@ -50,7 +50,8 @@
     "scripts/agent-worker.ts",
     "scripts/initialize-admin.ts",
     "scripts/import-sqlite-postgres.ts",
-    "scripts/verify-postgres-import.ts"
+    "scripts/verify-postgres-import.ts",
+    "scripts/external/**/*.ts"
   ],
   "exclude": [
     "node_modules"
