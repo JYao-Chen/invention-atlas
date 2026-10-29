@@ -17,7 +17,7 @@ test('manual links to the project repository and contribution paths',()=>{
 import {questions} from '../src/lib/suggestions';
 test('manual has distinct chapters, valid destinations, sections and documented demos',()=>{
  assert.equal(new Set(guideChapters.map(c=>c.id)).size,guideChapters.length);
- assert.equal(guideChapters.length,46);
+ assert.equal(guideChapters.length,48);
  for(const [index,c] of guideChapters.entries()){assert.ok(['data','analysis','history','reports','settings','assistant'].includes(c.target));assert.ok(c.body.includes('## '));assert.equal(c.number,String(index+1).padStart(2,'0'));assert.ok(!c.title.includes('：'));if(c.question)assert.ok(c.question.length>10);}
 });
 test('manual documents released professional, material, project and integration workflows',()=>{
