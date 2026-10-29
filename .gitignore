@@ -15,6 +15,7 @@ scripts/*
 !scripts/enrich-commercial-context.ts
 !scripts/verify-research.ts
 !scripts/evaluate-research.ts
+!scripts/eval-tool-selection.ts
 !scripts/verify-workbench.ts
 !scripts/prepare-help.ts
 !scripts/capture-help.ts

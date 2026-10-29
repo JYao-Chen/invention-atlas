@@ -1,4 +1,5 @@
 import {ExternalReferenceReader} from '@/server/external/store';
+import {humanAiReviewEndpoint} from '@/server/human-ai-review-api';
 import {NextResponse} from 'next/server';
 import {publicMineruSettings,saveMineruSettings} from '@/server/mineru-settings';
 import {randomUUID} from 'node:crypto';
@@ -63,6 +64,7 @@ export const runtime='nodejs';export const dynamic='force-dynamic';
 const escape=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 async function resources(request:Request,{params}:{params:Promise<{path:string[]}>}){try{
  const {path}=await params;const [resource,id,action]=path;const url=new URL(request.url);const method=request.method;
+ const humanAiResponse=await humanAiReviewEndpoint(request,path,db);if(humanAiResponse)return humanAiResponse;
  if(resource==='source-schedules'){
   const schedules=new SourceUpdateSchedules(db);
   if(method==='GET'&&path.length===1)return NextResponse.json({schedules:await schedules.list()},{headers:{'Cache-Control':'no-store'}});

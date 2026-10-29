@@ -33,7 +33,8 @@ async function executeQueuedRunBody(job:Job,signal:AbortSignal){
   signal.throwIfAborted();
   if(job.attempts>1){
    await event(r.id,'status',{phase:'Recovery',message:'正在从已保存的分析阶段恢复任务'});
-   if(r.answer&&(job.kind==='report'||r.executionStage!=='Report')){r.answer='';await saveRun(r);await event(r.id,'text-reset',{});}
+   const completedReport=r.orchestration?.completed.includes('Report:'+r.orchestration.reportRevisions);
+   if(r.answer&&(job.kind==='report'||!completedReport&&r.executionStage!=='Report')){r.answer='';await saveRun(r);await event(r.id,'text-reset',{});}
   }
   if(job.kind==='source-update')await executeSourceUpdate(db,job,r,signal);
   else if(job.kind==='fulltext')await executeFulltextIndex(db,job,r,signal);

@@ -1,0 +1,273 @@
+{
+ "seed": 20261029,
+ "discipline": "测试集只用于最终报告；不得根据测试集结果调整 Planner prompt、规则或开发集。",
+ "cases": [
+  {
+   "id": "ts-01",
+   "question": "技术问题、采用的手段和效果是什么？请逐项阅读 US100001B1。",
+   "expectedTools": [
+    "analyze_patent_reading"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-02",
+   "question": "在 US100001B1 的说明书片段中检索身份认证方案，使用索引 v1。",
+   "expectedTools": [
+    "search_patent_passages"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-03",
+   "question": "查找与无线传感器身份认证相关的专利。",
+   "expectedTools": [
+    "search_patents"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-04",
+   "question": "读取 US100001B1 的摘要、说明书和权利要求原文。",
+   "expectedTools": [
+    "read_patent_details"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-05",
+   "question": "概述当前数据集的数据规模、字段覆盖和时间范围。",
+   "expectedTools": [
+    "get_dataset_summary"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-06",
+   "question": "统计当前数据集每年的专利公开数量。",
+   "expectedTools": [
+    "analyze_patent_trend"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-07",
+   "question": "根据公开年份统计这批记录的生命周期分布。",
+   "expectedTools": [
+    "analyze_lifecycle"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-08",
+   "question": "这批数据的 IPC 分类有哪些？各有多少件？",
+   "expectedTools": [
+    "analyze_ipc_distribution"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-09",
+   "question": "按公开编号的公开局统计这批记录的分布。",
+   "expectedTools": [
+    "analyze_country_distribution"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-10",
+   "question": "对当前数据集生成关键词词频表和词云。",
+   "expectedTools": [
+    "generate_wordcloud"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-11",
+   "question": "这批数据有哪些在特定年份突然增多的关键词？",
+   "expectedTools": [
+    "analyze_burst_terms"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-12",
+   "question": "比较这批数据从 2020 到 2025 年各年的主要关键词。",
+   "expectedTools": [
+    "analyze_yearly_keywords"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-13",
+   "question": "将这批专利按语义划成 4 个技术主题。",
+   "expectedTools": [
+    "analyze_clustering"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-14",
+   "question": "哪些申请人共同申请过专利？画出合作网络。",
+   "expectedTools": [
+    "analyze_co_network"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-15",
+   "question": "比较这批数据中主要竞争者随年份变化的技术分类布局。",
+   "expectedTools": [
+    "analyze_competitor_evolution"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-16",
+   "question": "比较当前数据集中各申请人的专利组合。",
+   "expectedTools": [
+    "analyze_entity_portfolio"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-17",
+   "question": "计算这批记录中申请人的集中程度，给出集中度指标。",
+   "expectedTools": [
+    "analyze_concentration"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-18",
+   "question": "沿这批专利的引证关系找出技术发展主路径。",
+   "expectedTools": [
+    "analyze_tech_roadmap"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-19",
+   "question": "按引证指标在当前数据集中筛选代表专利，不估算价格。",
+   "expectedTools": [
+    "analyze_patent_valuation"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-20",
+   "question": "对 US100001B1 建立技术措施与技术效果的矩阵。",
+   "expectedTools": [
+    "analyze_tech_matrix"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-21",
+   "question": "展示当前数据集的直接引证、共引和文献耦合关系。",
+   "expectedTools": [
+    "analyze_citation_network"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-22",
+   "question": "统计这批专利同族成员在不同公开局的地域覆盖。",
+   "expectedTools": [
+    "analyze_family_geography"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-23",
+   "question": "对比两个布尔检索策略：sensor AND authentication；wireless AND identity。",
+   "expectedTools": [
+    "audit_search_strategy"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-24",
+   "question": "监测 sensor authentication 相关记录的变化，策略编号为 sensor-watch。",
+   "expectedTools": [
+    "monitor_patent_changes"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-25",
+   "question": "汇总这批记录在来源时点标注的法律状态。",
+   "expectedTools": [
+    "analyze_legal_status"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-26",
+   "question": "拆解 US100001B1 权利要求 1 中的技术要素。",
+   "expectedTools": [
+    "analyze_claim_elements"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-27",
+   "question": "比较 US100001B1 与 US100002B1 权利要求 1 的技术要素。",
+   "expectedTools": [
+    "compare_claims"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-28",
+   "question": "检查当前数据集缺失字段、重复和全文质量问题。",
+   "expectedTools": [
+    "audit_dataset"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-29",
+   "question": "先找身份认证相关专利，再统计检索结果的公开趋势和 IPC 分类分布。",
+   "expectedTools": [
+    "search_patents",
+    "analyze_patent_trend",
+    "analyze_ipc_distribution"
+   ],
+   "split": "dev"
+  },
+  {
+   "id": "ts-30",
+   "question": "对当前数据集同时统计申请人集中度和引证关系。",
+   "expectedTools": [
+    "analyze_concentration",
+    "analyze_citation_network"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-31",
+   "question": "在当前数据集上比较 TF-IDF、TextRank 和 YAKE 三种关键词提取方法的排序差异和一致性。",
+   "expectedTools": [
+    "compare_keyword_methods"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-32",
+   "question": "用专利查专利的方式比较 BM25、向量检索和 RRF 融合的检索效果，按互引和 IPC 伪相关评估。",
+   "expectedTools": [
+    "compare_retrieval_methods"
+   ],
+   "split": "test"
+  },
+  {
+   "id": "ts-33",
+   "question": "以 IPC 主组为标签，比较嵌入近邻、最近质心和文本近邻投票三种自动分类方法的准确率和宏 F1。",
+   "expectedTools": [
+    "compare_classification_methods"
+   ],
+   "split": "dev"
+  }
+ ]
+}
