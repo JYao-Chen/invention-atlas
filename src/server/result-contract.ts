@@ -10,7 +10,17 @@ export function resultContract(result:AnalysisResult){
 }
 Object.assign(fieldDefinitions,{interpretation:'模型辅助整理的技术解释，不是专利原文',start:'引文在来源字段或拆分条款中的UTF-16起点',claimNumber:'按原文真实编号拆分后的条款号，原保存编号参见source_claim',sourceUrl:'对应专利来源链接',modelAssisted:'是否为模型辅助整理；不代表独立验证'});
 Object.assign(fieldDefinitions,{document_version:'保存的原文版本，不代表公开日期',section:'来源字段abstract摘要、description说明书或claim权利要求',ordinal:'该原文版本中的片段序号，从0开始',offset:'片段在指定原文字段中的UTF-16起点',end:'片段在指定原文字段中的UTF-16终点，不含终点字符',match:'实际执行的关键词或语义召回路径',rank_score:'RRF融合排名分数，非准确率',source_url:'该版本保存的来源链接',title:'专利标题或事件标题，结合行类型区分',abstract:'来源摘要原文',applicants:'申请人名称集合，与受让人分开',assignees:'受让人名称集合，不自动等同申请人',publicationDate:'公开日期',claims:'原文权利要求列表；在指标筛查中为条款数量，非质量评分',description:'来源说明书原文',public_evidence:'公开补充来源、获取时点和事件资料',records:'本次范围记录数',indexed:'具有嵌入向量的记录数',record_count:'集中度统计中参与分数计数的记录数',entity_count:'当前范围主体数',cr3:'份额排名前三主体的合计份额，0至1',cr5:'份额排名前五主体的合计份额，0至1',cr10:'份额排名前十主体的合计份额，0至1',hhi:'主体份额平方和，0至1；非市场集中度',effective_entities:'Shannon熵的指数，非1/HHI',topic_name:'模型辅助技术主题名',label:'展示标签，不替代原文',start_year:'关键词突现区间起始观测年',end_year:'关键词突现区间结束观测年',level:'Kleinberg突现状态层级',baseline_rate:'全范围包含该词的文献比例',burst_rate:'对应突现层级的发射概率',s:'Kleinberg状态倍率参数',gamma:'Kleinberg上升状态惩罚系数',source_date:'路线起点公开日期',target_date:'路线终点公开日期',search_path_count:'SPC路径数，以十进制字符串保留大整数精度',main_path:'是否属于该连通分量选定的主路径',citation_in:'原引用文献编号；主路径边按时间反向组织',pareto_front:'引证指标非支配层，不是商业价值等级',backward_citations:'来源后向引用数，null表示无资料或零计数未区分',reference_records:'引证筛查参照语料数',economic_value:'商业价值未计算，null不能视为零价值',function:'从原文抽取的技术措施标签',effect:'原文陈述的效果，不是独立实验验证',section_offset:'引句在指定原文段中的字符位置',source_offset:'在保存来源文本中的字符位置；缺定位时null',assessment:'抽取结果的来源声明与验证边界',claim:'指定版本的权利要求号',element:'模型辅助技术要素标签',relation:'模型辅助要素关系',change:'与相同检索基线相比的变化类型',status:'来源状态或操作状态，结合工具区分',event:'来源事件说明',basis:'资料来源或匹配依据',details:'来源事件文本',issue:'数据审计异常类型',field:'覆盖率或异常对应字段',strategy:'检索策略名称',unique:'该策略返回集合的独有命中数',intersection:'策略返回集合交集',added:'相对前一集合新增，不代表新公开',removed:'相对前一集合移出，不代表失效',residual:'观测量减拟合量',fitted:'Logistic拟合累计量',r2:'Logistic拟合决定系数',rmse:'Logistic拟合均方根误差',L:'Logistic渐近量参数，非未来行业总量',k:'Logistic增长参数',t0:'Logistic拐点年份参数',weakly_identified:'拟合参数识别不足的标志'});
-export const parameterDescriptions={index_version:'全文片段原文版本标识；省略时使用版本列表末项，不能自行编造版本',query:'检索表达；语义检索可中文，BM25策略建议明确英文术语',top_k:'结果返回上限，整数1至1000；不是总体记录数',year_start:'公开年起点，整数',year_end:'公开年终点，整数',applicant:'申请人名称过滤',ipc:'IPC前缀过滤',patent_numbers:'指定公开版本编号列表，最多5项',claim_numbers:'指定权利要求号整数列表；缺省为全部条款',k:'K-means主题数，整数2至12',dimension:'合作主体类型applicant或inventor',strategies:'至少2组{name,query}策略',strategy_id:'监测基线策略标识',frequency:'公开趋势粒度year或month',counting:'publication公开件或family同族代表件'};
+export const parameterDescriptions={
+ seed:'方法对比固定种子，整数0至4294967295，默认42；输入先按公开编号排序',
+ query_count:'检索对比抽样授权查询数量，整数1至1000，默认50；不足时取全部授权件',
+ bm25_k1:'方法对比BM25词频饱和参数，数值0.01至10，默认1.2',
+ bm25_b:'方法对比BM25长度归一化参数，数值0至1，默认0.75',
+ rrf_constant:'RRF排名常数，整数1至1000，默认60；融合所有正分BM25及全部向量候选排名',
+ min_class_size:'分类每类最少样本数，整数3至10000，默认10；按第一个IPC主组筛选',
+ development_ratio:'分类开发集比例，数值0.5至0.9，默认0.7；每类至少2件开发、1件留出',
+ cv_folds:'开发集分层交叉验证折数，整数2至10，默认3，实际不超过开发集最小类样本数',
+ k_candidates:'kNN/BM25投票近邻数候选列表，1至20项、每项整数1至100，默认[1,3,5,7]；单项即固定k；只在开发集按宏F1选择',
+ index_version:'全文片段原文版本标识；省略时使用版本列表末项，不能自行编造版本',query:'检索表达；语义检索可中文，BM25策略建议明确英文术语',top_k:'结果返回上限，整数1至1000；不是总体记录数',year_start:'公开年起点，整数',year_end:'公开年终点，整数',applicant:'申请人名称过滤',ipc:'IPC前缀过滤',patent_numbers:'指定公开版本编号列表，最多5项',claim_numbers:'指定权利要求号整数列表；缺省为全部条款',k:'K-means主题数，整数2至12',dimension:'合作主体类型applicant或inventor',strategies:'至少2组{name,query}策略',strategy_id:'监测基线策略标识',frequency:'公开趋势粒度year或month',counting:'publication公开件或family同族代表件'};
 Object.assign(fieldDefinitions,{cpc:'CPC分类，不能冒充IPC',growth:'旧版生命周期的样本年度增长量；以该次method为准',rate:'Logistic增长率参数；旧结果须结合该次method解释',weight:'图边权重或工具权重，按关系类型与method解释',kind:'节点或关系类型，区分内部文献、外部标识及主体',theme:'旧版技术路线辅助主题，不证明技术继承',representative:'该行选择的代表文献编号',family_known:'具备来源同族资料的覆盖情况，非完整全球同族认证',metric:'该行指标名称，用于区分混合结果行',name:'检索策略名称',query:'实际执行的检索表达',returned:'该策略返回数量，受Top-K限制',role:'权利要求要素角色',depends_on:'来源条款的依赖关系',fitted_cumulative:'Logistic拟合累计公开量',asymptote:'Logistic渐近量参数，非行业预测',inflection_year:'Logistic拐点年份参数',r_squared:'拟合决定系数',observations:'参与拟合的观测年数',code:'来源分类号或法律事件代码，按行类型区分',family_office:'来源同族成员编号对应公开局',member:'来源同族成员编号，未认证当前效力',family_definition:'来源的同族成员定义',observed_at:'来源资料获取时点',sourceUrl:'原始资料或补充声明的链接',retrievedAt:'补充资料获取时间',transactionYear:'披露组合交易年份',assetScope:'交易所涉及资产范围，不是单项专利价格',reportedAmount:'来源披露的组合金额，不能按数量分摊',currency:'来源披露金额币种',pricingBasis:'金额的来源口径',associationBasis:'组合交易与记录关联的依据',limitation:'该来源资料的明确解释限制',topic_explanation:'模型依据组内资料作出的主题解释',topic_evidence:'主题辅助命名使用的文献编号与引文',topic_basis:'主题命名依据',topic_model:'辅助主题命名所用模型',target_patent:'权利要求对照的目标公开版本',target_claim:'对照目标条款号',target_element:'目标条款辅助要素标签',target_quote:'目标条款连续原文证据',target_offset:'目标引句在该目标条款中的字符位置',reason:'异常或匹配的具体理由',target_source:'目标文献原始链接',date_relation:'来源日期间的比较，不自动构成现有技术判断',review:'对照的辅助检查结果，未代替法律审查'});
 Object.assign(fieldDefinitions,{claim_structure:'按原文明确引用编号识别的权利要求关系；nodes保留独立/从属/取消/待确认状态及精确引用位置，edges由从属项指向在先项。不是保护范围、有效性或新颖性判断。',source_claim:'保存记录中原条款编号；合并条款拆分后可能不同于claim',source_claim_offset:'引文在保存的原条款文本中的UTF-16起点',claim_structure_status:'条款结构识别状态：independent/dependent/cancelled/unresolved；非法律判断'});
 Object.assign(fieldDefinitions,{target_source_claim:'目标专利保存记录中的原条款编号',target_source_claim_offset:'目标引文在保存原条款中的UTF-16起点',target_source_offset:'目标引文在保存来源全文中的UTF-16起点；缺定位或没有对应项时为null'});
@@ -21,6 +31,9 @@ Object.assign(fieldDefinitions,{
 export function toolInformation(tool:string){
  const extra:Record<string,string[]>={search_patent_passages:['query','top_k','index_version','patent_numbers'],search_patents:['query','top_k'],read_patent_details:['patent_numbers'],analyze_patent_trend:['frequency'],analyze_clustering:['k'],generate_wordcloud:['top_k'],analyze_yearly_keywords:['top_k'],analyze_burst_terms:['top_k'],analyze_co_network:['dimension'],audit_search_strategy:['strategies','top_k'],monitor_patent_changes:['query','strategy_id','top_k'],analyze_claim_elements:['patent_numbers','claim_numbers'],compare_claims:['patent_numbers','claim_numbers'],analyze_tech_matrix:['patent_numbers']};
  const ranked=['analyze_ipc_distribution','analyze_country_distribution','analyze_competitor_evolution','analyze_entity_portfolio','analyze_patent_valuation','analyze_citation_network','analyze_family_geography','analyze_legal_status'];
+ extra.compare_keyword_methods=['top_k','seed'];
+ extra.compare_retrieval_methods=['seed','query_count','bm25_k1','bm25_b','rrf_constant'];
+ extra.compare_classification_methods=['seed','min_class_size','development_ratio','cv_folds','k_candidates','bm25_k1','bm25_b'];
  extra.analyze_patent_reading=['patent_numbers'];
  const keys=['year_start','year_end','applicant','ipc','counting',...(extra[tool]||[]),...(ranked.includes(tool)?['top_k']:[])];
  return {purpose:guideChapters.find(c=>c.tool===tool)?.intro,parameters:Object.fromEntries(keys.map(key=>[key,parameterDescriptions[key as keyof typeof parameterDescriptions]])),resultRead:'计算结果含scope、rows、rowSources、method和warnings；完整结果可按resultId分页读取。'};
@@ -58,3 +71,42 @@ export function readResult(result:AnalysisResult,input:{offset?:number;limit?:nu
  if(input.section==='graph'){const edges=result.graph?.edges||[];const selected=edges.slice(offset,offset+limit),ids=new Set(selected.flatMap(e=>[e.source,e.target]));return {id:result.id,tool:result.tool,section:'graph',total:edges.length,offset,edges:selected,nodes:result.graph?.nodes.filter(n=>ids.has(n.id))||[],nextOffset:offset+limit<edges.length?offset+limit:null};}
  const selected=matched.slice(offset,offset+limit);return {id:result.id,tool:result.tool,status:result.status,params:result.params,scope:result.scope,contract:resultContract(result),monitorBrief:result.monitorBrief?{...result.monitorBrief,events:selected.flatMap(x=>result.monitorBrief!.events[x.index]?[result.monitorBrief!.events[x.index]]:[]),totalEvents:result.monitorBrief.events.length,countsScope:'完整监测结果，非当前页'}:undefined,total:matched.length,offset,rows:selected.map(x=>x.row),rowSources:selected.flatMap(x=>result.rowSources?.find(s=>s.row===x.index)?[result.rowSources.find(s=>s.row===x.index)!]:[]),nextOffset:offset+limit<matched.length?offset+limit:null};
 }
+
+Object.assign(fieldDefinitions,{
+ method_name:'方法标识：tfidf/textrank/yake、bm25/vector/rrf、knn/nearest_centroid/bm25_vote',
+ parameters:'本行方法实际参数和固定候选参数；分类actual_cv_folds为实际折数、neighbor_k为开发集选出的k，最近质心为null',
+ data_range:'本次计算范围：patent_ids及record_count；分类含development_ids、holdout_ids及因嵌入缺失排除的两类编号；当前范围标题+摘要',
+ seed:'固定伪随机种子，默认42；分层及抽样先按公开编号排序',
+ metrics:'本行指标对象；关键词returned_keywords，检索precision/recall/ndcg，分类accuracy/macro_f1/top3_accuracy；不可计算为null',
+ elapsed_ms:'毫秒；关键词提取计时，检索查询耗时合计（RRF包含两路检索及融合），分类选参后开发集统计构建+一次留出预测与评分；不含数据库读取、选参及结果保存',
+ sample_size:'实际参与本行的语料件数、查询件数或留出件数，按工具区分；检索无伪相关查询也计入此数',
+ keyword_score:'方法内排序分数；YAKE为逐文档1/(1+局部分数)语料均值；均为越大越靠前，不能跨方法比较数值',
+ other_method:'Jaccard对比中的另一方法',union_size:'两组返回关键词并集大小',jaccard:'关键词交集/并集；并集为空时null，不是准确率',
+ k:'Logistic增长参数；检索方法对比中为评价截断排名5或10，结合工具及行类型解释',
+ comparison_label:'图表方法/伪相关口径/k标签',basis:'citation：语料内双向互引强相关；ipc：任一IPC主组相同弱相关，独立二元口径',
+ precision:'P@k：前k项伪相关数/k；实际返回不足k仍除以k，对有伪相关池的查询取宏平均',
+ recall:'Recall@k：前k项伪相关数/语料内伪相关总数；无正例查询排除，全部无正例为null',
+ ndcg:'二元nDCG@k：sum(rel_i/log2(i+1))/理想DCG；无正例查询排除，全部无正例为null',
+ mean_query_ms:'每个可执行查询平均耗时（毫秒）；包含无正例查询，RRF包含两路与融合；不含索引构建',
+ setup_ms:'查询前BM25索引构建耗时（毫秒）；vector为0、RRF复用同一索引，不可跨k/口径累加',
+ evaluated_queries:'有至少1个当前口径伪相关对象的可执行查询数，是三项检索指标的平均分母',
+ query_ids:'本方法实际执行的固定抽样查询编号；缺嵌入的查询不会进入向量及RRF',
+ citation_coverage:'当前范围citations非空的记录比例；无法区分无引用与未采集',
+ internal_citation_coverage:'当前范围至少有1条语料内出向或入向引证的记录比例',
+ query_patent:'以专利查专利的查询公开编号，检索结果排除本件',
+ hits:'前10检索证据：patent编号及score；BM25原分数、余弦或RRF分数，非概率',
+ strong_relevant:'语料内引用查询或被查询引用的编号，按citationKey归一化公开版本后匹配',
+ weak_relevant:'除查询本件外任一IPC主组相同的语料编号，与强相关口径独立',
+ accuracy:'留出集预测标签等于第一个IPC主组的比例；弃答按错误计',
+ macro_f1:'各合格标签F1的算术平均；F1=2TP/(2TP+FP+FN)，分母为0时该类为0',
+ top3_accuracy:'留出真实标签出现在最多3个预测标签中的比例；不补齐无近邻标签',
+ selection_ms:'仅开发集交叉验证与选参耗时（毫秒），独立于留出评估耗时',
+ development_size:'本方法实际可用的开发集件数',holdout_size:'本方法实际可用的留出集件数',
+ cv_scores:'开发集每个候选neighbor_k的平均macro_f1及fold_scores；同分选择更小k，质心仅1项无可调k',
+ cv_fold_ids:'仅开发集交叉验证每折的验证编号，任何留出编号不得出现',
+ abstentions:'没有正分BM25文本近邻而输出null标签的留出样本数，按错误评分',
+ actual_label:'第一个IPC规范化后的主组真值',predicted_label:'预测主组，BM25无正分近邻时为null',
+ top_labels:'最多3个按投票排序的标签；质心按余弦排序；投票同票比较分数和，再按标签字典序',
+ neighbors:'解释证据数组，每项patent为开发集近邻编号、score为余弦或BM25；质心方法附最近1件嵌入近邻',
+ score_kind:'近邻证据分数口径cosine或bm25；不是准确率',
+});

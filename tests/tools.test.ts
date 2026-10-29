@@ -29,7 +29,7 @@ test('empty filtered ranges are not reported as an unimported dataset',async()=>
  const unimported=await executeTool('analyze_burst_terms',{}, {...meta,count:0},[]);
  assert.equal(unimported.summary,'尚未导入专利');
 });
-const parameters:Record<string,object>={search_patent_passages:{query:'network'},search_patents:{query:'blockchain',top_k:2},read_patent_details:{patent_numbers:['US900B1']},audit_search_strategy:{strategies:[{name:'a',query:'blockchain'},{name:'b',query:'authentication'}]},monitor_patent_changes:{query:'blockchain',strategy_id:'unit-test'}};
+const parameters:Record<string,object>={compare_classification_methods:{min_class_size:3},search_patent_passages:{query:'network'},search_patents:{query:'blockchain',top_k:2},read_patent_details:{patent_numbers:['US900B1']},audit_search_strategy:{strategies:[{name:'a',query:'blockchain'},{name:'b',query:'authentication'}]},monitor_patent_changes:{query:'blockchain',strategy_id:'unit-test'}};
 for(const [name] of TOOL_DEFS){
  if(name==='compare_claims'||name==='analyze_patent_reading')continue; // Model-backed reading/comparison have separate extractor and scope tests.
  test(`${name}: valid input and empty scope`,async()=>{

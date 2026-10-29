@@ -12,6 +12,8 @@
 | --- | --- | --- |
 | `search_patents` | `query`、`top_k`；标题、摘要；完成索引后可语义检索 | 相关专利及检索得分，保留实际返回范围 |
 | `read_patent_details` | `patent_numbers`，最多5项 | 摘要、权利要求、说明书及来源字段 |
+| `compare_retrieval_methods` | 授权件固定种子抽样；`query_count`默认50；`bm25_k1/bm25_b/rrf_constant` | BM25、已存嵌入余弦和RRF；互引/IPC两口径P@5/10、Recall、nDCG、耗时及引用覆盖率 |
+| `compare_classification_methods` | 第一个IPC主组；`min_class_size`默认10；`development_ratio`默认0.7；`cv_folds/k_candidates` | kNN、最近质心、BM25投票；仅开发集选参、一次留出评估、近邻证据 |
 
 ## 数据与态势
 
@@ -28,9 +30,12 @@
 | 工具标识 | 参数与数据 | 输出 |
 | --- | --- | --- |
 | `generate_wordcloud` | 标题/摘要；`top_k`，默认50 | TF、DF和平滑TF-IDF，可选词云与数值图 |
+| `compare_keyword_methods` | 标题/摘要；`top_k`默认20 | TF-IDF、TextRank、YAKE单词版；前N词、两两Jaccard、示例专利和耗时 |
 | `analyze_burst_terms` | 公开日期、摘要；`top_k` | Kleinberg关键词突现 |
 | `analyze_yearly_keywords` | 公开日期、标题；`top_k`，每年默认10 | 每年关键词及指标，可按年展示 |
 | `analyze_clustering` | 同维嵌入；`k`，默认6 | 固定种子K-means、PCA投影、关键词和模型辅助主题名 |
+
+三个方法对比工具均无训练、无模型或嵌入API调用；新参数由后端目录及OpenAPI提供，前端专用表单待实现。字段不足时保留可用方法并警告，记录保存复用现有结果表。算法、指标公式、引用伪标注及留出纪律见 [方法对比说明](METHOD-COMPARISON.md)。
 
 ## 竞争格局
 

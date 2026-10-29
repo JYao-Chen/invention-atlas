@@ -1,4 +1,7 @@
 export const questions:Record<string,string>={
+ compare_keyword_methods:'在当前数据集中比较TF-IDF、TextRank与YAKE的关键词排名、重合度、示例专利和耗时，不调用模型或嵌入接口。',
+ compare_retrieval_methods:'从当前数据集按固定种子抽样授权专利，比较BM25、已存嵌入余弦和RRF的检索指标及耗时，说明互引与IPC伪标注限制。',
+ compare_classification_methods:'以第一个IPC主组为标签，比较kNN、最近质心与BM25投票；只在开发集选参，报告一次留出集指标、耗时和近邻证据。',
  analyze_patent_reading:'选取当前数据集中的一项原文完整且篇幅适中的专利，分别整理技术问题、技术手段和原文声明的效果，逐项提供引文及字段位置；没有明确依据的内容不作推断。',
  search_patent_passages:'在已建立的全文索引内检索数字身份认证相关片段，列出原文版本、专利编号和逐字证据。',
  compare_claims:'选取两项原文完整且篇幅适中的专利，对照第1项权利要求，逐项列出技术要素的重合、差异和原文证据，不作侵权判断。',
