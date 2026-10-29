@@ -3,8 +3,6 @@ import PatentNarrative from '../components/PatentNarrative';
 import type {Run} from '../lib/types';
 import 'katex/dist/katex.min.css';
 import '../app/globals.css';
-import '../app/tally-ui.css';
-import '../app/journal-colors.css';
 import './report.css';
 
 const report=JSON.parse(document.getElementById('report-data')!.textContent!) as {title:string;run:Run};

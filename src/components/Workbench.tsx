@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState,useRef} from 'react';
-import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
+import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronDown,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
 import Markdown from './MathMarkdown';
 import TechnicalDisclosures from './TechnicalDisclosures';
 import type {GuideChapter} from '@/lib/help-guide';
@@ -193,7 +193,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <span className="dataset-caption">{currentMeta?.name||'尚未导入数据'}</span>
 </div>
 <div className="top-actions">
-{workspace&&<details ref={management} className="workspace-actions"><summary>管理</summary><div>
+{workspace&&<details ref={management} className="workspace-actions"><summary>管理<ChevronDown size={15} aria-hidden="true"/></summary><div>
 {workspace&&<WorkspaceManager workspace={workspace} onSelect={selectProject} openRequest={workspaceOpen}/>}
 {workspace&&<ReceivedReports/>}
 {workspace&&<ReportTaskInbox key={workspace.current?.id} onOpen={async(id,revision)=>{const item=await api('reports/'+id+'?version='+revision);setReport(item);setView('analysis');setMobileFocus(false);}}/>}
@@ -312,14 +312,13 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <Play size={16}/>
 综合分析</button>
 </div>
-<ToolPicker tools={tools} selectedTool={selectedTool} params={scopeParams} years={meta?.years||[]} samplePatent={records[0]?.id} busy={busy} toolBusy={toolBusy} onSelect={chooseTool} onParam={changeParam} onParams={value=>setParameters(JSON.stringify(value,null,2))} onRun={()=>void runTool()}/>
-</>
+</>}<div className={report?'analysis-workspace':'analysis-workspace has-picker'}>{!report&&<ToolPicker tools={tools} selectedTool={selectedTool} params={scopeParams} years={meta?.years||[]} samplePatent={records[0]?.id} busy={busy} toolBusy={toolBusy} onSelect={chooseTool} onParam={changeParam} onParams={value=>setParameters(JSON.stringify(value,null,2))} onRun={()=>void runTool()}/>
 }{visible.length?<div className="results">{visible.map(result=>
 <ResultView key={result.id} result={result} onPatent={(id,location)=>openPatent(id,result.datasetId,location)}/>
 )}</div>:<div className="analysis-empty">
 <h3>尚无分析结果</h3>
 <p>选择工具并运行后，可在这里查看图表和数据。</p>
-</div>}</>
+</div>}</div></>
 }
  {view==='history'&&<>
 <div className="list-heading">
