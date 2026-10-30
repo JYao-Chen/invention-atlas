@@ -69,8 +69,15 @@ export default function Workbench(){
  const [modelCallLimit,setModelCallLimit]=useState('');
  const guideSequence=useRef(0),management=useRef<HTMLDetailsElement>(null);
  const [professionalLaunch,setProfessionalLaunch]=useState<ProfessionalLaunch>(),[workspaceOpen,setWorkspaceOpen]=useState<number>(),[credentialsOpen,setCredentialsOpen]=useState<number>(),[materialsOpen,setMaterialsOpen]=useState<{id:number;part:'materials'|'disclosures'}>();
- async function openGuideFunction(chapter:GuideChapter,mode?:'fill'|'run'){
+ async function openGuideFunction(chapter:GuideChapter,mode?:'fill'|'run'|'assistant'){
   const example=Boolean(mode);
+  if(mode==='assistant'&&chapter.question){
+   const question=chapter.question,tool=chapter.tool&&tools.find(t=>t.name===chapter.tool);setReport(undefined);setError('');setView('analysis');setMobileFocus(true);history.replaceState(null,'',location.pathname);
+   if(!meta){setError('请先选择数据集，再填入分析助手。');return;}
+   if(tool&&!tool.available){setError('当前数据集缺少“'+tool.title+'”所需字段，助手无法运行该示例。');return;}
+   chosenStarter.current=tool?{name:tool.name,title:tool.title,group:tool.group,question,datasetId:meta.id,params:toolExampleParams(tool.name,tool.defaultParams||defaults(tool.name,records[0]?.id),records)}:undefined;
+   setText(question);setTimeout(()=>document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus(),50);return;
+  }
   const id=++guideSequence.current;setReport(undefined);setError('');
   if(chapter.example){if(!meta){setError('请先选择数据集，再打开专业任务。');return;}try{const sample=example?(await api('patents?'+new URLSearchParams({dataset:meta.id,page:'1',q:''}))).records:[];if(id!==guideSequence.current)return;setProfessionalLaunch({id,workflow:chapter.example.workflow,preset:example?professionalPreset(chapter.example.workflow,meta,sample):{datasetId:meta.id},question:example?chapter.example.question:undefined});}catch(error){setError('读取演示参数失败：'+(error as Error).message);}return;}
   if(chapter.module==='workspace'||chapter.module==='credentials'){if(management.current)management.current.open=true;if(chapter.module==='workspace')setWorkspaceOpen(id);else setCredentialsOpen(id);return;}
