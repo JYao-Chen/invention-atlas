@@ -23,6 +23,6 @@ export function confirmLayout(source:AnalysisResult,raw:unknown){
  if(!selected.length)throw new Error('确认后没有证据组合，请至少保留一项已观测关系');
  const matrix=layoutMatrix(selected.map(item=>item.row));
  for(const cell of matrix.cells)cell.evidenceRows=cell.evidenceRows.map(index=>selected[index].index);
- matrix.interpretation='按用户明确确认的标签分组及合并，计数为去重公开编号；合并不代表独立验证的术语等价性。非空组合完整保留，缺少组合只预览前120项并声明省略数量。未观察关系仅限本次抽取及用户保留证据，不能解释为专利空白、可申请性或自由实施。';
+ matrix.interpretation='按用户明确确认的标签分组及合并，计数为去重公开编号。非空组合完整保留，缺少组合只预览前120项并声明省略数量。未观察关系按本次抽取及用户保留证据统计。';
  return {resultId:source.id,objective:confirmation.objective,functions:confirmation.functions,effects:confirmation.effects,matrix,sourceEvidenceCount:source.rows.length,includedEvidenceCount:selected.length,excludedEvidenceCount:source.rows.length-selected.length,evidenceSemantics:'矩阵标签为用户确认标签，原始标签和引文保存在来源结果；evidenceRows仍指向该来源完整rows，未改写原文。',interpretation:matrix.interpretation};
 }

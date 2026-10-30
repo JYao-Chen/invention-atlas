@@ -17,7 +17,7 @@ export default function DisclosureQuestions({id,revision}:{id:string;revision:nu
   finally{if(controller.current===task){controller.current=null;setBusy(false);}}
  }
  return <section aria-label="交底材料技术追问">
-  <h4>保存第{revision}版的技术追问</h4><p className="muted">模型根据保存材料提出补充问题。引文用于核对所指内容，问题不代表材料必然存在缺陷，也不会自动修改材料。</p>
+  <h4>保存第{revision}版的技术追问</h4><p className="muted">模型根据保存材料提出补充问题。引文用于核对所指内容，可据此补充材料。</p>
   <div className="record-actions"><button disabled={busy} onClick={()=>void generate()}>{generated?'重新生成技术追问':'生成技术追问'}</button>{busy&&<button onClick={()=>{controller.current?.abort();setBusy(false);}}>取消生成</button>}</div>
   {busy&&<p role="status">正在阅读保存材料并生成技术追问…</p>}
   {generated&&!questions.length&&<p role="status">本次未提出额外追问，不表示方案内容已完整。</p>}

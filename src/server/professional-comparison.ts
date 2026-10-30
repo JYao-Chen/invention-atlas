@@ -40,5 +40,5 @@ export async function prepareNoveltyComparison(pool:Pool,taskId:string,run:Run,s
   documents.push({patentId:id,title:patent.title,sourceUrl:patent.sourceUrl,documentVersion:chunks[0]?.documentVersion,chunkCount:chunks.length,sourceChunks:chunks,batches,status:chunks.length?'compared':'no_source'});
  }
  signal.throwIfAborted();
- return tasks.propose(taskId,'comparison',{featureRevision:features.revision,candidateRevision:candidates.revision,documents,notes:['每件专利单独对照全部可读取片段，批次结果不合并为法律结论。','未找到仅限本次保存的来源文本；缺失原文与未找到技术特征分别表示。','引文定位经程序核对，技术对应关系仍需用户核对确认。']},run.id);
+ return tasks.propose(taskId,'comparison',{featureRevision:features.revision,candidateRevision:candidates.revision,documents,notes:['每件专利单独对照全部可读取片段。','未找到仅限本次保存的来源文本；缺失原文与未找到技术特征分别表示。','引文保留原文位置。']},run.id);
 }

@@ -14,7 +14,7 @@ export default function ReportPublications({reportId,revision,latest,readOnly}:{
  }
  const published=rows.some(row=>row.revision===revision);
  return <details className="report-publications"><summary>正式发布 · {rows.length}版</summary>
-  <p className="muted">发布固定已保存的正文、研究范围和工具结果。后续草稿不改变发布版本；发布状态不代表法律意见或质量认证。</p>
+  <p className="muted">发布固定已保存的正文、研究范围和工具结果。后续草稿不改变发布版本。</p>
   {!readOnly&&<div className="record-actions"><button type="button" disabled={busy||revision!==latest||published} onClick={()=>void publish()}>{published?'当前版本已发布':'发布当前保存版本'}</button>{revision!==latest&&<span className="muted">请先选择最新草稿。</span>}</div>}
   {busy&&<p role="status">正在读取或保存发布记录…</p>}
   {!busy&&!rows.length&&<p className="muted">尚未发布。草稿仍可编辑和下载。</p>}

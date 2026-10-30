@@ -18,7 +18,7 @@ export function parseProposalFeatures(proposal:string,input:unknown){
   if(within<0)throw new Error('技术特征引文不在指定方案原文中');
   return {id:'F'+(index+1),feature:feature.feature,role:feature.role,quote:feature.quote,start:start+within,end:start+within+feature.quote.length,modelAssisted:true};
  });
- return {summary:draft.summary,features,questions:draft.questions,proposal,notes:['特征描述与待补问题由模型辅助提取；逐项核对原文后确认。','原文片段定位正确不等于特征解释完整，也不构成新颖性结论。']};
+ return {summary:draft.summary,features,questions:draft.questions,proposal,notes:['特征描述与待补问题由模型辅助提取。']};
 }
 
 export async function extractProposalFeatures(proposal:string,signal:AbortSignal,write:typeof chat=chat){

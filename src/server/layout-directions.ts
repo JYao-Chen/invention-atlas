@@ -16,7 +16,7 @@ export function validateLayoutDirections(source:AnalysisResult,confirmation:unkn
   if(!cells.some(cell=>cell.function===direction.function)||!cells.some(cell=>cell.effect===direction.effect))throw new Error('方向证据须分别支持选定技术措施与效果标签');
   const key=JSON.stringify([direction.function,direction.effect,direction.query]);if(seen.has(key))throw new Error('候选方向与补检索式不能重复');seen.add(key);
   const observed=confirmed.matrix.cells.find(cell=>cell.function===direction.function&&cell.effect===direction.effect);
-  return {...direction,relationStatus:observed?'observed_in_selected_evidence':'unobserved_recombination_hypothesis',observedPublications:observed?.documents||0,evidence:direction.evidenceRows.map(index=>({...source.rows[index],row:index,patent:String(source.rows[index].patent),quote:String(source.rows[index].quote)})),limitation:observed?'该关系来自专利文本声明，是否满足研发目标仍待验证。':'此组合是待验证重组假设，引用分别支持措施与效果，不证明两者组合可行，也不构成专利空白或自由实施判断。'};
+  return {...direction,relationStatus:observed?'observed_in_selected_evidence':'unobserved_recombination_hypothesis',observedPublications:observed?.documents||0,evidence:direction.evidenceRows.map(index=>({...source.rows[index],row:index,patent:String(source.rows[index].patent),quote:String(source.rows[index].quote)})),limitation:observed?'该关系来自专利文本声明。':'此组合为重组假设，引用分别对应措施与效果。'};
  });
  return {resultId:source.id,objective:confirmed.objective,directions,unresolved:parsed.unresolved,proposedBy:'model-assisted',legalAssessmentPerformed:false};
 }

@@ -23,7 +23,7 @@ export const PROFESSIONAL_WORKFLOWS:ProfessionalWorkflow[]=[
   {id:'labels',title:'标签保留与合并确认',tools:[],outputs:['用户标签映射','保留与排除证据','确认矩阵'],confirmation:true},
   {id:'directions',title:'候选方向与补检索',tools:['search_patents','search_patent_passages'],outputs:['有证据的候选方向','检索记录','未解决问题'],confirmation:true},
   {id:'report',title:'布局研究报告',tools:[],outputs:['研发目标与范围','证据矩阵','候选方向及限制'],confirmation:false},
- ],limitations:['未观测组合不构成专利空白、可申请性或自由实施判断。','标签合并是用户确认的研究口径，原始标签与引文仍保留。']},
+ ],limitations:['标签合并是用户确认的研究口径，原始标签与引文仍保留。']},
  {id:'technology-landscape',version:'1.0',title:'技术全景',purpose:'在确认的专题范围内分析公开态势、技术主题和主要主体，并关联代表专利。',requiredInputs:['datasetId'],executionAvailable:false,stages:[
   {id:'scope',title:'研究范围确认',tools:['get_dataset_summary','audit_dataset'],outputs:['计数口径','年份与字段覆盖','研究范围'],confirmation:true},
   {id:'retrieval',title:'专题检索与候选确认',tools:['search_patents','audit_search_strategy'],outputs:['检索策略','候选专利清单'],confirmation:true},

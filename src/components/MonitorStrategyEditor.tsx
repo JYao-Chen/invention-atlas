@@ -27,7 +27,7 @@ export default function MonitorStrategyEditor({id,revision,params,readOnly,busy,
   </div>
   {loading&&<p role="status">正在读取策略历史…</p>}{error&&<p role="alert">{error} <button disabled={loading} onClick={()=>void load()}>重试读取策略历史</button></p>}
   {stale&&<p role="status">服务器已有第{latest}版策略，请刷新订阅版本后修改。</p>}
-  {selected!==revision&&<p className="muted">正在查看保存第{selected}版，仅供阅读，不会改变当前监测。</p>}
+  {selected!==revision&&<p className="muted">正在查看保存第{selected}版，当前监测使用第{revision}版。</p>}
   {selected!==revision&&!readOnly&&<button disabled={busy||loading||stale} onClick={()=>{setSelected(revision);setDirty(true);}}>以此版本编辑新策略</button>}
   <form key={selected+':'+formVersion} onChange={()=>setDirty(true)} onSubmit={e=>{
    e.preventDefault();const values=monitorParamsFromForm(new FormData(e.currentTarget));

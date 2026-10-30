@@ -20,7 +20,7 @@ export default function ReportDraftEditor({reportId,selectedRevision,readOnly,on
  const comparison=versions.find(v=>v.revision===comparisonRevision),differences=current&&comparison?compareReportSections(comparison.answer,current.answer):[];
  return <details className="report-version-panel"><summary>报告版本与编辑{selectedRevision?' · 草稿第'+selectedRevision+'版':' · 原始报告'}</summary>
   <label>阅读版本<select aria-label="阅读报告版本" disabled={busy} value={selectedRevision} onChange={e=>{const version=versions.find(v=>v.revision===Number(e.target.value));if(version)onRead(version);}}>{versions.map(version=><option key={version.revision} value={version.revision}>{version.revision?'草稿第'+version.revision+'版':'原始报告'} · {version.title}</option>)}</select></label>
-  {current?.citation_review==='needs_review'&&<p className="notice">人工编辑草稿：正文已修改，引用与结论需核对。原始工具结果未改变。</p>}
+  {current?.citation_review==='needs_review'&&<p className="notice">人工编辑草稿：正文已修改，原始工具结果保留。</p>}
   <div className="record-actions"><a className="button" href={'/api/reports/'+reportId+'/html?version='+selectedRevision}>下载当前版本 HTML</a><a className="button" href={'/api/reports/'+reportId+'/markdown?version='+selectedRevision}>下载当前版本 Markdown</a></div>
   <ReportDocumentDownloads key={'download:'+reportId+':'+selectedRevision} baseUrl={'/api/reports/'+reportId+'?version='+selectedRevision} filename={'patent-report-'+reportId+'-version-'+selectedRevision}/>
   <ReportComments key={'comments:'+reportId+':'+selectedRevision} reportId={reportId} revision={selectedRevision} readOnly={readOnly}/>

@@ -11,7 +11,7 @@ export default function SourceVersions({datasetId,patentId}:{datasetId:string;pa
   return()=>control.abort();
  },[open,datasetId,patentId,page,reload]);
  return <details className="source-versions" onToggle={event=>setOpen(event.currentTarget.open)}><summary>来源版本与修改内容{data?` · ${data.total}版`:''}</summary>
-  <p className="muted">保存来源更新前后的记录。获取时点为本系统读取数据的时间，不代表官方修订或法律状态变更时间。</p>
+  <p className="muted">保存来源更新前后的记录。获取时点为本系统读取数据的时间。</p>
   <button disabled={busy} onClick={()=>setReload(value=>value+1)}>刷新来源版本</button>
   {busy&&<p role="status">正在读取来源版本…</p>}{error&&<p className="error" role="alert">{error}</p>}
   {data&&!data.versions.length&&<p className="muted">尚无来源更新版本。初始导入及手工修改不会自动成为来源更新版本。</p>}

@@ -1,6 +1,8 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {Database,Search,MessagesSquare,FileText,Settings,PanelLeftOpen,PanelLeftClose,LogOut,BookOpen,MoreHorizontal,X} from 'lucide-react';
+import {Database,Search,MessagesSquare,FileText,Settings,PanelLeftOpen,PanelLeftClose,LogOut,BookOpen,MoreHorizontal,X,CodeXml,ArrowUpRight} from 'lucide-react';
+
+import {projectRepository} from '@/lib/help-guide';
 
 export const atlasPages={data:'数据与证据',analysis:'查询工作台',history:'对话历史',reports:'报告库',settings:'模型与设置',help:'使用说明'};
 type Page=keyof typeof atlasPages;
@@ -42,6 +44,7 @@ export default function AtlasNavigation({page,assistant,collapsed,onToggle,onNav
 </button>
 </nav>
 <div className="atlas-sidebar-account">
+<a className="atlas-repository-link" href={projectRepository} target="_blank" rel="noreferrer" aria-label="GitHub 仓库" title="GitHub 仓库"><CodeXml size={18} aria-hidden="true"/><span>GitHub 仓库</span><ArrowUpRight size={14} className="atlas-repository-arrow" aria-hidden="true"/></a>
 <span>{username}</span>
 <button aria-label="退出登录" title="退出登录" onClick={onLogout}>
 <LogOut size={18}/>
@@ -60,6 +63,7 @@ export default function AtlasNavigation({page,assistant,collapsed,onToggle,onNav
 <section className="atlas-mobile-menu-body">
 <div className="atlas-mobile-menu-heading"><h2 id="atlas-mobile-menu-title">全部功能</h2><button type="button" aria-label="关闭功能菜单" onClick={()=>setMenuOpen(false)}><X size={22}/></button></div>
 <nav className="atlas-mobile-menu-links" aria-label="全部功能">{navigationPages.map(key=>{const Icon=icons[key];return <button key={key} aria-current={!assistant&&page===key?'page':undefined} className={!assistant&&page===key?'active':''} onClick={()=>navigate(key)}><Icon size={22}/><span>{atlasPages[key]}</span></button>;})}<button className={assistant||page==='history'?'active':''} aria-current={assistant||page==='history'?'page':undefined} onClick={openAssistant}><MessagesSquare size={22}/><span>分析助手</span></button></nav>
+<a className="atlas-repository-link atlas-mobile-repository" href={projectRepository} target="_blank" rel="noreferrer"><CodeXml size={18} aria-hidden="true"/><span>GitHub 仓库</span><ArrowUpRight size={14} aria-hidden="true"/></a>
 <div className="atlas-mobile-menu-account"><span>{username}</span><button type="button" onClick={()=>{setMenuOpen(false);onLogout();}}><LogOut size={18}/><span>退出登录</span></button></div>
 </section>
 </dialog>

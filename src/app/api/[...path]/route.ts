@@ -1,6 +1,7 @@
 import {ExternalReferenceReader} from '@/server/external/store';
 import {humanAiReviewEndpoint} from '@/server/human-ai-review-api';
 import {NextResponse} from 'next/server';
+import {collapseTextHistory} from '@/lib/run-event-history';
 import {publicMineruSettings,saveMineruSettings} from '@/server/mineru-settings';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
@@ -220,8 +221,8 @@ if(resource==='patents'){const meta=(await dataset(url.searchParams.get('dataset
   if(action==='retry-report')return NextResponse.json(await retryReport(id),{status:202});
   const r=(await run(id));if(!r)return NextResponse.json({error:'运行不存在'},{status:404});
   if(action==='events'){
-   let after=Number(url.searchParams.get('after')||0),closed=false;const encoder=new TextEncoder();let timer:ReturnType<typeof setTimeout>;
-   const stream=new ReadableStream({start(controller){const poll=async ()=>{if(closed)return;try{if(!(await currentSession(request))){closed=true;controller.close();return;}const batch=await events(id,after);if(closed)return;for(const e of batch){after=e.seq;controller.enqueue(encoder.encode(`id: ${e.seq}\nevent: ${e.event}\ndata: ${e.payload}\n\n`));}if((await run(id))?.status!=='running'){closed=true;controller.close();return;}timer=setTimeout(poll,250);}catch(error){if(!closed){closed=true;controller.error(error);}}};void poll();request.signal.addEventListener('abort',()=>{closed=true;clearTimeout(timer);try{controller.close();}catch{}},{once:true});},cancel(){closed=true;clearTimeout(timer);}});
+   let after=Number(url.searchParams.get('after')||0),closed=false,snapshot=url.searchParams.get('snapshot')==='1';const encoder=new TextEncoder();let timer:ReturnType<typeof setTimeout>;
+   const stream=new ReadableStream({start(controller){const poll=async ()=>{if(closed)return;try{if(!(await currentSession(request))){closed=true;controller.close();return;}const batch=await events(id,after);if(closed)return;const outgoing=snapshot?collapseTextHistory(batch):batch;snapshot=false;if(batch.length)after=batch.at(-1)!.seq;for(const e of outgoing){controller.enqueue(encoder.encode(`id: ${e.seq}\nevent: ${e.event}\ndata: ${e.payload}\n\n`));}if((await run(id))?.status!=='running'){closed=true;controller.close();return;}timer=setTimeout(poll,250);}catch(error){if(!closed){closed=true;controller.error(error);}}};void poll();request.signal.addEventListener('abort',()=>{closed=true;clearTimeout(timer);try{controller.close();}catch{}},{once:true});},cancel(){closed=true;clearTimeout(timer);}});
    return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-cache','X-Accel-Buffering':'no'}});
   }
   return NextResponse.json(r);

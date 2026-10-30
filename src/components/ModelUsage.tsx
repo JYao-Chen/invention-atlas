@@ -26,7 +26,7 @@ export default function ModelUsage({projectName}:{projectName:string}){
  useEffect(()=>{void load();return()=>request.current?.abort();},[]);
  return <section className="settings-panel model-usage" aria-labelledby="model-usage-title">
   <h3 id="model-usage-title">项目模型用量</h3>
-  <p>{projectName} · 仅统计已保存的调用。Token来自模型服务返回，不代表结算费用；未知用量不计为零。</p>
+  <p>{projectName} · 仅统计已保存的调用。Token来自模型服务返回，未知用量单独列出。</p>
   <form className="model-usage-filter" onSubmit={e=>{e.preventDefault();void load(0,{from,to});}}>
    <label>开始时间<input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)} disabled={busy}/></label>
    <label>结束时间（不包含）<input type="datetime-local" value={to} onChange={e=>setTo(e.target.value)} disabled={busy}/></label>

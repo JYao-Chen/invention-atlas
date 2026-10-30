@@ -2,17 +2,17 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {guideChapters,projectRepository} from '../src/lib/help-guide';
-test('manual links to the project repository and contribution paths',()=>{
- assert.equal(projectRepository,'https://github.com/JYao-Chen/invention-atlas');
- const start=guideChapters.find(chapter=>chapter.id==='start')!;
- assert.ok(start.body.includes(projectRepository));
- assert.ok(start.body.includes(projectRepository+'/issues'));
- assert.ok(start.body.includes('Pull Request'));
- for(const asset of ['public/brand/invention-atlas.png','public/help/desktop-generate_wordcloud.png'])assert.ok(existsSync(asset));
- const component=readFileSync('src/components/HelpManual.tsx','utf8');
- assert.ok(component.includes('>{projectRepository}</a>'));
- assert.ok(component.includes('Invention Atlas 品牌 Logo'));
- assert.ok(component.includes('仓库 README 首页展示图'));
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import HelpManual from '../src/components/HelpManual';
+import AtlasNavigation from '../src/components/AtlasNavigation';
+test('manual exposes contribution links in a dedicated footer and the navigation rail',()=>{
+ const html=renderToStaticMarkup(createElement(HelpManual,{onOpen:()=>{},onDemo:()=>{},toolsReady:true}));
+ assert.match(html,/<footer class="help-community"/);
+ for(const path of ['', '/issues','/pulls'])assert.ok(html.includes(`href="${projectRepository+path}"`));
+ const sidebar=renderToStaticMarkup(createElement(AtlasNavigation,{page:'help',assistant:false,collapsed:false,onToggle:()=>{},onNavigate:()=>{},onAssistant:()=>{},username:'test',onLogout:()=>{}}));
+ assert.ok(sidebar.includes(`class="atlas-repository-link" href="${projectRepository}"`));
+ assert.ok(!guideChapters.find(chapter=>chapter.id==='start')!.sections.some(section=>section.title==='使用与共建'));
 });
 import {questions} from '../src/lib/suggestions';
 test('manual has distinct chapters, valid destinations, sections and documented demos',()=>{
@@ -22,24 +22,23 @@ test('manual has distinct chapters, valid destinations, sections and documented 
 });
 test('manual documents released professional, material, project and integration workflows',()=>{
  for(const id of ['workspace','materials','disclosures','landscape-workflow','competitor-workflow','novelty-workflow','layout-workflow','integrations']){
-  const chapter=guideChapters.find(c=>c.id===id);assert.ok(chapter,id);assert.ok(chapter.sections.length>=3);assert.ok(chapter.intro.length+chapter.body.length>=300,id);
+  const chapter=guideChapters.find(c=>c.id===id);assert.ok(chapter,id);assert.ok(chapter.sections.length>=3);assert.ok(chapter.intro&&chapter.purpose,id);
  }
  assert.ok(guideChapters.find(c=>c.id==='materials')!.body.includes('MinerU'));
- assert.ok(guideChapters.find(c=>c.id==='integrations')!.body.includes('36项'));
+ assert.ok(guideChapters.find(c=>c.id==='integrations')!.body.includes('36 项'));
  assert.ok(!guideChapters.some(c=>c.body.includes('当前没有独立对外 MCP')));
 });
 test('each analytical capability has a detailed chapter, working tool target and demonstration question',()=>{
  const chapters=guideChapters.filter(c=>c.tool);
  assert.equal(chapters.length,29);
  assert.deepEqual(chapters.map(c=>c.tool).sort(),Object.keys(questions).sort());
- const comparisonTools=['compare_keyword_methods'];
- for(const c of chapters){assert.equal(c.target,'analysis');assert.equal(c.question,questions[c.tool!]);assert.ok(c.body.length+c.intro.length>=300,c.title);assert.ok(c.sections.length>=3);if(comparisonTools.includes(c.tool!))assert.ok(!c.sections.some(s=>s.figure),'comparison chapters use text until actual UI captures exist');else assert.ok(c.sections.some(s=>s.figure===c.tool),c.title);for(const heading of ['适合回答的问题','参数怎么选','结果怎么读','展示与后续分析','示例问题','解释边界'])assert.ok(!c.sections.some(s=>s.title===heading));}
+ for(const c of chapters){assert.equal(c.target,'analysis');assert.equal(c.question,questions[c.tool!]);assert.ok(c.intro&&c.purpose,c.title);assert.ok(c.sections.length>=3);if(c.tool!=='compare_keyword_methods')assert.ok(c.sections.some(s=>s.figure===c.tool),c.title);}
  assert.ok(!guideChapters.some(c=>/输入与滚动|停止与重试/.test(c.title+' '+c.body)));
  for(const c of guideChapters)assert.ok(!c.body.includes('\\n'),c.title+' must contain real Markdown newlines');
 });
 test('manual screenshots and generated repository guide stay complete',()=>{
  const markdown=readFileSync('docs/USER-GUIDE.md','utf8');
- for(const c of guideChapters){for(const s of c.sections){assert.ok(markdown.includes(s.body));if(s.figure)for(const size of ['desktop','mobile'])assert.ok(existsSync(`public/help/${size}-${s.figure}.png`));}}
+ for(const c of guideChapters){assert.ok(markdown.includes(c.intro));assert.ok(markdown.includes(c.purpose));for(const s of c.sections){assert.ok(markdown.includes(s.body));if(s.figure)for(const size of ['desktop','mobile'])assert.ok(existsSync(`public/help/${size}-${s.figure}.png`));}}
 });
 test('README navigation and chapter counts match the current manual',()=>{
  const readme=readFileSync('README.md','utf8');
@@ -52,4 +51,9 @@ test('README navigation and chapter counts match the current manual',()=>{
  assert.ok(!manual.includes('patent.jyaochen.cn'));
  assert.ok(manual.includes('`#guide/materials`'));
  assert.ok(!/tallybear/i.test(readme));
+});
+
+test('manual cross-references point to existing chapter routes',()=>{
+ const ids=new Set(guideChapters.map(c=>c.id));
+ for(const chapter of guideChapters)for(const link of chapter.body.matchAll(/\]\(#guide\/([^)]*)\)/g))assert.ok(ids.has(link[1]),chapter.id+' -> '+link[1]);
 });

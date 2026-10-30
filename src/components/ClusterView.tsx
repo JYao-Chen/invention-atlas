@@ -24,7 +24,7 @@ export default function ClusterView({map,rows,onPatent}:{map:ClusterMap;rows:Row
 <circle key={p.patent} cx={x(p.x)} cy={y(p.y)} r={selected===p.patent?7:4.5} fill={colors[(p.cluster-1)%colors.length]} fillOpacity={.92} stroke={selected===p.patent?'#172c50':'#fff'} tabIndex={0} role="button" aria-label={p.patent+' · 主题 '+p.cluster} onClick={()=>setSelected(p.patent)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(p.patent);}}}>
 <title>{p.patent} · {p.title} · 主题 {p.cluster}</title>
 </circle>)}</svg>
- <p className="graph-note">PCA 二维投影保留 {((map.variance[0]+map.variance[1])*100).toFixed(1)}% 方差；K-means 在原始高维嵌入上计算。二维重叠不代表同一主题，图上距离仅供探索。</p>
+ <p className="graph-note">PCA 二维投影保留 {((map.variance[0]+map.variance[1])*100).toFixed(1)}% 方差；K-means 在原始高维嵌入上计算。</p>
  {point&&<div className="node-detail">
 <strong>{point.patent}</strong>
 <span>{point.title} · {String(rows.find(row=>row.cluster===point.cluster)?.topic_name||'主题 '+point.cluster)}</span>

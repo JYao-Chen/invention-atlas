@@ -35,7 +35,7 @@ export async function executeProfessionalStage(job:Job,run:Run,signal:AbortSigna
  }
  if(already.workflow==='patent-layout'&&payload.stage==='directions'){
   const artifact=await prepareLayoutDirections(db,payload.taskId,run,signal);
-  run.answer='候选方向与实际补检索结果已保存，等待确认；未命中不代表专利空白。';await saveRun(run);
+  run.answer='候选方向与实际补检索结果已保存，等待确认。';await saveRun(run);
   await event(run.id,'professional-artifact',{taskId:payload.taskId,stage:payload.stage,revision:artifact.revision});return;
  }
  if(already.workflow==='patent-layout'&&payload.stage==='labels'){

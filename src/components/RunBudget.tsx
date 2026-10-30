@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
+import {ChevronRight,SlidersHorizontal} from 'lucide-react';
 type Budget={max_calls:number|null;started_calls:number}|null;
 /** Operate: compact, inline task controls. Request counts are not token costs; existing report composition remains unchanged. */
 export default function RunBudget({runId,readOnly}:{runId:string;readOnly:boolean}){
@@ -17,8 +18,8 @@ export default function RunBudget({runId,readOnly}:{runId:string;readOnly:boolea
   catch(e){setError((e as Error).message);}finally{setBusy(false);}
  }
  return <details className="run-budget" onToggle={e=>{if(e.currentTarget.open&&budget===undefined&&!busy)void read();}}>
-  <summary>模型调用预算</summary>
-  <p>按本次运行的请求次数限制聊天与嵌入调用。失败请求也消耗额度，不代表费用上限。</p>
+  <summary><SlidersHorizontal size={14} aria-hidden="true"/><span>模型调用预算</span><ChevronRight size={13} className="process-chevron" aria-hidden="true"/></summary>
+  <p>按本次运行的请求次数限制聊天与嵌入调用。失败请求也计入次数。</p>
   {busy&&<p role="status">正在处理预算…</p>}
   {budget!==undefined&&<p>已开始 {budget?.started_calls??0} 次 · {budget?.max_calls===null||!budget?'未设置调用上限':'上限 '+budget.max_calls+' 次'}</p>}
   {!readOnly&&budget!==undefined&&<form onSubmit={e=>{e.preventDefault();void save();}}>

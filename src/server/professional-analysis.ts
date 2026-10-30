@@ -15,7 +15,7 @@ export async function executeLandscapeAnalysis(pool:Pool,taskId:string,run:Run,s
  const ids=new Set(selection.patentIds),records=(await store.analysisPatents(input.datasetId)).filter(p=>ids.has(p.id));
  if(records.length!==ids.size)throw new Error('候选记录发生删除，请重新准备研究范围');
  const meta=await store.dataset(input.datasetId);if(!meta)throw new Error('数据集不存在');
- run.scope={mode:'search',counting:selection.counting,patentIds:records.map(p=>p.id),selections:[],notes:['专业流程中用户已确认的候选集合，不代表行业全集。']};
+ run.scope={mode:'search',counting:selection.counting,patentIds:records.map(p=>p.id),selections:[],notes:['专业流程中用户已确认的候选集合。']};
  const definitions:{tool:string;params:Params}[]=[
   {tool:'analyze_patent_trend',params:{counting:selection.counting}},
   {tool:'analyze_ipc_distribution',params:{counting:selection.counting,top_k:30}},

@@ -17,7 +17,7 @@ export default function LabelSuggestions({datasetId,patentId,available,disabled,
    const response=await fetch('/api/patent-annotations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({datasetId,patentId,labelId:item.labelId,body,origin:'ai-suggestion'})});const data=await response.json();if(!response.ok)throw new Error(data.error||'保存建议失败');setSaved(previous=>[...previous,item.labelId]);await onSaved();
   }catch(e){setError((e as Error).message);}finally{setSaving('');}
  }
- return <details><summary>AI 标引建议</summary><p className="muted">依据标题和摘要，从本项目标签中选择。保存后仍需人工确认。</p>
+ return <details><summary>AI 标引建议</summary><p className="muted">依据标题和摘要，从本项目标签中选择。</p>
   {!available&&<p>请先创建项目标签。</p>}
   <div className="annotation-actions"><button disabled={!available||disabled||generating||!!saving} onClick={()=>void generate()}>{generating?'正在生成建议…':generated?'重新生成建议':'生成标引建议'}</button>{generating&&<button onClick={()=>controller.current?.abort()}>取消生成</button>}</div>
   {generated&&!suggestions.length&&<p>未找到适合当前专利的项目标签。</p>}

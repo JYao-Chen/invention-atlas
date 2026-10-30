@@ -7,7 +7,7 @@ export function applyTopicNames(rows:Row[],input:unknown):Row[]{
  const parsed=schema.safeParse(input);if(!parsed.success)throw new Error('模型主题格式不符：'+parsed.error.issues[0].path.join('.'));
  const {topics}=parsed.data;
  if(topics.length!==rows.length||new Set(topics.map(t=>t.cluster)).size!==rows.length)throw new Error('主题归纳数量或编号不匹配');
- return rows.map(row=>{const topic=topics.find(t=>t.cluster===row.cluster);if(!topic||topic.evidence.some(id=>!(row.representatives as string[]).includes(id)))throw new Error('主题归纳缺少簇内代表专利依据');return {...row,topic_name:topic.mixed?'混合主题 · '+topic.name:topic.name,topic_explanation:topic.explanation,topic_evidence:topic.evidence,topic_basis:'模型辅助归纳，需人工复核',topic_model:modelConfig().model};});
+ return rows.map(row=>{const topic=topics.find(t=>t.cluster===row.cluster);if(!topic||topic.evidence.some(id=>!(row.representatives as string[]).includes(id)))throw new Error('主题归纳缺少簇内代表专利依据');return {...row,topic_name:topic.mixed?'混合主题 · '+topic.name:topic.name,topic_explanation:topic.explanation,topic_evidence:topic.evidence,topic_basis:'模型辅助归纳',topic_model:modelConfig().model};});
 }
 export async function nameClusterTopics(rows:Row[],records:Patent[],signal?:AbortSignal){
  const packet=rows.map(row=>({cluster:row.cluster,count:row.count,keywords:row.keywords,evidence_ids:row.representatives,representatives:(row.representatives as string[]).map(id=>{const p=records.find(p=>p.id===id)!;return {id,title:p.title,abstract:p.abstract};})}));

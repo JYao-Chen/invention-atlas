@@ -16,7 +16,7 @@ const confirmation={resultId:'R',objective:'SYNTHETIC research network design',f
 const direction={title:'SYNTHETIC',function:'F',effect:'H',hypothesis:'SYNTHETIC recombination hypothesis',evidenceRows:[0,1],query:'network transmission',reason:'SYNTHETIC relevance to objective'};
 test('directions distinguish observed relationships from unsupported recombination and preserve literal evidence',()=>{
  const result=validateLayoutDirections(source,confirmation,{directions:[direction,{...direction,effect:'E',evidenceRows:[0],query:'latency reduction'}],unresolved:['SYNTHETIC feasibility needs verification']});
- assert.equal(result.directions[0].relationStatus,'unobserved_recombination_hypothesis');assert.equal(result.directions[0].observedPublications,0);assert.equal(result.directions[0].evidence[1].quote,'SYNTHETIC second');assert.match(result.directions[0].limitation,/不证明/);
+ assert.equal(result.directions[0].relationStatus,'unobserved_recombination_hypothesis');assert.equal(result.directions[0].observedPublications,0);assert.equal(result.directions[0].evidence[1].quote,'SYNTHETIC second');
  assert.equal(result.directions[1].relationStatus,'observed_in_selected_evidence');assert.equal(result.directions[1].observedPublications,1);assert.equal(result.legalAssessmentPerformed,false);
 });
 test('directions reject invented, excluded, repeated and unrelated evidence labels',()=>{

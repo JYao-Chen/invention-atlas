@@ -30,7 +30,7 @@ export async function reportSpecialImages(result:AnalysisResult):Promise<ChartIm
   content+=map.points.map(point=>`<circle cx="${x(point.x)}" cy="${y(point.y)}" r="5" fill="${chartColors[(point.cluster-1)%chartColors.length]}" fill-opacity=".85"/>`).join('');
   const clusters=[...new Set(map.points.map(point=>point.cluster))].sort((a,b)=>a-b);
   content+=clusters.map((cluster,i)=>`<circle cx="${60+i%6*150}" cy="${585+Math.floor(i/6)*28}" r="6" fill="${chartColors[(cluster-1)%chartColors.length]}"/><text x="${72+i%6*150}" y="${591+Math.floor(i/6)*28}" font-size="16">主题 ${cluster}</text>`).join('');
-  images.push(await image(content,width,height,`静态聚类散点图 · 全部${map.points.length}项专利；PC1+PC2保留${((map.variance[0]+map.variance[1])*100).toFixed(1)}%方差。使用保存坐标；二维距离仅供探索。`));
+  images.push(await image(content,width,height,`静态聚类散点图 · 全部${map.points.length}项专利；PC1+PC2保留${((map.variance[0]+map.variance[1])*100).toFixed(1)}%方差。使用保存坐标。`));
  }
  const graph=result.graph;
  if(graph?.nodes.length){
@@ -49,7 +49,7 @@ export async function reportSpecialImages(result:AnalysisResult):Promise<ChartIm
   }
   for(const node of graph.nodes){const p=positions.get(node.id)!;const color=node.kind==='external'?chartColors[4]:node.kind==='applicant'?chartColors[2]:chartColors[0];content+=`<circle cx="${p.x}" cy="${p.y}" r="14" fill="${color}"/><text x="${p.x}" y="${p.y+5}" text-anchor="middle" font-size="13" fill="white">${p.index}</text>`;}
   content+='<text x="40" y="960" font-size="16">蓝：样本节点　绿：申请人　橙：外部节点；编号对应节点明细</text>';
-  images.push(await image(content,width,height,`静态网络图 · 全部${graph.nodes.length}个节点（含孤立节点），绘出${drawn}/${graph.edges.length}条边。引证箭头指向被引文献；线宽表示保存权重。排布仅供阅读，不代表技术距离；密集网络请结合HTML交互版和完整明细。`));
+  images.push(await image(content,width,height,`静态网络图 · 全部${graph.nodes.length}个节点（含孤立节点），绘出${drawn}/${graph.edges.length}条边。引证箭头指向被引文献；线宽表示保存权重。密集网络请结合HTML交互版和完整明细。`));
  }
  return images;
 }

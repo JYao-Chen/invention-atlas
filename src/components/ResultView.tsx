@@ -76,7 +76,7 @@ function DatasetSummaryTable({rows}:{rows:Row[]}){
 </tr>)}</tbody>
 </table>
 </div>
-<p className="coverage-note">覆盖率表示当前分析记录中该字段非空的比例，不代表字段信息完整。</p>
+<p className="coverage-note">覆盖率表示当前分析记录中该字段非空的比例。</p>
 </>
 }</div>;
 }
