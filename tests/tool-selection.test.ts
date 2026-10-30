@@ -4,10 +4,10 @@ import {readFile} from 'node:fs/promises';
 import {TOOL_DEFS} from '../src/lib/tool-definitions';
 import {toolSelectionDatasetSchema,toolSelectionMetrics,evaluateToolSelection,toolSelectionSplit} from '../src/server/tool-selection-evaluation';
 
-test('tool selection corpus has reproducible 22/11 split and covers every registered tool and group',async()=>{
+test('tool selection corpus has reproducible 21/10 split and covers every registered tool and group',async()=>{
  const raw=JSON.parse(await readFile(new URL('../evals/tool-selection/questions.json',import.meta.url),'utf8'));
- const data=toolSelectionDatasetSchema.parse(raw);assert.equal(data.cases.length,33);
- assert.equal(data.cases.filter(c=>c.split==='dev').length,22);assert.equal(data.cases.filter(c=>c.split==='test').length,11);
+ const data=toolSelectionDatasetSchema.parse(raw);assert.equal(data.cases.length,31);
+ assert.equal(data.cases.filter(c=>c.split==='dev').length,21);assert.equal(data.cases.filter(c=>c.split==='test').length,10);
  const covered=new Set(data.cases.flatMap(c=>c.expectedTools));for(const [tool] of TOOL_DEFS)assert.ok(covered.has(tool),tool);
  const split=toolSelectionSplit(data.cases.map(c=>c.id).reverse());for(const c of data.cases)assert.equal(split.get(c.id),c.split);
  raw.cases[0].expectedTools=['nonexistent_tool'];assert.throws(()=>toolSelectionDatasetSchema.parse(raw));

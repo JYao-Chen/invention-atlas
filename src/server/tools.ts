@@ -19,26 +19,19 @@ import {readPatentMechanism,readingRowSources} from './patent-reading';
 import {compareClaims} from './claim-comparison';
 import {governedRecords,datasetAuditAsync} from './research';
 import {linkRows} from './result-contract';
-import {compareKeywords,compareRetrieval,compareClassification} from './method-comparison';
+import {compareKeywords} from './method-comparison';
 import type {EntityRule} from '@/lib/types';
 
 export {TOOL_DEFS} from '../lib/tool-definitions';
 const integer=z.preprocess(v=>typeof v==='string'&&/^\d+$/.test(v)?Number(v):v,z.number().int());
 export const paramsSchema=z.object({
  seed:integer.pipe(z.number().min(0).max(4294967295)).optional(),
- query_count:integer.pipe(z.number().min(1).max(1000)).optional(),
- bm25_k1:z.number().min(.01).max(10).optional(),bm25_b:z.number().min(0).max(1).optional(),
- rrf_constant:integer.pipe(z.number().min(1).max(1000)).optional(),
- min_class_size:integer.pipe(z.number().min(3).max(10000)).optional(),
- development_ratio:z.number().min(.5).max(.9).optional(),
- cv_folds:integer.pipe(z.number().min(2).max(10)).optional(),
- k_candidates:z.array(integer.pipe(z.number().min(1).max(100))).min(1).max(20).optional(),
  index_version:z.string().trim().min(1).max(100).optional(),query:z.string().max(2000).optional(),top_k:integer.pipe(z.number().min(1).max(1000)).optional(),year_start:integer.optional(),year_end:integer.optional(),applicant:z.string().optional(),ipc:z.string().optional(),claim_numbers:z.array(integer.pipe(z.number().min(1))).max(1000).optional(),patent_numbers:z.array(z.string()).max(5).optional(),k:integer.pipe(z.number().min(2).max(12)).optional(),dimension:z.enum(['applicant','inventor']).optional(),strategies:z.array(z.object({name:z.string(),query:z.string()})).min(2).max(10).optional(),strategy_id:z.string().max(100).optional(),frequency:z.enum(['year','month']).optional(),counting:z.enum(['publication','family']).optional()}).strict();
 export function capability(tool:string,records:Patent[],datasetCount=records.length){const def=TOOL_DEFS.find(d=>d[0]===tool);if(!def)return {available:false,reason:'未知工具'};if(!records.length)return {available:false,reason:datasetCount?'当前研究范围或筛选条件没有匹配的专利；未执行统计，请调整分类、年份或检索范围。':'尚未导入专利'};if(tool==='analyze_legal_status'&&!records.some(p=>p.legalStatus&&p.legalAsOf))return {available:false,reason:'当前数据没有同时提供状态与来源时点的记录'};if(['compare_keyword_methods','compare_retrieval_methods','compare_classification_methods'].includes(tool))return {available:true,reason:''};const missing=def[3].filter(field=>!records.some(p=>{const v=p[field as keyof Patent];return Array.isArray(v)?v.length>0:Boolean(v);}));return {available:!missing.length,reason:missing.length?'当前数据缺少 '+missing.join('、'):''};}
 export function scope(records:Patent[],params:Params){return records.filter(p=>(!params.year_start||Number(p.publicationDate.slice(0,4))>=params.year_start)&&(!params.year_end||Number(p.publicationDate.slice(0,4))<=params.year_end)&&(!params.applicant||p.applicants.some(x=>x.toLowerCase().includes(params.applicant!.toLowerCase())))&&(!params.ipc||p.ipc.some(x=>x.startsWith(params.ipc!))));}
 export type ToolContext={monitorScope?:string;entityRules?:EntityRule[];nameTopics?:(rows:Row[],records:Patent[],signal?:AbortSignal)=>Promise<Row[]>;onWork?:(done:number,total:number,label:string)=>void;semantic?:boolean;signal?:AbortSignal;queryVector?:number[];extract?:(patent:Patent)=>Promise<Row[]>;effectExtract?:EffectExtractor;onProgress?:(done:number,total:number)=>void;onCheckpoint?:(done:number,total:number,reused:number)=>void};
 export async function executeTool(name:string,input:unknown,meta:Dataset,all:Patent[],ctx:ToolContext={}):Promise<AnalysisResult>{
- const params=paramsSchema.parse(input);const specific=['compare_keyword_methods','compare_retrieval_methods','compare_classification_methods','search_patent_passages','search_patents','read_patent_details','analyze_claim_elements','compare_claims','analyze_tech_matrix','audit_dataset'].includes(name);
+ const params=paramsSchema.parse(input);const specific=['compare_keyword_methods','search_patent_passages','search_patents','read_patent_details','analyze_claim_elements','compare_claims','analyze_tech_matrix','audit_dataset'].includes(name);
  params.counting=specific?'publication':params.counting||'publication';
  if(['search_patents','analyze_ipc_distribution','analyze_country_distribution','generate_wordcloud','analyze_yearly_keywords','analyze_burst_terms','analyze_competitor_evolution','analyze_entity_portfolio','analyze_patent_valuation','analyze_citation_network','analyze_family_geography','analyze_legal_status','audit_search_strategy','monitor_patent_changes'].includes(name))params.top_k=params.top_k||(name==='generate_wordcloud'?50:name==='analyze_yearly_keywords'?10:20);
  if(name==='analyze_clustering')params.k=params.k||6;if(name==='analyze_co_network')params.dimension=params.dimension||'applicant';if(name==='analyze_patent_trend')params.frequency=params.frequency||'year';
@@ -52,8 +45,8 @@ export async function executeTool(name:string,input:unknown,meta:Dataset,all:Pat
  const yearly=()=>count(records.map(p=>p.publicationDate.slice(0,4)).filter(Boolean)).sort(([a],[b])=>a.localeCompare(b));
  const rankings=(query:string)=>lexical(records,query).slice(0,top);const countRows=(values:string[],key:string)=>count(values).slice(0,top).map(([value,n])=>({[key]:value,count:n}));
  switch(name){
- case 'compare_keyword_methods':case 'compare_retrieval_methods':case 'compare_classification_methods':{
-  const compared=name==='compare_keyword_methods'?compareKeywords(records,params):name==='compare_retrieval_methods'?compareRetrieval(records,params):compareClassification(records,params);
+ case 'compare_keyword_methods':{
+  const compared=compareKeywords(records,params);
   const warnings=[...result.warnings,...compared.warnings];Object.assign(result,compared,{warnings});break;
  }
 

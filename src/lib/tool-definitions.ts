@@ -11,6 +11,4 @@ export const TOOL_DEFS=[
  ['analyze_legal_status','来源时点法律状态','法律与权利要求',['legalStatus','legalAsOf']],['analyze_claim_elements','权利要求要素','法律与权利要求',['claims']],
  ['compare_claims','权利要求对照','法律与权利要求',['claims']],['audit_dataset','数据质量审计','审计与监测',[]],
  ['compare_keyword_methods','关键词方法对比','热点与主题',['title','abstract']],
- ['compare_retrieval_methods','检索方法对比','检索与读取',['title','abstract','embedding','ipc','citations']],
- ['compare_classification_methods','自动分类方法对比','检索与读取',['title','abstract','embedding','ipc']],
 ] as const;

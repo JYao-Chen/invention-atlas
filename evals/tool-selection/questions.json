@@ -16,7 +16,7 @@
    "expectedTools": [
     "search_patent_passages"
    ],
-   "split": "dev"
+   "split": "test"
   },
   {
    "id": "ts-03",
@@ -24,7 +24,7 @@
    "expectedTools": [
     "search_patents"
    ],
-   "split": "dev"
+   "split": "test"
   },
   {
    "id": "ts-04",
@@ -64,7 +64,7 @@
    "expectedTools": [
     "analyze_ipc_distribution"
    ],
-   "split": "dev"
+   "split": "test"
   },
   {
    "id": "ts-09",
@@ -80,7 +80,7 @@
    "expectedTools": [
     "generate_wordcloud"
    ],
-   "split": "dev"
+   "split": "test"
   },
   {
    "id": "ts-11",
@@ -96,7 +96,7 @@
    "expectedTools": [
     "analyze_yearly_keywords"
    ],
-   "split": "test"
+   "split": "dev"
   },
   {
    "id": "ts-13",
@@ -112,7 +112,7 @@
    "expectedTools": [
     "analyze_co_network"
    ],
-   "split": "dev"
+   "split": "test"
   },
   {
    "id": "ts-15",
@@ -120,7 +120,7 @@
    "expectedTools": [
     "analyze_competitor_evolution"
    ],
-   "split": "test"
+   "split": "dev"
   },
   {
    "id": "ts-16",
@@ -152,7 +152,7 @@
    "expectedTools": [
     "analyze_patent_valuation"
    ],
-   "split": "test"
+   "split": "dev"
   },
   {
    "id": "ts-20",
@@ -160,7 +160,7 @@
    "expectedTools": [
     "analyze_tech_matrix"
    ],
-   "split": "test"
+   "split": "dev"
   },
   {
    "id": "ts-21",
@@ -234,7 +234,7 @@
     "analyze_patent_trend",
     "analyze_ipc_distribution"
    ],
-   "split": "dev"
+   "split": "test"
   },
   {
    "id": "ts-30",
@@ -243,29 +243,13 @@
     "analyze_concentration",
     "analyze_citation_network"
    ],
-   "split": "test"
+   "split": "dev"
   },
   {
    "id": "ts-31",
    "question": "在当前数据集上比较 TF-IDF、TextRank 和 YAKE 三种关键词提取方法的排序差异和一致性。",
    "expectedTools": [
     "compare_keyword_methods"
-   ],
-   "split": "test"
-  },
-  {
-   "id": "ts-32",
-   "question": "用专利查专利的方式比较 BM25、向量检索和 RRF 融合的检索效果，按互引和 IPC 伪相关评估。",
-   "expectedTools": [
-    "compare_retrieval_methods"
-   ],
-   "split": "test"
-  },
-  {
-   "id": "ts-33",
-   "question": "以 IPC 主组为标签，比较嵌入近邻、最近质心和文本近邻投票三种自动分类方法的准确率和宏 F1。",
-   "expectedTools": [
-    "compare_classification_methods"
    ],
    "split": "dev"
   }

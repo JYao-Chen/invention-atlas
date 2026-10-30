@@ -46,7 +46,7 @@ PATCH /api/reports/:id/reviews/:reviewId
 
 ## Planner 工具选择离线评测
 
-`evals/tool-selection/questions.json` 含 33 道问题，覆盖全部 31 个工具和所有现有分组。每题明确 `expectedTools` 和 `split`。用种子 `20261029`、固定 LCG + Fisher–Yates 在排序后的题目 ID 上划分，开发集 22 题、测试集 11 题；脚本验证文件声明和种子计算结果一致。
+`evals/tool-selection/questions.json` 含 31 道问题，覆盖全部 29 个工具和所有现有分组。每题明确 `expectedTools` 和 `split`。用种子 `20261029`、固定 LCG + Fisher–Yates 在排序后的题目 ID 上划分，开发集 21 题、测试集 10 题；脚本验证文件声明和种子计算结果一致。
 
 **测试集只用于最终报告；不得根据测试集结果调整 Planner prompt、规则或开发集。** 自动测试只核对结构、划分和工具名，不对测试集实际调用 Planner。语义标注仍需领域审核；数据集是初始小样本，不能据此宣称生产泛化质量。
 

@@ -4,11 +4,7 @@ import {toolInformation} from './result-contract';
 type Schema=Record<string,unknown>;
 const strings:Schema={type:'array',items:{type:'string'},maxItems:5};
 const parameterSchemas:Record<string,Schema>={
- seed:{type:'integer',minimum:0,maximum:4294967295,default:42},query_count:{type:'integer',minimum:1,maximum:1000,default:50},
- bm25_k1:{type:'number',minimum:.01,maximum:10,default:1.2},bm25_b:{type:'number',minimum:0,maximum:1,default:.75},
- rrf_constant:{type:'integer',minimum:1,maximum:1000,default:60},min_class_size:{type:'integer',minimum:3,maximum:10000,default:10},
- development_ratio:{type:'number',minimum:.5,maximum:.9,default:.7},cv_folds:{type:'integer',minimum:2,maximum:10,default:3},
- k_candidates:{type:'array',minItems:1,maxItems:20,items:{type:'integer',minimum:1,maximum:100},default:[1,3,5,7]},
+ seed:{type:'integer',minimum:0,maximum:4294967295,default:42},
  index_version:{type:'string',minLength:1,maxLength:100},query:{type:'string',maxLength:2000},top_k:{type:'integer',minimum:1,maximum:1000},year_start:{type:'integer'},year_end:{type:'integer'},applicant:{type:'string'},ipc:{type:'string'},
  patent_numbers:strings,claim_numbers:{type:'array',items:{type:'integer',minimum:1},maxItems:1000},k:{type:'integer',minimum:2,maximum:12},dimension:{type:'string',enum:['applicant','inventor']},
  strategies:{type:'array',minItems:2,maxItems:10,items:{type:'object',required:['name','query'],properties:{name:{type:'string'},query:{type:'string'}}}},strategy_id:{type:'string',maxLength:100},frequency:{type:'string',enum:['year','month']},counting:{type:'string',enum:['publication','family']},
@@ -90,7 +86,7 @@ export function openApiDocument(){
   paths['/reports/{id}/publications/{edition}/'+format]={get:{operationId:'downloadPublishedReport'+format.toUpperCase(),summary:'下载不可变发布版'+format.toUpperCase(),parameters:[path('id'),{name:'edition',in:'path',required:true,schema:{type:'integer',minimum:1}}],responses:download}};
  }
  for(const [name,title,group,requiredFields] of TOOL_DEFS){
-  const comparison=['compare_keyword_methods','compare_retrieval_methods','compare_classification_methods'].includes(name);
+  const comparison=name==='compare_keyword_methods';
   const execution=comparison?'。直接调用需写入凭据；无训练，不调用模型或嵌入API。缺失字段时保留可用方法并在warnings说明；无可用范围时返回unavailable。':'。直接调用需写入凭据；可能调用模型并产生费用。semantic=false关闭检索向量调用，但不关闭其他工具的模型抽取。缺失数据返回unavailable，不应视为统计值为零。';
   paths['/tools/'+name]={post:{operationId:name,summary:title,tags:[group],description:(toolInformation(name).purpose||title)+execution, 'x-required-data-fields':requiredFields,requestBody:body({...object({datasetId:{type:'string',minLength:1},params:toolInputSchema(name),semantic:{type:'boolean',default:true}},['datasetId']),additionalProperties:false}),responses:{200:response('完整分析结果及字段契约',ref('AnalysisResult')),...errors}}};
  }
