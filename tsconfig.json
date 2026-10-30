@@ -51,7 +51,8 @@
     "scripts/initialize-admin.ts",
     "scripts/import-sqlite-postgres.ts",
     "scripts/verify-postgres-import.ts",
-    "scripts/external/**/*.ts"
+    "scripts/external/**/*.ts",
+    "scripts/demo/**/*.ts"
   ],
   "exclude": [
     "node_modules"

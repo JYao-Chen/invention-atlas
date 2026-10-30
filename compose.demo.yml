@@ -1,0 +1,19 @@
+name: invention-atlas-demo
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg16
+    environment:
+      POSTGRES_USER: atlas_owner
+      POSTGRES_PASSWORD: ${ATLAS_DEMO_DB_PASSWORD:?Run npm run setup first}
+      POSTGRES_DB: invention_atlas_demo
+    ports:
+      - "127.0.0.1:${ATLAS_DEMO_DB_PORT:-55418}:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas_owner -d invention_atlas_demo"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  postgres:

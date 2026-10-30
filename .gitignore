@@ -42,3 +42,6 @@ integrations/patent-mcp/THIRD-PARTY-LICENSES.txt
 
 !scripts/external/
 !scripts/external/**
+
+!scripts/demo/
+!scripts/demo/**
