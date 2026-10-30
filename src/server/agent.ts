@@ -57,6 +57,7 @@ export function sourceBundle(results:AnalysisResult[],records:Patent[]){
  return {results:results.map(reportResult),sourcePresentation:{linkedSources:allIds.length,includedSources:ids.length,omittedSources:allIds.length-ids.length,note:'仅收集工具行及逐行成员关联的原文，不以scope/evidence全集中的任意编号充当代表文献。'},sources:records.filter(p=>ids.includes(p.id)).map(p=>({id:p.id,title:p.title,url:p.sourceUrl,applicants:p.applicants,publicationDate:p.publicationDate,ipc:p.ipc,cpc:p.cpc,abstract:p.abstract.slice(0,1000)}))};
 }
 export async function generateReport(r:Run,records:Patent[],signal:AbortSignal){
+ const replacing=Boolean(r.answer);let revisedAnswer='';
  r.reportPreparation=prepareReport(r,records);(await saveRun(r));(await event(r.id,'report-preparation',{preparation:r.reportPreparation}));
  (await event(r.id,'status',{phase:'Evidence',message:'正在整理统计覆盖与代表专利证据'}));
  r.progress={tool:'report',unit:'正在整理统计覆盖与代表专利证据'};(await saveRun(r));(await event(r.id,'progress',r.progress));
@@ -66,9 +67,9 @@ export async function generateReport(r:Run,records:Patent[],signal:AbortSignal){
  Object.assign(additional,{patentReading:readingReportContext(r.results)});
  r.progress={tool:'report',unit:'分析准备完成，正在流式撰写报告'};(await saveRun(r));(await event(r.id,'progress',r.progress));
  (await event(r.id,'status',{phase:'Report',message:additional.reads.length?'已补读相关工具结果，正在生成报告':'正在生成报告'}));
- const bundle={...sourceBundle(r.results,records),additionalReads:additional,presentationInstruction:'使用contract理解字段、scope确认实际计算范围、rowSources定位逐行专利。关键词代表文献必须来自该词该年的rowSources，不能从数据集编号列表任意选取。图谱实际边和节点已经提供，不得把只有编号的外部节点写作已读取原文。按presentation.groups判断覆盖；omittedRows、omittedEdges、omittedPatentIds和shortenedTextPaths仅表示报告预览省略，禁止写成工具失败或原数据缺失。additionalReads是按问题补读的原始结果页，仍须核对分页。不得从预览推算完整总体统计；覆盖不全时引用图表。coverage是比例，百分数使用coveragePercent。以datasetSnapshot为准。',datasetSnapshot:reportDataset(r.datasetSnapshot||(await dataset(r.datasetId))),researchScope:r.scope,searchReviews:r.reviews,executionAudit:r.audit,reportCorrection:r.reportAudit&&!r.reportAudit.passed?{instruction:'逐条修正以下审计问题；删除无证据编号和数值，保留有依据的正文。',issues:r.reportAudit.issues}:undefined};r.answer='';(await saveRun(r));const textWriter=runTextWriter(r);
- await chat((r.results.some(result=>result.tool==='analyze_patent_reading')?READING_REPORT_GUIDANCE:'')+'你是中文专利分析助手。用清晰Markdown直接回答问题，包含主要发现、方法和数据限制。只引用给定工具结果和来源元数据，数字来自工具结果，不自行推算企业类别数量或市场规模。不能从公开编号猜测年份、申请人或分类。样本集中度只能说明样本内分布，不能作垄断或实际市场竞争结论。为主题提供简短中文辅助名称并保留原关键词，明确命名属于模型辅助解释。用公开编号链接引用代表专利；法律判断、技术继承因果、交易价格与市场份额均不能从这些工具推断。不可声称抽样语料覆盖整个行业。数学公式使用LaTeX：行内用$...$，独立公式用单独成行的$包围；不要将公式放进代码反引号。报告用自然语言与小表格，不输出JSON、不复述全部工具数据。在说明对应发现的段落后插入[[chart:工具结果id]]，页面会嵌入该真实结果的交互图表。只使用给定结果id，每个id最多一次，不构造新数据或外部图片。Google来源状态是第三方推定，Active不能表述为经官方确认有效；as_of是获取时点而非事件日期。reportedAmount若为知识产权组合交易，不得当作单项专利价格、不得按专利数量分摊。缺失或失败步骤必须说明。措辞按研究记录写，直接给出观察和依据。标题说明具体内容，不写宣传口号，不称自己为专家。避免“不是而是”的翻案句、空转总结、连续重复的句式和无依据的显著增长；保留真实数字、来源及限定词。不要用“首先其次最后”机械组织全文，不给每个小标题加序号。',JSON.stringify({question:r.question,dataset:(await dataset(r.datasetId)),...bundle}),{signal,onDelta:text=>textWriter.push(text)});
- await textWriter.flush();
+ const bundle={...sourceBundle(r.results,records),additionalReads:additional,presentationInstruction:'使用contract理解字段、scope确认实际计算范围、rowSources定位逐行专利。关键词代表文献必须来自该词该年的rowSources，不能从数据集编号列表任意选取。图谱实际边和节点已经提供，不得把只有编号的外部节点写作已读取原文。按presentation.groups判断覆盖；omittedRows、omittedEdges、omittedPatentIds和shortenedTextPaths仅表示报告预览省略，禁止写成工具失败或原数据缺失。additionalReads是按问题补读的原始结果页，仍须核对分页。不得从预览推算完整总体统计；覆盖不全时引用图表。coverage是比例，百分数使用coveragePercent。以datasetSnapshot为准。',datasetSnapshot:reportDataset(r.datasetSnapshot||(await dataset(r.datasetId))),researchScope:r.scope,searchReviews:r.reviews,executionAudit:r.audit,reportCorrection:r.reportAudit&&!r.reportAudit.passed?{instruction:'逐条修正以下审计问题；删除无证据编号和数值，保留有依据的正文。',issues:r.reportAudit.issues}:undefined};(await saveRun(r));const textWriter=replacing?undefined:runTextWriter(r);
+ await chat((r.results.some(result=>result.tool==='analyze_patent_reading')?READING_REPORT_GUIDANCE:'')+REPORT_WRITING_GUIDANCE+'你是中文专利分析助手。用清晰Markdown直接回答问题，包含主要发现、采用的方法与执行情况。直接陈述结果和依据，不添加通用免责声明、风险提示或人工复核提醒。只引用给定工具结果和来源元数据，数字来自工具结果，不自行推算企业类别数量或市场规模。不能从公开编号猜测年份、申请人或分类。样本集中度只能说明样本内分布，不能作垄断或实际市场竞争结论。为主题提供简短中文辅助名称并保留原关键词，明确命名属于模型辅助解释。用公开编号链接引用代表专利；法律判断、技术继承因果、交易价格与市场份额均不能从这些工具推断。不可声称抽样语料覆盖整个行业。数学公式使用LaTeX：行内用$...$，独立公式用单独成行的$包围；不要将公式放进代码反引号。报告用自然语言与小表格，不输出JSON、不复述全部工具数据。在说明对应发现的段落后插入[[chart:工具结果id]]，页面会嵌入该真实结果的交互图表。只使用给定结果id，每个id最多一次，不构造新数据或外部图片。Google来源状态是第三方推定，Active不能表述为经官方确认有效；as_of是获取时点而非事件日期。reportedAmount若为知识产权组合交易，不得当作单项专利价格、不得按专利数量分摊。缺失或失败步骤必须说明。措辞按研究记录写，直接给出观察和依据。标题说明具体内容，不写宣传口号，不称自己为专家。避免“不是而是”的翻案句、空转总结、连续重复的句式和无依据的显著增长；保留真实数字、来源及限定词。不要用“首先其次最后”机械组织全文，不给每个小标题加序号。',JSON.stringify({question:r.question,dataset:(await dataset(r.datasetId)),...bundle}),{signal,onDelta:async text=>{if(textWriter)await textWriter.push(text);else revisedAnswer+=text;}});
+ if(textWriter)await textWriter.flush();else{r.answer=revisedAnswer;await saveRun(r);}
 }
 export async function startRun(conversationId:string,datasetId:string,question:string,forced?:{tool:string;params:Params}[],toolOnly=false,maxModelCalls?:number){
  return submitAnalysis(db,{conversationId,datasetId,question,forced,toolOnly,maxModelCalls,model:modelConfig().model});
@@ -128,7 +129,7 @@ export async function executeRun(r:Run,forced:{tool:string;params:Params}[]|unde
    r.scope.patentIds=searchIds(r.results).filter(id=>!excluded.has(id));
    r.scope.selections=r.results.filter(x=>x.tool==='search_patents').map(x=>({query:x.params.query||'',patentIds:searchIds([x]),method:x.method}));
    r.scope.query=r.scope.selections.map(s=>s.query).join(' / ');
-   const note='按检索Top-K候选并集分析，不是行业全集；语义相关性需复核。';if(!r.scope.notes.includes(note))r.scope.notes.push(note);
+   const note='按检索 Top-K 候选并集分析。';if(!r.scope.notes.includes(note))r.scope.notes.push(note);
   }
   if(!toolOnly)r.orchestration!.pendingSearch=false;
   await persistRun();await event(r.id,'scope',{scope:r.scope});return {};
@@ -157,9 +158,9 @@ export async function executeRun(r:Run,forced:{tool:string;params:Params}[]|unde
  .addNode('Citation',checkpoint('Citation',async state=>{await executeGroup(state.steps,t=>t==='analyze_citation_network','Citation');return {};}))
  .addNode('Report',checkpoint('Report',async()=>{
   if(toolOnly){r.answer='';return {};}
-  if(r.answer){r.answer='';await persistRun();await event(r.id,'text-reset',{});}
-  await updateProgress({tool:'report',unit:r.orchestration!.reportRevisions?'正在根据审计问题修改报告':'模型正在生成报告；文字会流式显示'});
-  await event(r.id,'status',{phase:'Report',message:'正在流式生成报告'});await dependencies.generateReport(r,records,controller.signal);return {};
+  const replacing=Boolean(r.answer);
+  await updateProgress({tool:'report',unit:r.orchestration!.reportRevisions?'正在整理最终报告':'模型正在生成报告；文字会流式显示'});
+  await event(r.id,'status',{phase:'Report',message:'正在流式生成报告'});await dependencies.generateReport(r,records,controller.signal);if(replacing)await event(r.id,'text-snapshot',{text:r.answer});return {};
  }))
  .addNode('Audit',checkpoint('Audit',async state=>{
   if(toolOnly){r.audit=auditExecution(state.steps,r.results);for(const result of r.results)await saveResult(result);await persistRun();await event(r.id,'audit',{audit:r.audit});return {};}
@@ -167,13 +168,13 @@ export async function executeRun(r:Run,forced:{tool:string;params:Params}[]|unde
   const flow=r.orchestration!,attempt=flow.reportRevisions+1;
   // The audit may have been saved before a worker lost its lease. Reuse it for
   // this completed report instead of auditing our own retained-issues appendix.
-  if(r.reportAudit?.attempt!==attempt){const issues=auditReport(r.answer,r.results);r.reportAudit={attempt,passed:issues.length===0,issues};}
+  if(r.reportAudit?.attempt!==attempt){const issues=auditReport(r.answer,r.results,r.datasetSnapshot||await dataset(r.datasetId));r.reportAudit={attempt,passed:issues.length===0,issues};}
   const issues=r.reportAudit.issues;
   const retry=issues.length>0&&flow.reportRevisions<1;
   // Revision counters are advanced in the routing node below, after this audit
   // checkpoint is durable, so a resumed graph cannot skip the correction.
   await persistRun();await event(r.id,'report-audit',{audit:r.reportAudit,next:retry?'Report':'End',revisionLimit:1});
-  if(issues.length&&!retry){const appendix='\n\n## 自动审计待复核问题\n\n'+issues.map(issue=>'- 第 '+issue.paragraph+' 段：'+issue.kind+' `'+issue.value+'`：'+issue.reason).join('\n');if(!r.answer.endsWith(appendix)){r.answer+=appendix;await persistRun();await event(r.id,'text-delta',{text:appendix});}}
+
   return {};
  }))
 ;

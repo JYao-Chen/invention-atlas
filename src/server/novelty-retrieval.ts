@@ -25,6 +25,6 @@ export async function executeNoveltyRetrieval(pool:Pool,taskId:string,run:Run,si
   const ids=result.rows.map(row=>String(row.patent));for(const id of ids)memberships.set(id,[...(memberships.get(id)||[]),strategy.name]);
   hits.push({name:strategy.name,query:strategy.query,featureIds:strategy.featureIds,resultId:result.id,returned:ids.length,method:result.method,summary:result.summary});
  }
- const artifact=await tasks.propose(taskId,'retrieval',{featureRevision:features.revision,strategyRevision:strategyArtifact.revision,patentIds:[...memberships.keys()],strategies:hits,memberships:[...memberships].map(([patent,strategies])=>({patent,strategies})),availableRecords:records.length,jurisdictions:input.jurisdictions,notes:['各策略至多保存100项候选，合并去重后交由用户确认。','布尔命中数量与语义Top-K不是同一统计口径，应分别阅读各策略方法和摘要。','地域目标按任务设置保存。']},run.id);
+ const artifact=await tasks.propose(taskId,'retrieval',{featureRevision:features.revision,strategyRevision:strategyArtifact.revision,patentIds:[...memberships.keys()],strategies:hits,memberships:[...memberships].map(([patent,strategies])=>({patent,strategies})),availableRecords:records.length,jurisdictions:input.jurisdictions,notes:['各策略至多保存100项候选，合并去重后交由用户确认。','布尔命中数量与语义 Top-K 分别记录。','地域目标按任务设置保存。']},run.id);
  return artifact;
 }

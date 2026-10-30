@@ -10,7 +10,7 @@ export const referenceSetSchema=z.object({referencePatentNumbers:patentNumbers})
 export function retrievalMetrics(hits:string[],reference:string[]){
  const normalize=(ids:string[])=>new Set(ids.map(id=>id.toUpperCase().replace(/[^A-Z0-9]/g,'')));
  const returned=normalize(hits),relevant=normalize(reference),truePositives=[...returned].filter(id=>relevant.has(id)).length;
- return {returned:returned.size,reference:relevant.size,truePositives,precision:returned.size?truePositives/returned.size:null,recall:relevant.size?truePositives/relevant.size:null,limitation:'仅相对于输入参考集的公开编号计算，不代表全球查全率；不合并同族。'};
+ return {returned:returned.size,reference:relevant.size,truePositives,precision:returned.size?truePositives/returned.size:null,recall:relevant.size?truePositives/relevant.size:null,limitation:'按输入参考集的公开编号去重计算。'};
 }
 export class RetrievalExperiments{
  constructor(private readonly pool:Pool){}

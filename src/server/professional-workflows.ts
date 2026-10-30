@@ -30,7 +30,7 @@ export const PROFESSIONAL_WORKFLOWS:ProfessionalWorkflow[]=[
   {id:'analysis',title:'态势与主题分析',tools:['analyze_patent_trend','analyze_ipc_distribution','analyze_yearly_keywords','analyze_clustering','analyze_entity_portfolio'],outputs:['趋势图','主题与主体分布'],confirmation:false},
   {id:'evidence',title:'代表证据整理',tools:['read_patent_details','search_patent_passages'],outputs:['代表专利','原文证据'],confirmation:false},
   {id:'report',title:'全景报告',tools:[],outputs:['证据关联报告'],confirmation:false},
- ],limitations:['结果范围由专题库和检索策略决定，不等同于行业全集。','聚类依赖向量覆盖，缺失时不得用模型补造聚类结果。']},
+ ],limitations:['结果采用确认的专题库与检索范围。','聚类使用已建立的嵌入索引。']},
  {id:'competitor-analysis',version:'1.1',title:'竞争主体分析',purpose:'比较指定主体在同一研究范围内的专利组合、技术分布和演进。',requiredInputs:['datasetId','entities'],executionAvailable:false,stages:[
   {id:'entities',title:'主体名称确认',tools:['analyze_entity_portfolio'],outputs:['名称与别名映射','主体范围'],confirmation:true},
   {id:'scope',title:'比较范围确认',tools:['get_dataset_summary','audit_dataset'],outputs:['年份与计数口径','字段覆盖'],confirmation:true},
@@ -38,14 +38,14 @@ export const PROFESSIONAL_WORKFLOWS:ProfessionalWorkflow[]=[
   {id:'analysis',title:'组合与演进比较',tools:['analyze_entity_portfolio','analyze_competitor_evolution','analyze_co_network'],outputs:['主体组合','演进与合作网络'],confirmation:false},
   {id:'evidence',title:'代表专利核对',tools:['read_patent_details'],outputs:['逐主体代表专利'],confirmation:false},
   {id:'report',title:'竞争分析报告',tools:[],outputs:['同口径比较报告'],confirmation:false},
- ],limitations:['专利数量与样本集中度不能直接解释为市场份额。','名称归并须保留来源和用户确认。']},
+ ],limitations:['采用专利数量与申请人集中度描述主体结构。','名称归并须保留来源和用户确认。']},
  {id:'novelty-search',version:'1.0',title:'技术方案查新',purpose:'将技术方案拆分为可核对特征，通过多策略检索建立逐特征对比底稿。',requiredInputs:['datasetId','proposal'],executionAvailable:false,stages:[
   {id:'features',title:'方案要素提取与编辑',tools:[],outputs:['技术问题','必要特征','特征版本'],confirmation:true},
   {id:'strategies',title:'检索策略确认',tools:[],outputs:['术语与同义词','分类约束','多条检索式'],confirmation:true},
   {id:'retrieval',title:'候选文献检索',tools:['search_patents','audit_search_strategy','search_patent_passages'],outputs:['策略命中与重合','原文片段'],confirmation:true},
   {id:'comparison',title:'逐特征证据对比',tools:['read_patent_details','analyze_claim_elements'],outputs:['特征与文献证据矩阵','未找到证据的特征'],confirmation:true},
   {id:'report',title:'查新底稿',tools:[],outputs:['检索记录','证据矩阵','限定范围的评述'],confirmation:false},
- ],limitations:['方案与专利特征比较不同于两份权利要求对照，不能直接用 compare_claims 替代。','未检出不证明新颖性；日期、地域及数据覆盖必须在报告中保留。']},
+ ],limitations:['方案查新采用逐特征原文对照。','报告记录检索日期、地域与数据范围。']},
 ];
 
 // Execution support describes wired stages, not worker health or model availability.

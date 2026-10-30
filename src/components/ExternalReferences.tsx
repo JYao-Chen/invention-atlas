@@ -23,7 +23,7 @@ export function ExternalCoverage({datasetId}:{datasetId:string}){
  return <section className="external-coverage" aria-labelledby="external-coverage-title">
   <div className="list-heading"><h3 id="external-coverage-title">外部参考数据 <small>{coverage.uniqueNumbers} 个编号</small></h3></div>
   <dl className="external-coverage-grid">{rows.map(([label,count,help])=><div key={label} data-empty={count===0||undefined}><dt>{label}</dt><dd>{count}<small> / {coverage.uniqueNumbers}</small></dd><p>{help}</p></div>)}</dl>
-  <p className="field-help">已在论文关联来源中核对 {scanned} 个编号；没有关联记录不代表该专利未引用论文。{coverage.covered.paper_links>0&&NONCOMMERCIAL}{coverage.sources.length>0&&' 来源：'+sourceLine(coverage.sources)+'。'}</p>
+  <p className="field-help">已在论文关联来源中核对 {scanned} 个编号；{coverage.covered.paper_links>0&&NONCOMMERCIAL}{coverage.sources.length>0&&' 来源：'+sourceLine(coverage.sources)+'。'}</p>
  </section>;
 }
 

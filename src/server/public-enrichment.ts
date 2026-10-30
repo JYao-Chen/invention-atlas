@@ -16,7 +16,7 @@ export function parseGoogleEvidence(html:string,id:string,retrievedAt:string):{s
  const legalEvents=[...html.matchAll(/<tr[^>]*itemprop="legalEvents"[^>]*>([\s\S]*?)<\/tr>/gi)].map(match=>({date:/<time[^>]*datetime="(\d{4}-\d{2}-\d{2})"/.exec(match[1])?.[1]||'',code:property(match[1],'code'),title:property(match[1],'title'),details:[...match[1].matchAll(/<p[^>]*itemprop="attributes"[^>]*>([\s\S]*?)<\/p>/gi)].map(m=>htmlText(m[1])).join('; '),htmlStart:match.index!}));
  if(legalEvents.some(e=>!e.date||!e.code||!e.title))throw new Error(`${id}：法律事件字段不完整`);
  const familySection=/<section[^>]*itemprop="family"[^>]*>\s*<h1>Family<\/h1>\s*<h2>ID=(\d+)<\/h2>/i.exec(html);
- return {status,evidence:{sourceUrl:`https://patents.google.com/patent/${id}/en`,sourceName:'Google Patents 公共页面',retrievedAt,statusBasis:'第三方页面状态推定；日期是页面获取时点，不是官方确认时点',statusDisclaimer:'Google声明状态是推定而非法律结论，未进行法律分析，不保证所列状态准确。',familyDefinition:'Google Patents Family Applications及Country Status：各申请及公开局代表公开件；不含所有公开版本，不承诺完整全球同族',familyId:familySection?.[1]||'',familyApplications,familyRegions,legalEvents}};
+ return {status,evidence:{sourceUrl:`https://patents.google.com/patent/${id}/en`,sourceName:'Google Patents 公共页面',retrievedAt,statusBasis:'Google Patents 页面状态；日期为获取时点',statusDisclaimer:'',familyDefinition:'Google Patents Family Applications及Country Status 中的申请及公开局代表公开件',familyId:familySection?.[1]||'',familyApplications,familyRegions,legalEvents}};
 }
 export function enrichPatent(p:Patent,html:string,retrievedAt:string):Patent{
  const {status,evidence}=parseGoogleEvidence(html,p.id,retrievedAt);

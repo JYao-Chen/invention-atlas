@@ -32,6 +32,6 @@ export async function executeCompetitionAnalysis(pool:Pool,taskId:string,run:Run
   const source=records.filter(p=>p.applicants.some(name=>group.aliases.includes(name))),counted=governedRecords(source,[],selection.counting).records;
   return {entity:group.entity,aliases:group.aliases,matched:group.aliases.length>0,publicationRecords:source.length,countedRecords:counted.length,patentIds:source.map(p=>p.id)};
  });
- const artifact=await tasks.propose(taskId,'analysis',{entityRevision:entities.revision,candidateRevision:candidate.revision,scopeRevision:scope.revision,patentIds:records.map(p=>p.id),counting:selection.counting,resultIds:run.results.map(r=>r.id),toolStatuses:run.results.map(r=>({tool:r.tool,status:r.status,summary:r.summary})),targets,notes:['各主体可共同拥有同一公开件，主体计数之和不能作为去重总量。','组合与合作网络可包括关联合作方；targets 才是用户指定的比较主体。未匹配主体不能解释为没有专利。']},run.id);
+ const artifact=await tasks.propose(taskId,'analysis',{entityRevision:entities.revision,candidateRevision:candidate.revision,scopeRevision:scope.revision,patentIds:records.map(p=>p.id),counting:selection.counting,resultIds:run.results.map(r=>r.id),toolStatuses:run.results.map(r=>({tool:r.tool,status:r.status,summary:r.summary})),targets,notes:['同一公开件可计入多个主体，主体计数采用分别计数。','组合与合作网络可包括关联合作方；targets 才是用户指定的比较主体。未匹配主体单独列出。']},run.id);
  await tasks.confirm(taskId,'analysis',artifact.revision);return artifact;
 }

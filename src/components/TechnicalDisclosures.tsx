@@ -20,7 +20,7 @@ export default function TechnicalDisclosures({readOnly,datasets,openRequest}:{re
  async function save(){setBusy(true);setError('');try{const item=await request(selected?'/'+selected.id:'',selected?'PATCH':'POST',selected?{expectedRevision:selected.revision,source}:source);setSelected({...item,title:source.title});setSource(item.snapshot.source);setDirty(false);await refresh();setMessage('已保存第'+item.revision+'版。');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  const textFields=[['technicalField','技术领域'],['background','背景技术'],['problem','技术问题'],['solution','技术方案'],['alternatives','替代方案']] as const;
  return <details ref={details} className="technical-disclosures"><summary>技术交底材料 · {items.length}份</summary>
-  <p className="muted">整理用户材料并保留版本。草稿不补充技术事实，不作为专利申请文件。</p>
+  <p className="muted">整理方案材料，保存草稿与修订版本。</p>
   <ProjectMaterials readOnly={readOnly} datasets={datasets} openRequest={openRequest?.part==='materials'?openRequest.id:undefined}/>
   {!readOnly&&<button disabled={busy} onClick={()=>{if(!leave())return;setSelected(undefined);setSource(blank());setEditing(true);setDirty(false);setError('');setMessage('');}}>新建交底材料</button>}
   {items.map(item=><div className="record-actions" key={item.id}><button disabled={busy} onClick={()=>void open(item.id)}>{item.title} · 第{item.revision}版</button></div>)}

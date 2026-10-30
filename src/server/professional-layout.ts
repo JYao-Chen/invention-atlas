@@ -57,7 +57,7 @@ export async function prepareLayoutDirections(pool:Pool,taskId:string,run:Run,si
   if(!result){await store.event(run.id,'tool-start',{phase:'Directions',tool});result=await executeTool(tool,{query,top_k:30,counting:'publication'},meta,records,{signal,semantic:true});signal.throwIfAborted();await store.saveResult(result);run.results.push(result);await store.saveRun(run);await store.event(run.id,'tool-result',{result});}
   searches.push({query,tool,resultId:result.id,status:result.status,returned:result.rows.length,summary:result.summary});
  }
- return tasks.propose(taskId,'directions',{labelRevision:labels.revision,scopeRevision:approvedScope.revision,suggestions,searches,availableSuggestions:suggestions,availableSearches:searches,searchPatentIds:[...ids],notes:['检索至多返回30项；不能将未命中或段落索引不可用解释为技术不存在。','候选方向仍为模型辅助研究假设，没有进行可申请性或自由实施判断。']},run.id);
+ return tasks.propose(taskId,'directions',{labelRevision:labels.revision,scopeRevision:approvedScope.revision,suggestions,searches,availableSuggestions:suggestions,availableSearches:searches,searchPatentIds:[...ids],notes:['每次检索至多返回30项，段落索引状态单独记录。','候选方向使用确认的证据与补检索结果。']},run.id);
 }
 
 export async function prepareLayoutLabels(pool:Pool,taskId:string,run:Run,signal:AbortSignal){

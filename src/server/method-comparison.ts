@@ -36,7 +36,7 @@ export function compareKeywords(records:Patent[],params:Params):Output{
  }
  result.chart={kind:'bar',x:'word',y:'keyword_score'};
  result.summary=`比较3种关键词方法，各返回最多${top}词及3组Jaccard重合度。`;
- result.warnings.push('关键词重合度是方法一致性，不是人工关键词准确率；三种分数尺度不同，不能按分数大小比较方法效果。','YAKE为英文单词版：逐专利计算五特征，按1/(1+局部分数)在语料内平均；未提取多词短语。');
+
  if(!lists.get('tfidf')?.length)result.warnings.push('标题与摘要没有可用英文词项，关键词为空。');
  result.evidence=[...new Set(result.rows.flatMap(r=>Array.isArray(r.patents)?r.patents as string[]:[]))];
  return result;

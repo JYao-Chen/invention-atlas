@@ -1,4 +1,5 @@
 import type {Pool} from 'pg';
+import {resultCopy,runCopy} from '@/lib/result-copy';
 import type {Dataset,Patent,AnalysisPatent,Conversation,Run,AnalysisResult} from '@/lib/types';
 import {randomUUID} from 'node:crypto';
 import {transaction,connection,currentAccess} from './postgres';
@@ -101,11 +102,11 @@ export class PostgresStore {
 
  async runs(conversationId?:string):Promise<Run[]>{
   const result=conversationId?await this.connection.query('SELECT payload FROM runs WHERE conversation_id=$1 ORDER BY position',[conversationId]):await this.connection.query('SELECT payload FROM runs ORDER BY position DESC');
-  return result.rows.map(row=>row.payload);
+  return result.rows.map(row=>runCopy(row.payload));
  }
 
  async run(id:string):Promise<Run|undefined>{
-  return (await this.connection.query('SELECT payload FROM runs WHERE id=$1',[id])).rows[0]?.payload;
+  const value=(await this.connection.query('SELECT payload FROM runs WHERE id=$1',[id])).rows[0]?.payload;return value?runCopy(value):undefined;
  }
 
  async saveRun(run:Run){
@@ -137,11 +138,11 @@ export class PostgresStore {
  }
 
  async savedResult(id:string):Promise<AnalysisResult|undefined>{
-  return (await this.connection.query('SELECT payload FROM results WHERE id=$1',[id])).rows[0]?.payload;
+  const value=(await this.connection.query('SELECT payload FROM results WHERE id=$1',[id])).rows[0]?.payload;return value?resultCopy(value):undefined;
  }
 
  async savedResults(datasetId:string):Promise<AnalysisResult[]>{
-  return (await this.connection.query("SELECT payload FROM results WHERE payload->>'datasetId'=$1 ORDER BY position DESC LIMIT 24",[datasetId])).rows.map(row=>row.payload);
+  return (await this.connection.query("SELECT payload FROM results WHERE payload->>'datasetId'=$1 ORDER BY position DESC LIMIT 24",[datasetId])).rows.map(row=>resultCopy(row.payload));
  }
 
  async saveReport(run:Run,title:string){
@@ -151,7 +152,7 @@ export class PostgresStore {
  }
 
  async reports():Promise<{id:string;title:string;createdAt:string;run:Run}[]>{
-  return (await this.connection.query('SELECT id,title,created_at,payload FROM reports ORDER BY created_at DESC')).rows.map(row=>({id:row.id,title:row.title,createdAt:row.created_at,...row.payload}));
+  return (await this.connection.query('SELECT id,title,created_at,payload FROM reports ORDER BY created_at DESC')).rows.map(row=>({id:row.id,title:row.title,createdAt:row.created_at,...row.payload,run:runCopy(row.payload.run)}));
  }
 
  async deleteSaved(kind:'reports'|'conversations',input:string[],isActive:(id:string)=>boolean=()=>false){

@@ -10,7 +10,7 @@ export default function RunReview({run,onPatent}:{run:Run;onPatent?:(id:string,d
  async function load(){try{const response=await fetch('/api/evaluations/'+run.id);const data=await response.json();if(!response.ok)throw new Error(data.error);setOutcome(data.outcome);if(data.judgment){const j=data.judgment;setReviewer(j.reviewer);setBasis(j.basis);setRelevant(j.relevant.join('\n'));setIrrelevant(j.irrelevant.join('\n'));setReport(j.report);setNote(j.reportNote);setMarks(j.extraction);}}catch(e){setMessage((e as Error).message);}}
  return <details className="research-trail" onToggle={e=>{if(e.currentTarget.open&&!outcome)void load();}}>
 <summary>质量复核 · 人工标注与程序检查</summary>
-<p>引文能定位，不等于解释正确。未标注记录不计作错误；请独立阅读原文后评审。</p>{outcome&&<dl className="review-metrics">
+<p>结合原文记录评审意见，未标注记录单独统计。</p>{outcome&&<dl className="review-metrics">
 <dt>可定位引文</dt>
 <dd>{outcome.automatic.locatableQuotes}/{outcome.automatic.sourceQuoteCount}</dd>
 <dt>无法解析的图表引用</dt>
@@ -32,7 +32,7 @@ export default function RunReview({run,onPatent}:{run:Run;onPatent?:(id:string,d
 </label>
 <details>
 <summary>检索相关性标注</summary>
-<p>编号用逗号或换行分隔。召回率只针对此处标注的相关记录池，不是全球查全率。</p>
+<p>编号用逗号或换行分隔。召回率采用此处标注的相关记录池计算。</p>
 <label>相关的公开编号<textarea rows={2} value={relevant} onChange={e=>setRelevant(e.target.value)}/>
 </label>
 <label>不相关的公开编号<textarea rows={2} value={irrelevant} onChange={e=>setIrrelevant(e.target.value)}/>

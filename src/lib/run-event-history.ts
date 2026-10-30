@@ -4,6 +4,7 @@ type RunEvent={seq:number;event:string;payload:string};
 export function collapseTextHistory(events:RunEvent[]):RunEvent[]{
  let answer='',hasText=false;
  const remaining=events.filter(event=>{
+  if(event.event==='text-snapshot'){answer=JSON.parse(event.payload).text;hasText=true;return false;}
   if(event.event==='text-reset'){answer='';hasText=true;return false;}
   if(event.event==='text-delta'){answer+=JSON.parse(event.payload).text;hasText=true;return false;}
   return true;

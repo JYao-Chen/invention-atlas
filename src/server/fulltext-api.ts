@@ -58,7 +58,7 @@ export async function fulltextEndpoint(request:Request,path:string[]):Promise<Re
    const query=z.string().trim().min(1).max(7000).parse(url.searchParams.get('q'));
    const limit=z.coerce.number().int().min(1).max(100).default(20).parse(url.searchParams.get('limit')||undefined);
    const patentIds=url.searchParams.has('patents')?url.searchParams.get('patents')!.split(',').filter(Boolean):undefined;
-   const scope=z.enum(['current','historical']).parse(url.searchParams.get('scope')||'current'),currentOnly=scope==='current',alignment=await store.alignment(datasetId,version,patentIds),warning=scope==='historical'?'当前检索明确包含历史原文，不代表现有数据集的最新内容。':alignment.changed+alignment.removed?`已排除${alignment.changed}件内容变化和${alignment.removed}件已移除专利的历史索引；请为最新原文建立新版本。`:'';
+   const scope=z.enum(['current','historical']).parse(url.searchParams.get('scope')||'current'),currentOnly=scope==='current',alignment=await store.alignment(datasetId,version,patentIds),warning=scope==='historical'?'当前检索包含历史原文。':alignment.changed+alignment.removed?`已排除${alignment.changed}件内容变化和${alignment.removed}件已移除专利的历史索引；请为最新原文建立新版本。`:'';
    if(!status.total)return Response.json({hits:[],status:'unavailable',reason:'指定原文版本尚未建立片段索引',version});
    if(currentOnly&&!alignment.current)return Response.json({hits:[],status:'unavailable',reason:'指定索引范围没有与当前原文一致的文档，请建立新版本或明确检索历史原文。',alignment,scope,warning,version});
    if(!status.done)return Response.json({hits:(await store.keyword(datasetId,version,query,limit,patentIds,currentOnly)).map(hit=>({...hit,matches:['keyword']})),method:'keyword-only',reason:'指定模型尚无片段向量',...status,alignment,scope,warning,version});

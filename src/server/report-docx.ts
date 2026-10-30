@@ -1,3 +1,4 @@
+import {runCopy} from '../lib/result-copy';
 import {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,HeadingLevel,ExternalHyperlink,LevelFormat,ShadingType,BorderStyle,ImageRun,TableLayoutType} from 'docx';
 import {fromMarkdown} from 'mdast-util-from-markdown';
 import {gfm} from 'micromark-extension-gfm';
@@ -62,6 +63,7 @@ async function resultBlocks(result:AnalysisResult):Promise<Block[]>{
  return blocks;
 }
 export async function exportReportDocx(report:{title:string;run:Run;revision?:number},format:'Word'|'PDF'='Word'){
+ report={...report,run:runCopy(report.run)};
  const used=new Set<string>(),blocks:Block[]=[new Paragraph({text:report.title,heading:HeadingLevel.TITLE}),new Paragraph({text:`数据集 ${report.run.datasetId} · ${report.run.createdAt}${report.revision?' · 人工编辑草稿第'+report.revision+'版':''}`}),new Paragraph({text:format+'版保留正文与完整工具结果表；交互图表请使用HTML版。无法转换的公式标注并保留LaTeX原式。'})];
  for(const part of report.run.answer.split(/(\[\[chart:[a-zA-Z0-9-]+\]\])/g)){
   const id=part.match(/^\[\[chart:([^\]]+)\]\]$/)?.[1];

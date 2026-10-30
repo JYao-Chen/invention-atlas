@@ -1,4 +1,5 @@
 'use client';
+import {resultCopy} from '@/lib/result-copy';
 import type {PatentEvidenceLocation} from '../lib/patent-evidence';
 import {useMemo,useState,useRef} from 'react';
 import {downloadChart} from '@/lib/chart-download';
@@ -131,6 +132,7 @@ function GraphView({graph,onPatent}:{graph:Graph;onPatent:(id:string,location?:P
 ;
 }
 export default function ResultView({result,onPatent,showMethod=false}:{result:AnalysisResult;onPatent:(id:string,location?:PatentEvidenceLocation)=>void;showMethod?:boolean}){
+ result=resultCopy(result);
 const panel=useRef<HTMLElement>(null),[imageBusy,setImageBusy]=useState(false),[imageError,setImageError]=useState('');
 async function saveChart(format:'svg'|'png'){const svg=panel.current?.querySelector<SVGSVGElement>('.word-cloud>svg,.cluster-svg,.graph-svg,.chart svg.recharts-surface');if(!svg)return;setImageBusy(true);setImageError('');try{await downloadChart(svg,result.tool,format);}catch(error){setImageError((error as Error).message);}finally{setImageBusy(false);}}
 const words=result.rows.some(row=>typeof row.word==='string');

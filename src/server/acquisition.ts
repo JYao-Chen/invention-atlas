@@ -32,5 +32,5 @@ export async function acquireDlt(input:z.infer<typeof acquisitionSchema>,signal:
  }
  const unique=[...new Map(candidates.map(p=>[p.id,p])).values()],records=input.query.trim()?lexical(unique,input.query).map(r=>r.p):unique;
  if(!records.length)throw new Error('所选位置没有符合字段与检索条件的记录；已下载窗口保留，可更换位置或英文检索词');
- const meta=datasetMeta(input.name,records,'https://huggingface.co/datasets/ExponentialScience/DLT-Patents',`按用户指定源位置${windows.map(w=>w.offset).join('、')}各读取最多100条；排除截断、缺全文和重复公开编号。${input.query?'BM25筛选标题与摘要：'+input.query+'。':''}不是随机样本、全行业检索或全球实时专利库。`);(await saveDataset(meta,records));writeFileSync(resolve(root,meta.id+'-acquisition.json'),JSON.stringify({datasetId:meta.id,windows,selected:records.map(p=>p.id),query:input.query},null,2));return meta;
+ const meta=datasetMeta(input.name,records,'https://huggingface.co/datasets/ExponentialScience/DLT-Patents',`按用户指定源位置${windows.map(w=>w.offset).join('、')}各读取最多100条；排除截断、缺全文和重复公开编号。${input.query?'BM25筛选标题与摘要：'+input.query+'。':''}`);(await saveDataset(meta,records));writeFileSync(resolve(root,meta.id+'-acquisition.json'),JSON.stringify({datasetId:meta.id,windows,selected:records.map(p=>p.id),query:input.query},null,2));return meta;
 }

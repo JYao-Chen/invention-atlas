@@ -61,13 +61,13 @@
 | `analyze_citation_network` | 引用；`top_k` | 内外部边、PageRank、共引与文献耦合 |
 | `analyze_family_geography` | 真实同族成员 | 已知成员的公开局分布，不把同族ID当成员列表 |
 
-外部引用仅有编号时，不代表数据库中已有外部全文。缺少全库前向引用时不能据此评价整个行业的影响力。
+外部引用保留编号，已入库文献可以打开全文。前向引证按已有资料统计。
 
 ## 审计与监测
 
 | 工具标识 | 参数与数据 | 输出 |
 | --- | --- | --- |
-| `audit_search_strategy` | `strategies`，2—10组名称与查询；`top_k` | 各返回集的重合与独有命中，不是全球查全率 |
+| `audit_search_strategy` | `strategies`，2—10组名称与查询；`top_k` | 各返回集的重合与独有命中 |
 | `monitor_patent_changes` | `query`、`strategy_id`、`top_k` | 首次保存基线；后续比较新增、移出及字段变化 |
 | `audit_dataset` | 原文与规范字段 | 缺失、来源和原文定位检查 |
 

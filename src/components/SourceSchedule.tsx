@@ -21,7 +21,7 @@ export default function SourceSchedule({datasetId,readOnly}:{datasetId:string;re
  }
  return <section aria-label="定时来源采集">
   <h4>定时来源采集</h4>
-  <p className="muted">定期重新读取指定窗口，不是全库实时同步。来源内容与手工修订冲突时，等待确认后再继续自动采集。</p>
+  <p className="muted">定期重新读取指定窗口。来源内容与手工修订冲突时，等待确认后再继续自动采集。</p>
   {!loaded&&!error&&<p role="status">正在读取采集配置…</p>}
   {error&&<p className="error" role="alert">{error} {!loaded&&<button type="button" onClick={()=>setRetry(value=>value+1)}>重新读取</button>}</p>}
   {loaded&&<>

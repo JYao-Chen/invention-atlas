@@ -29,5 +29,5 @@ export function claimStructure(sourceClaims:Claim[]){
   const status=cancelled?'cancelled':!claim.text.trim()||issues.length?'unresolved':parents.length?'dependent':'independent';
   return {number:claim.number,status,dependsOn:parents,references,issues,text:claim.text,sourceStart:claim.sourceStart,sourceEnd:claim.sourceEnd,sourceClaimNumber:claim.sourceClaimNumber,sourceClaimOffset:claim.sourceClaimOffset};
  });
- return {nodes,edges:nodes.flatMap(node=>node.dependsOn.filter(number=>numbers.has(number)&&number<node.number&&!duplicates.has(number)).map(number=>({from:node.number,to:number}))),notes:['关系依据保存权利要求的明确引用编号及来源提供的dependsOn；不使用说明书推断。','未发现引用编号的非空项标为独立项；这是结构识别，不是保护范围或法律有效性判定。','缺失、重复、前向引用及未解析措辞保留为待确认，不自动补造父项。']};
+ return {nodes,edges:nodes.flatMap(node=>node.dependsOn.filter(number=>numbers.has(number)&&number<node.number&&!duplicates.has(number)).map(number=>({from:node.number,to:number}))),notes:['关系依据保存权利要求的明确引用编号及来源提供的dependsOn；不使用说明书推断。','未发现引用编号的非空项标为独立项。','缺失、重复、前向引用及未解析措辞保留为待确认，不自动补造父项。']};
 }

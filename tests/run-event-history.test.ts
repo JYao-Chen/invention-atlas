@@ -18,3 +18,8 @@ test('preparation without text keeps its original events',()=>{
  const history=[event(1,'progress',{unit:'读取原文'})];
  assert.deepEqual(collapseTextHistory(history),history);
 });
+
+test('restored history uses a completed correction snapshot instead of replaying the old draft',()=>{
+ const history=[event(1,'text-delta',{text:'初稿'}),event(2,'text-snapshot',{text:'校正正文'}),event(3,'text-delta',{text:'。'})];
+ assert.deepEqual(collapseTextHistory(history),[event(3,'text-snapshot',{text:'校正正文。'})]);
+});

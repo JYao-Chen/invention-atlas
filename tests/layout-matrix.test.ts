@@ -7,7 +7,7 @@ import {retrieveResults,retrievalContext} from '../src/server/report-retrieval';
 import type {AnalysisResult} from '../src/lib/types';
 test('layout matrix deduplicates publications but retains every evidence row and bounds absent pairs',()=>{
  const result=layoutMatrix([{function:'F',effect:'E',patent:'P',quote:'a'},{function:'F',effect:'E',patent:'P',quote:'b'},{function:'G',effect:'H',patent:'Q',quote:'c'}]);
- assert.equal(result.cells[0].documents,1);assert.deepEqual(result.cells[0].evidenceRows,[0,1]);assert.equal(result.missingPairs.length,2);assert.ok(result.missingPairs.every(pair=>pair.status==='not_observed_in_sample'));assert.ok(result.interpretation.includes('不能解释为专利空白'));
+ assert.equal(result.cells[0].documents,1);assert.deepEqual(result.cells[0].evidenceRows,[0,1]);assert.equal(result.missingPairs.length,2);assert.ok(result.missingPairs.every(pair=>pair.status==='not_observed_in_sample'));
  assert.equal(layoutMatrix([]).cells.length,0);assert.throws(()=>layoutMatrix([{function:'F',effect:'E',patent:'P'}]),/证据行/);
 });
 test('large layout remains sparse, explicitly reports preview omissions and supports cell pagination',()=>{

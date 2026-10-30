@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {executeRun,type AgentDependencies} from '../src/server/agent';
+import {executeRun,generateReport,type AgentDependencies} from '../src/server/agent';
 import {auditReport} from '../src/server/report-audit';
 import {store} from '../src/server/db';
 import {normalize,datasetMeta} from '../src/server/importers';
@@ -77,14 +77,14 @@ test('Claim, Comparison and Citation run concurrently after Analysis, join befor
  assert.deepEqual(run.results.map(r=>r.rows),run.plan.map(p=>mockResult(p.tool,p.params,run.datasetId).rows));
  const events=await store.events(run.id);assert.equal(events.filter(e=>e.event==='stage-start'&&['Claim','Comparison','Citation'].includes(JSON.parse(e.payload).stage)).length,3);
 });
-test('audit requests exactly one correction; second failure retains text and appends issues; queue recovery preserves the completed report',async()=>{
+test('audit requests exactly one correction; second failure retains text without replay or an appendix; queue recovery preserves the completed report',async()=>{
  const {run}=await fixture();let reports=0;
  await executeRun(run,[{tool:'get_dataset_summary',params:{}}],false,new AbortController().signal,{
   planned:noPlan,review:noModel,executeTool:async(tool,p,meta)=>mockResult(tool,p as Params,meta.id),generateReport:async r=>{reports++;if(reports===2)assert.equal(r.reportAudit?.passed,false);r.answer='US999999B1 共 999 项。';await store.saveRun(r);},
  });
- assert.equal(reports,2);assert.equal(run.reportAudit?.attempt,2);assert.equal(run.orchestration?.reportRevisions,1);assert.ok(run.answer.startsWith('US999999B1'));assert.match(run.answer,/自动审计待复核问题/);
- const events=await store.events(run.id);assert.equal(events.filter(e=>e.event==='report-revision').length,1);assert.equal(events.filter(e=>e.event==='report-audit').length,2);assert.equal(events.filter(e=>e.event==='text-reset').length,1);
- // A lease can expire between saving the appendix and saving stage-complete.
+ assert.equal(reports,2);assert.equal(run.reportAudit?.attempt,2);assert.equal(run.orchestration?.reportRevisions,1);assert.ok(run.answer.startsWith('US999999B1'));assert.doesNotMatch(run.answer,/自动审计待复核问题/);
+ const events=await store.events(run.id);assert.equal(events.filter(e=>e.event==='report-revision').length,1);assert.equal(events.filter(e=>e.event==='report-audit').length,2);assert.equal(events.filter(e=>e.event==='text-reset').length,0);assert.equal(events.filter(e=>e.event==='text-snapshot').length,1);
+ // A lease can expire between saving the audit and saving stage-complete.
  const beforeCheckpoint=structuredClone(run);beforeCheckpoint.orchestration!.completed=beforeCheckpoint.orchestration!.completed.filter(key=>key!=='Audit:1');
  await executeRun(beforeCheckpoint,run.plan,false,new AbortController().signal,{planned:noPlan,review:noModel,executeTool:async()=>{throw new Error('Must reuse results');},generateReport:async()=>{throw new Error('Must reuse report');}});
  assert.equal(beforeCheckpoint.answer,run.answer);assert.deepEqual(beforeCheckpoint.reportAudit,run.reportAudit);
@@ -118,4 +118,26 @@ test('a late failed parallel tool keeps deterministic result order and is visibl
   finishFailure();return mockResult(tool,p as Params,meta.id);
  }});
  assert.deepEqual(run.results.map(r=>r.tool),['compare_claims','analyze_citation_network']);assert.deepEqual(run.results.map(r=>r.status),['failed','completed']);assert.equal(run.audit?.[0].status,'failed');
+});
+
+test('audit accepts executed method constants and supplied dataset metadata',()=>{
+ const result={...mockResult('analyze_clustering',{top_k:999},'d'),method:'1024维嵌入，固定种子42，最多30轮迭代'};
+ assert.deepEqual(auditReport('2023年，1024维，种子42，30轮，覆盖率42.8%。',[result],{count:3000,years:['2023'],coverage:{citations:0.428}}),[]);
+ assert.equal(auditReport('共999项。',[result]).length,1);
+});
+
+test('report correction keeps visible and saved body until the complete replacement arrives',async()=>{
+ const {run,patent}=await fixture();run.results=[mockResult('get_dataset_summary',{},run.datasetId)];run.answer='已经显示的正文。';await store.saveRun(run);
+ const previousFetch=globalThis.fetch,previousKey=process.env.DASHSCOPE_API_KEY;process.env.DASHSCOPE_API_KEY='fixture-key';let chunks=0;
+ globalThis.fetch=async(_url,options)=>{
+  const request=JSON.parse(String(options?.body));assert.match(request.messages[0].content,/方法与数据限制说明/);
+  return new Response(new ReadableStream({async pull(controller){
+   assert.equal(run.answer,'已经显示的正文。');assert.equal((await store.run(run.id))?.answer,'已经显示的正文。');
+   const text=['修订','后的正文。'][chunks++];
+   if(text)controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify({choices:[{delta:{content:text}}]})+'\n\n'));
+   else{controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));controller.close();}
+  }}));
+ };
+ try{await generateReport(run,[patent],new AbortController().signal);assert.equal(run.answer,'修订后的正文。');assert.equal((await store.run(run.id))?.answer,run.answer);assert.equal((await store.events(run.id)).filter(e=>['text-reset','text-delta'].includes(e.event)).length,0);}
+ finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.DASHSCOPE_API_KEY;else process.env.DASHSCOPE_API_KEY=previousKey;}
 });

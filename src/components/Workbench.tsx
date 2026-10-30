@@ -1,4 +1,5 @@
 'use client';
+import {resultText} from '@/lib/result-copy';
 import {useEffect,useState,useRef} from 'react';
 import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronDown,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
 import Markdown from './MathMarkdown';
@@ -331,7 +332,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 {report&&reportTab==='review'&&<ReportReview key={report.id+':'+(report.revision||0)} reportId={report.id} revision={report.revision||0} results={report.run.results} readOnly={Boolean(readOnly)} currentUserId={workspace?.user.id} toolTitle={name=>tools.find(t=>t.name===name)?.title||name} onPatent={id=>void openPatent(id,report.run.datasetId)}/>}
 {report&&reportTab==='body'&&<article className="markdown report-narrative">
 <ReportDraftEditor key={report.id} reportId={report.id} selectedRevision={report.revision||0} readOnly={Boolean(readOnly)} onRead={version=>setReport(current=>current?{...current,revision:version.revision,title:version.title,run:{...current.run,answer:version.answer}}:current)}/>
-<Markdown>{report.run.answer.replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>
+<Markdown>{resultText(report.run.answer).replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>
 </article>}{!report&&<>
 <div className="analysis-intro">
 <div>

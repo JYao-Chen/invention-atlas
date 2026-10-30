@@ -1,4 +1,4 @@
-import type {AnalysisResult,ReportAuditIssue} from '../lib/types';
+import type {AnalysisResult,ReportAuditIssue,Dataset} from '../lib/types';
 import {resultPatentNumbers,patentNumberPattern as patentPattern} from './report-conclusions';
 
 const numberPattern=/-?\d+(?:,\d{3})*(?:\.\d+)?(?:[eE][+-]?\d+)?(?:%|％)?/g;
@@ -13,7 +13,7 @@ function hasRoundedEvidence(value:string,sorted:number[]){
  while(left<right){const middle=Math.floor((left+right)/2);if(sorted[middle]<lower)left=middle+1;else right=middle;}
  return left<sorted.length&&sorted[left]<upper;
 }
-export function auditReport(answer:string,results:AnalysisResult[]):ReportAuditIssue[]{
+export function auditReport(answer:string,results:AnalysisResult[],dataset?:Pick<Dataset,'count'|'coverage'|'years'>):ReportAuditIssue[]{
  const patents=new Set(results.flatMap(r=>[...resultPatentNumbers(r)])),numbers=new Set<number>();
  const collect=(value:unknown)=>{
   if(typeof value==='number'&&Number.isFinite(value))numbers.add(value);
@@ -23,7 +23,8 @@ export function auditReport(answer:string,results:AnalysisResult[]):ReportAuditI
  };
  // Parameters are requests, not observed numerical evidence. Result IDs, source
  // URLs and timestamps are also excluded from the numeric evidence pool.
- for(const r of results.filter(r=>r.status==='completed'))collect({rows:r.rows,summary:r.summary,rowSources:r.rowSources,graph:r.graph,clusterMap:r.clusterMap,scope:r.scope,layoutMatrix:r.layoutMatrix});
+ for(const r of results.filter(r=>r.status==='completed'))collect({rows:r.rows,summary:r.summary,rowSources:r.rowSources,graph:r.graph,clusterMap:r.clusterMap,scope:r.scope,layoutMatrix:r.layoutMatrix,method:r.method});
+ if(dataset)collect({count:dataset.count,coverage:dataset.coverage,years:dataset.years});
  const sortedNumbers=[...numbers].sort((a,b)=>a-b);
  const issues:ReportAuditIssue[]=[];
  for(const [index,paragraph] of answer.split(/\n\s*\n/).entries()){

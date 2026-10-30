@@ -33,13 +33,12 @@ async function executeQueuedRunBody(job:Job,signal:AbortSignal){
   signal.throwIfAborted();
   if(job.attempts>1){
    await event(r.id,'status',{phase:'Recovery',message:'正在从已保存的分析阶段恢复任务'});
-   const completedReport=r.orchestration?.completed.includes('Report:'+r.orchestration.reportRevisions);
-   if(r.answer&&(job.kind==='report'||!completedReport&&r.executionStage!=='Report')){r.answer='';await saveRun(r);await event(r.id,'text-reset',{});}
+   // Keep the saved answer visible while an interrupted report is rebuilt.
   }
   if(job.kind==='source-update')await executeSourceUpdate(db,job,r,signal);
   else if(job.kind==='fulltext')await executeFulltextIndex(db,job,r,signal);
   else if(job.kind==='professional')await executeProfessionalStage(job,r,signal);
-  else if(job.kind==='report')await generateReport(r,await analysisPatents(r.datasetId),signal);
+  else if(job.kind==='report'){const replacing=Boolean(r.answer);await generateReport(r,await analysisPatents(r.datasetId),signal);if(replacing)await event(r.id,'text-snapshot',{text:r.answer});}
   else{const payload=submission.parse(job.payload);await executeRun(r,payload.forced,payload.toolOnly,signal);}
   signal.throwIfAborted();
   r.status=r.results.some(result=>result.status!=='completed')?'partial':'completed';

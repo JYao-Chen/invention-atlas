@@ -1,3 +1,4 @@
+import {runCopy} from '../lib/result-copy';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import type {Run,AnalysisResult} from '../lib/types';
@@ -13,6 +14,7 @@ function fallbackResult(result:AnalysisResult){
  return `<section class="result-panel"><h2>${escape(result.title)}</h2><p>${escape(result.summary)}</p><div class="markdown result-method">${reportMarkdownHtml(result.method)}</div>${tables}</section>`;
 }
 export function exportReportHtml(report:{title:string;run:Run},suppliedAssets?:Assets){
+ report={...report,run:runCopy(report.run)};
  const runtime=suppliedAssets||runtimeAssets(),used=new Set<string>();
  const narrative=report.run.answer.split(/(\[\[chart:[a-zA-Z0-9-]+\]\])/g).map(part=>{
   const id=part.match(/^\[\[chart:([^\]]+)\]\]$/)?.[1];

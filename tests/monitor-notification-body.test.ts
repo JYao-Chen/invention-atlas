@@ -7,7 +7,7 @@ import {monitorBrief} from '../src/server/monitor-brief';
 test('failure notifications render actual reasons without accessing or inventing change counts',()=>{
  for(const status of ['failed','unavailable'] as const){
   const html=renderToStaticMarkup(createElement(MonitorNotificationBody,{snapshot:{datasetId:'fixture',params:{query:'H04L'},observedAt:'2026-10-12',failure:{status,message:'没有符合范围的记录',warnings:['仅检查已入库数据']}}}));
-  assert.match(html,/没有符合范围的记录/);assert.match(html,/不能据此认定无变化/);assert.match(html,/仅检查已入库数据/);assert.doesNotMatch(html,/新增0|变化记录/);
+  assert.match(html,/没有符合范围的记录/);assert.match(html,/仅检查已入库数据/);assert.doesNotMatch(html,/新增0|变化记录/);
   assert.match(html,status==='failed'?/监测执行失败/:/监测数据不足/);
  }
 });
