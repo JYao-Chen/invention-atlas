@@ -223,7 +223,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 
  <div className={'work-area'+(mobileFocus&&!deepOpen?' conversation-mode':'')+(deepOpen?' research-mode':'')+(report?.run.kind==='research'&&!mobileFocus?' research-report-mode':'')}>
 <header className="topbar">
-<div>
+<div className="page-heading">
 <h1>{deepOpen?'深度报告':mobileFocus?'分析助手':report?report.title:titles[view]}</h1>
 <span className="dataset-caption">{currentMeta?.name||'尚未导入数据'}</span>
 </div>

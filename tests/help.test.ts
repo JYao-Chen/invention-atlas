@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
-import {guideChapters,projectRepository} from '../src/lib/help-guide';
+import {guideChapters,projectRepository,agentArchitectureMermaid} from '../src/lib/help-guide';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import HelpManual from '../src/components/HelpManual';
@@ -17,7 +17,7 @@ test('manual exposes contribution links in a dedicated footer and the navigation
 import {questions} from '../src/lib/suggestions';
 test('manual has distinct chapters, valid destinations, sections and documented demos',()=>{
  assert.equal(new Set(guideChapters.map(c=>c.id)).size,guideChapters.length);
- assert.equal(guideChapters.length,48);
+ assert.equal(guideChapters.length,49);
  for(const [index,c] of guideChapters.entries()){assert.ok(['data','analysis','history','reports','settings','assistant'].includes(c.target));assert.ok(c.body.includes('## '));assert.equal(c.number,String(index+1).padStart(2,'0'));assert.ok(!c.title.includes('：'));if(c.question)assert.ok(c.question.length>10);}
 });
 test('manual documents released professional, material, project and integration workflows',()=>{
@@ -56,4 +56,12 @@ test('README navigation and chapter counts match the current manual',()=>{
 test('manual cross-references point to existing chapter routes',()=>{
  const ids=new Set(guideChapters.map(c=>c.id));
  for(const chapter of guideChapters)for(const link of chapter.body.matchAll(/\]\(#guide\/([^)]*)\)/g))assert.ok(ids.has(link[1]),chapter.id+' -> '+link[1]);
+});
+
+test('architecture guide describes the actual agent modes and exports its research flow',()=>{
+ const chapter=guideChapters.find(c=>c.id==='architecture')!;
+ assert.ok(chapter);assert.ok(chapter.sections.some(s=>s.diagram==='agent-architecture'));
+ for(const term of ['Agent','Tools','Skills','LangGraph','Deep Agents','用户'])assert.ok((chapter.intro+chapter.body).includes(term),term);
+ assert.ok(readFileSync('docs/USER-GUIDE.md','utf8').includes(agentArchitectureMermaid));
+ assert.ok(guideChapters[0].intro.includes('多智能体协作'));
 });

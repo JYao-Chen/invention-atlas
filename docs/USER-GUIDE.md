@@ -5,61 +5,62 @@
 登录自己部署的应用，在首页地址后追加章节路由即可打开相应说明，例如 `#guide/start`。
 
 - [01 系统概述](#start)
-- [02 演示数据与获取](#demo-data)
-- [03 数据导入与管理](#data)
-- [04 组织、项目与成员](#workspace)
-- [05 研究材料与OCR](#materials)
-- [06 技术交底整理](#disclosures)
-- [07 数据概况](#get_dataset_summary)
-- [08 数据质量审计](#audit_dataset)
-- [09 研究范围与计数口径](#tools)
-- [10 专利检索](#search_patents)
-- [11 全文片段检索](#search_patent_passages)
-- [12 检索策略比较](#audit_search_strategy)
-- [13 专利原文与详情](#read_patent_details)
-- [14 技术问题、手段与效果](#analyze_patent_reading)
-- [15 公开趋势分析](#analyze_patent_trend)
-- [16 生命周期统计](#analyze_lifecycle)
-- [17 IPC分类分布](#analyze_ipc_distribution)
-- [18 公开局分布](#analyze_country_distribution)
-- [19 关键词词频分析](#generate_wordcloud)
-- [20 年度关键词分析](#analyze_yearly_keywords)
-- [21 关键词突现分析](#analyze_burst_terms)
-- [22 技术主题聚类](#charts)
-- [23 关键词方法对比](#compare_keyword_methods)
-- [24 申请人专利组合](#analyze_entity_portfolio)
-- [25 竞争者演化分析](#analyze_competitor_evolution)
-- [26 申请人集中度](#analyze_concentration)
-- [27 申请人合作网络](#analyze_co_network)
-- [28 引证、共引与文献耦合](#analyze_citation_network)
-- [29 引证技术主路径](#analyze_tech_roadmap)
-- [30 引证指标筛查](#analyze_patent_valuation)
-- [31 科学论文关联](#external)
-- [32 同族地域分析](#analyze_family_geography)
-- [33 来源时点法律状态统计](#analyze_legal_status)
-- [34 权利要求要素抽取](#analyze_claim_elements)
-- [35 权利要求对照](#compare_claims)
-- [36 技术效果矩阵](#analyze_tech_matrix)
-- [37 技术全景研究](#landscape-workflow)
-- [38 竞争主体专题研究](#competitor-workflow)
-- [39 技术方案查新](#novelty-workflow)
-- [40 专利布局研究](#layout-workflow)
-- [41 数据变化监测](#monitor_patent_changes)
-- [42 综合分析流程](#demo)
-- [43 分析助手](#assistant)
-- [44 深度报告](#deep-research)
-- [45 报告与研究记录](#history)
-- [46 结论复核与检索实验](#review)
-- [47 模型配置](#settings)
-- [48 开放接口与MCP](#integrations)
+- [02 智能体协作与技术架构](#architecture)
+- [03 演示数据与获取](#demo-data)
+- [04 数据导入与管理](#data)
+- [05 组织、项目与成员](#workspace)
+- [06 研究材料与OCR](#materials)
+- [07 技术交底整理](#disclosures)
+- [08 数据概况](#get_dataset_summary)
+- [09 数据质量审计](#audit_dataset)
+- [10 研究范围与计数口径](#tools)
+- [11 专利检索](#search_patents)
+- [12 全文片段检索](#search_patent_passages)
+- [13 检索策略比较](#audit_search_strategy)
+- [14 专利原文与详情](#read_patent_details)
+- [15 技术问题、手段与效果](#analyze_patent_reading)
+- [16 公开趋势分析](#analyze_patent_trend)
+- [17 生命周期统计](#analyze_lifecycle)
+- [18 IPC分类分布](#analyze_ipc_distribution)
+- [19 公开局分布](#analyze_country_distribution)
+- [20 关键词词频分析](#generate_wordcloud)
+- [21 年度关键词分析](#analyze_yearly_keywords)
+- [22 关键词突现分析](#analyze_burst_terms)
+- [23 技术主题聚类](#charts)
+- [24 关键词方法对比](#compare_keyword_methods)
+- [25 申请人专利组合](#analyze_entity_portfolio)
+- [26 竞争者演化分析](#analyze_competitor_evolution)
+- [27 申请人集中度](#analyze_concentration)
+- [28 申请人合作网络](#analyze_co_network)
+- [29 引证、共引与文献耦合](#analyze_citation_network)
+- [30 引证技术主路径](#analyze_tech_roadmap)
+- [31 引证指标筛查](#analyze_patent_valuation)
+- [32 科学论文关联](#external)
+- [33 同族地域分析](#analyze_family_geography)
+- [34 来源时点法律状态统计](#analyze_legal_status)
+- [35 权利要求要素抽取](#analyze_claim_elements)
+- [36 权利要求对照](#compare_claims)
+- [37 技术效果矩阵](#analyze_tech_matrix)
+- [38 技术全景研究](#landscape-workflow)
+- [39 竞争主体专题研究](#competitor-workflow)
+- [40 技术方案查新](#novelty-workflow)
+- [41 专利布局研究](#layout-workflow)
+- [42 数据变化监测](#monitor_patent_changes)
+- [43 综合分析流程](#demo)
+- [44 分析助手](#assistant)
+- [45 深度报告](#deep-research)
+- [46 报告与研究记录](#history)
+- [47 结论复核与检索实验](#review)
+- [48 模型配置](#settings)
+- [49 开放接口与MCP](#integrations)
 
 <a id="start"></a>
 
 # 系统概述
 
-Invention Atlas 是一个专利分析平台，可以检索已导入的专利，分析文献分布，并结合原文生成报告。
+Invention Atlas 是一个基于多智能体协作的专利分析平台。系统围绕研究问题组织任务规划、检索与范围审查，调用分析和原文阅读工具，逐步形成有证据支持的专业报告。
 
-从一个技术问题出发，可以先找到相关文献，再比较技术主题和申请人，最后回到权利要求或说明书，整理支持结论的证据。
+用户可以讨论研究方案、调整提纲和补充要求。不同研究任务共用专利资料与分析结果，长报告按章节推进，并保留原文出处和修订记录。
 
 应用中的章节路由：`#guide/start`。
 
@@ -75,9 +76,73 @@ Invention Atlas 是一个专利分析平台，可以检索已导入的专利，�
 
 ## 继续阅读
 
-首次体验可先看[演示数据与获取](#guide/demo-data)；准备自己的资料时，从[数据导入与管理](#guide/data)开始。已有数据时，可以先看[数据概况](#guide/get_dataset_summary)，再试试[年度关键词分析](#guide/analyze_yearly_keywords)或[技术主题聚类](#guide/charts)。
+了解 Agent、Tools 和 Skills 如何配合，可先看[智能体协作与技术架构](#guide/architecture)。首次体验可先看[演示数据与获取](#guide/demo-data)；准备自己的资料时，从[数据导入与管理](#guide/data)开始。已有数据时，可以先看[数据概况](#guide/get_dataset_summary)，再试试[年度关键词分析](#guide/analyze_yearly_keywords)或[技术主题聚类](#guide/charts)。
 
 需要完成一份专题报告，可以按[综合分析流程](#guide/demo)操作；涉及多阶段确认的研究，见“专业研究任务”各章。
+
+---
+
+欢迎使用与共建：[GitHub 仓库](https://github.com/JYao-Chen/invention-atlas) · [反馈问题](https://github.com/JYao-Chen/invention-atlas/issues) · [提交改进](https://github.com/JYao-Chen/invention-atlas/pulls)
+
+
+<a id="architecture"></a>
+
+# 智能体协作与技术架构
+
+系统把专利研究组织为有分工的智能体流程：Agent 根据问题决定下一步，Tools 执行检索、计算和原文读取，Skills 提供研究方法与阅读约定。
+
+研究方案、分析结果、原文证据和章节发现贯穿整个任务。用户的反馈可以改变研究方向，新的证据也可以促使助手补充分析或修订正文。
+
+应用中的章节路由：`#guide/architecture`。
+
+## 一个研究任务怎样推进
+
+用户给出问题后，助手先理解研究对象、用途与范围，提出研究路径。研究过程中，Agent 根据当前发现选择工具，读取返回数据和原文，再决定继续分析、补读证据或撰写章节。需要调整时，回到相应步骤继续，完成后形成报告。
+
+```mermaid
+flowchart TD
+ U[用户问题与反馈] --> P[理解需求与规划研究]
+ P --> C[讨论并确认方案]
+ C --> A[Agent 选择下一步]
+ S[Skills 研究方法与阅读约定] -.指导.-> A
+ A --> T[Tools 检索 · 计算 · 原文读取]
+ T --> E[结果与原文证据]
+ E --> A
+ A --> W[撰写与修订章节]
+ W --> A
+ W --> R[专业报告与来源]
+ U -.调整要求.-> A
+```
+
+## Agent怎样分工
+
+对话分析以职责节点组织协作。规划节点确定研究范围与工具步骤，范围审查节点检查候选文献与问题是否对应，分析执行节点调用统计、引证和权利要求工具，报告节点组织结果，检查与修订节点处理需要补充的内容。
+
+深度报告采用持续研究的 Agent：先讨论需求与提纲，确认后自主选择分析顺序，边研究边写章节，再根据发现补充和修订。系统分别使用 LangGraph 组织职责流程、Deep Agents 组织持续研究。
+
+## Tools执行哪些工作
+
+工具提供可复用的具体能力。检索工具寻找文献或片段；统计与网络工具计算趋势、主体结构和引证关系；原文工具读取指定公开版本的权利要求与说明书；章节工具保存、读取和修订报告内容。
+
+工具返回实际数据及其来源。全库统计按明确的研究范围计算；全文模型整理按选定专利执行；原文读取可以按词句定位、分页续读，也可以取回已保存证据。Agent利用这些结果决定后续动作。
+
+## Skills怎样指导研究
+
+Skills是按任务读取的研究方法。研究规划技能帮助理解需求和调整提纲，专利全景技能指导选择统计口径与比较维度，原文研读技能说明怎样选案例、定位条款和保留引文。
+
+证据写作技能组织章节，事实核对技能检查数字、版本和跨章联系，中文表达技能整理套话和句式。技能规定何时读、读什么、何时停止；工具负责执行读取与计算，并返回真实位置和结果。
+
+## 证据如何进入报告
+
+分析结果保留范围、参数和完整数据，原文证据保留公开编号、字段、位置与逐字片段。章节引用这些结果和证据，并记录自己的新增发现，供后续章节继续使用。
+
+修订沿具体问题回到结果或原文，复用已有证据；缺少上下文时再读取新的位置。报告逐章保存版本，重新进入可以直接阅读已完成正文。
+
+## 用户在哪些地方参与
+
+创建深度报告时，先讨论研究目的、读者与重点，反复调整提纲，满意后确认开始生成。研究期间可以补充要求或暂停，助手据此调整后续分析；阅读报告时，可以继续修改章节、记录意见和比较版本。
+
+需要连续研究时进入[深度报告](#guide/deep-research)；需要按明确阶段确认研究内容时，可选择“专业研究任务”中的流程。
 
 ---
 
@@ -1744,9 +1809,9 @@ as_of 是本系统获取状态的时间，event_date 是来源事件日期，预
 
 # 深度报告
 
-深度报告围绕研究问题自动规划提纲，连续调用分析工具和阅读专利原文，逐章形成完整报告。
+深度报告先理解研究用途与范围，和你讨论并调整方案；确认后连续分析、阅读专利原文，逐章写作和修订。
 
-它适合篇幅较长、需要多次分析与交叉比较的专题研究。章节单独保存，可以在研究过程中阅读，也可以补充要求后继续修订。
+它适合篇幅较长、需要多次分析与交叉比较的专题研究。方案与章节保留历次版本，可以反复讨论提纲、在研究过程中阅读正文，并补充要求继续修订。
 
 应用中的章节路由：`#guide/deep-research`。
 
@@ -1756,7 +1821,7 @@ as_of 是本系统获取状态的时间，event_date 是来源事件日期，预
 
 ## 确认提纲后继续
 
-默认方式是“确认提纲后自动完成”。助手先了解数据并提出提纲，等待你检查章节标题、研究问题和篇幅；确认后继续分析、阅读和写作。选择“全自动完成”时，系统直接沿提纲继续研究。
+默认方式是“确认提纲后自动完成”。助手先说明如何理解研究目标、报告用途和数据范围，并提出待确认的问题与提纲。通过“按意见调整方案”回答或提出修改，助手更新方案后再次等待确认；你也可以直接编辑提纲。满意后点击“方案已确认，开始生成”，再开展系统分析与写作。选择“全自动完成”时，系统直接沿提纲继续研究。
 
 ## 阅读与调整
 
@@ -1764,7 +1829,7 @@ as_of 是本系统获取状态的时间，event_date 是来源事件日期，预
 
 ## 保存报告
 
-各章完成后，助手整理跨章结论与摘要，按提纲组装正文，自动保存到报告库。点击“阅读完整报告”即可打开，沿用报告库的阅读、导出和分享功能。再次进入研究记录时，已写章节直接显示。模型调用预算可以在研究过程中调整。
+各章完成后，助手整理跨章结论与摘要，按提纲组装正文，自动保存到报告库。点击“阅读完整报告”即可打开，沿用报告库的阅读、导出和分享功能。再次进入研究记录时，已写章节直接显示。字数按正文汉字及其他语言词数计算，引用标记和链接不计。达到目标篇幅后完成，内容通过新增证据、案例和比较展开。模型调用预算可以在研究过程中调整。研究技能包括规划、专利全景分析、原文研读、证据写作、事实修订和中文表达整理，助手按当前任务读取并使用。
 
 ---
 
