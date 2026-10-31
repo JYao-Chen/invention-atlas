@@ -1,3 +1,4 @@
+import {patentNumberPattern} from './report-conclusions';
 // These are the report phrases the product owner explicitly asked to remove.
 // Reject the draft for revision; never delete or alter source documents.
 const unwanted:[RegExp,string][]=[
@@ -9,4 +10,9 @@ const unwanted:[RegExp,string][]=[
 ];
 export function researchEditorialIssues(body:string){
  return unwanted.filter(([pattern])=>pattern.test(body)).map(([,description])=>description);
+}
+
+export function researchPatentMentions(body:string){
+ const prose=body.replace(/\[\[(?:chart|source):[^\]]+\]\]/g,'').replace(/https?:\/\/\S+/g,'');
+ return [...new Set([...prose.matchAll(patentNumberPattern)].map(m=>m[0].toUpperCase()))];
 }

@@ -1,6 +1,7 @@
 import {NextResponse} from 'next/server';
 import {z} from 'zod';
 import {db} from './db';
+import {RESEARCH_SKILLS} from './research-skills';
 import {modelConfig} from './config';
 import {DeepResearchStore} from './deep-research-store';
 export async function researchEndpoint(request:Request,path:string[]){
@@ -9,8 +10,9 @@ export async function researchEndpoint(request:Request,path:string[]){
  if(method==='GET'&&!id)return NextResponse.json({tasks:await tasks.list()});
  if(method==='POST'&&!id)return NextResponse.json(await tasks.create(await request.json(),modelConfig().model),{status:202});
  const task=await tasks.get(id);if(!task)return NextResponse.json({error:'深度报告不存在'},{status:404});
- if(method==='GET'&&!action)return NextResponse.json(task);
+ if(method==='GET'&&!action)return NextResponse.json({...task,skills:RESEARCH_SKILLS});
  if(method==='GET'&&action==='versions'&&chapterId)return NextResponse.json({versions:await tasks.versions(id,chapterId)});
+ if(method==='POST'&&action==='revise-outline'){const {text}=z.object({text:z.string().trim().min(1).max(12000)}).parse(await request.json());return NextResponse.json(await tasks.resume(id,false,undefined,text),{status:202});}
  if(method==='POST'&&action==='pause')return NextResponse.json(await tasks.pause(id));
  if(method==='POST'&&action==='confirm-outline'){const input=z.object({outline:z.unknown().optional()}).parse(await request.json());return NextResponse.json(await tasks.resume(id,true,input.outline),{status:202});}
  if(method==='POST'&&action==='resume')return NextResponse.json(await tasks.resume(id),{status:202});

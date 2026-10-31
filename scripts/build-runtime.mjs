@@ -10,6 +10,7 @@ for(const entry of ['agent-worker','migrate-postgres','import-sqlite-postgres','
  for(const output of Object.values(result.metafile.outputs))for(const item of output.imports)if(item.external&&!item.path.startsWith('node:'))external.add(item.path.startsWith('@')?item.path.split('/').slice(0,2).join('/'):item.path.split('/')[0]);
 }
 await cp('migrations',root+'/migrations',{recursive:true});
+await cp('skills/research',root+'/skills/research',{recursive:true});
 await import('./build-patent-mcp.mjs');
 await cp('integrations/patent-mcp',root+'/integrations/patent-mcp',{recursive:true});
 // Next traces only the exports used by Web routes; workers also need the native ESM exports.

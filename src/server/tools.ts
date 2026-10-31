@@ -31,7 +31,7 @@ export function capability(tool:string,records:Patent[],datasetCount=records.len
 export function scope(records:Patent[],params:Params){return records.filter(p=>(!params.year_start||Number(p.publicationDate.slice(0,4))>=params.year_start)&&(!params.year_end||Number(p.publicationDate.slice(0,4))<=params.year_end)&&(!params.applicant||p.applicants.some(x=>x.toLowerCase().includes(params.applicant!.toLowerCase())))&&(!params.ipc||p.ipc.some(x=>x.startsWith(params.ipc!))));}
 export type ToolContext={monitorScope?:string;entityRules?:EntityRule[];nameTopics?:(rows:Row[],records:Patent[],signal?:AbortSignal)=>Promise<Row[]>;onWork?:(done:number,total:number,label:string)=>void;semantic?:boolean;signal?:AbortSignal;queryVector?:number[];extract?:(patent:Patent)=>Promise<Row[]>;effectExtract?:EffectExtractor;onProgress?:(done:number,total:number)=>void;onCheckpoint?:(done:number,total:number,reused:number)=>void};
 export async function executeTool(name:string,input:unknown,meta:Dataset,all:Patent[],ctx:ToolContext={}):Promise<AnalysisResult>{
- const params=paramsSchema.parse(input);const specific=['compare_keyword_methods','search_patent_passages','search_patents','read_patent_details','analyze_claim_elements','compare_claims','analyze_tech_matrix','audit_dataset'].includes(name);
+ const params=paramsSchema.parse(input);const specific=['analyze_patent_reading','compare_keyword_methods','search_patent_passages','search_patents','read_patent_details','analyze_claim_elements','compare_claims','analyze_tech_matrix','audit_dataset'].includes(name);
  params.counting=specific?'publication':params.counting||'publication';
  if(['search_patents','analyze_ipc_distribution','analyze_country_distribution','generate_wordcloud','analyze_yearly_keywords','analyze_burst_terms','analyze_competitor_evolution','analyze_entity_portfolio','analyze_patent_valuation','analyze_citation_network','analyze_family_geography','analyze_legal_status','audit_search_strategy','monitor_patent_changes'].includes(name))params.top_k=params.top_k||(name==='generate_wordcloud'?50:name==='analyze_yearly_keywords'?10:20);
  if(name==='analyze_clustering')params.k=params.k||6;if(name==='analyze_co_network')params.dimension=params.dimension||'applicant';if(name==='analyze_patent_trend')params.frequency=params.frequency||'year';
@@ -40,7 +40,7 @@ export async function executeTool(name:string,input:unknown,meta:Dataset,all:Pat
  result.scope={inputCount:inputRecords.length,analyzedCount:records.length,counting:specific?'publication':params.counting||'publication',patentIds:records.map(p=>p.id),entityRules:ctx.entityRules||[]};
  const cap=capability(name,records,meta.count);if(!cap.available)return {...result,status:'unavailable',summary:cap.reason,rowSources:[]};
  if(params.counting==='family'&&!specific)result.warnings.push(`按来源familyId去重，保留最早公开件；${governed.unknown} 条缺标识记录独立保留。`);
- const top=params.top_k||20;const summary=(text:string)=>result.summary=text;const evidence=(ps:Patent[])=>result.evidence.push(...ps.map(p=>p.id));
+ const top=params.top_k||20;const summary=(text:string)=>result.summary=text;const evidence=(ps:Patent[])=>{result.evidence.push(...ps.map(p=>p.id));if(['read_patent_details','analyze_claim_elements','compare_claims','analyze_tech_matrix','analyze_patent_reading'].includes(name)&&result.scope){result.scope.analyzedCount=ps.length;result.scope.patentIds=ps.map(p=>p.id);}};
  const yearly=()=>count(records.map(p=>p.publicationDate.slice(0,4)).filter(Boolean)).sort(([a],[b])=>a.localeCompare(b));
  const rankings=(query:string)=>lexical(records,query).slice(0,top);const countRows=(values:string[],key:string)=>count(values).slice(0,top).map(([value,n])=>({[key]:value,count:n}));
  switch(name){
@@ -107,6 +107,7 @@ export async function executeTool(name:string,input:unknown,meta:Dataset,all:Pat
  }
  case 'analyze_tech_matrix':{
   const selected=params.patent_numbers?.length?records.filter(p=>params.patent_numbers!.includes(p.id)):records;
+  if(params.patent_numbers?.length&&selected.length!==new Set(params.patent_numbers).size)throw new Error('部分指定专利不在当前研究范围：'+params.patent_numbers.filter(id=>!selected.some(p=>p.id===id)).join('、'));
   if(!selected.length)return {...result,status:'unavailable',summary:'指定编号不在当前分析范围中'};
   let checkpoint={done:0,total:0,reused:0};result.rows=await extractEffects(meta.id,selected,ctx.signal,ctx.effectExtract,ctx.onProgress,{onCheckpoint:(done,total,reused)=>{checkpoint={done,total,reused};ctx.onCheckpoint?.(done,total,reused);}});
   result.layoutMatrix=layoutMatrix(result.rows);
@@ -130,7 +131,7 @@ export async function executeTool(name:string,input:unknown,meta:Dataset,all:Pat
   if(!params.patent_numbers?.length)throw new Error('深度阅读需要指定专利公开编号');
   const selected=records.filter(p=>params.patent_numbers!.includes(p.id));if(selected.length!==new Set(params.patent_numbers).size)throw new Error('部分指定专利不在当前研究范围');
   const originals=await Promise.all(selected.map(p=>fullPatent(meta.id,p)));for(const patent of originals){const key=(part:{section:string;claimNumber?:number;start:number})=>JSON.stringify(['patent-reading-v2-lists',meta.id,patent.id,modelConfig().model,part.section,part.claimNumber,part.start]),notes=await readPatentMechanism(patent,ctx.signal||new AbortController().signal,undefined,{load:part=>store.comparisonCheckpoint(key(part)),save:(part,value)=>store.saveComparisonCheckpoint(key(part),value),progress:(done,total,reused)=>ctx.onWork?.(done,total,'原文阅读分段'+(reused?'（复用）':''))});result.rows.push(...notes.map(note=>({...note,patent:patent.id})));}
-  result.rowSources=readingRowSources(result.rows,originals);result.method='按实际原文字段分段，模型辅助整理问题、手段和效果，每项保留逐字引文与字段位置。';summary(`阅读 ${selected.length} 件专利，整理 ${result.rows.length} 项原文关联笔记。`);evidence(selected);break;
+  evidence(selected);result.rowSources=readingRowSources(result.rows,originals);result.method='按实际原文字段分段，模型辅助整理问题、手段和效果，每项保留逐字引文与字段位置。';summary(`阅读 ${selected.length} 件专利，整理 ${result.rows.length} 项原文关联笔记。`);evidence(selected);break;
  }
  }
  if(ctx.signal?.aborted)throw new Error('任务已停止');result.rowSources=result.rowSources??linkRows(result,records);return result;

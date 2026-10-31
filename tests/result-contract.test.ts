@@ -57,3 +57,13 @@ test('report includes actual graph edges, scope and row sources; readback suppor
  assert.equal(readResult(r,{limit:1}).nextOffset,1);assert.equal(readResult(r,{offset:1,limit:1}).nextOffset,null);
  assert.equal(retrieveResults([r],[{resultId:r.id,word:'ledger'}])[0].total,1);assert.throws(()=>retrieveResults([r],[{resultId:'fabricated'}]));
 });
+
+test('patent membership filtering keeps original provenance indices and checks exact IDs',()=>{
+ const r=result('analyze_clustering',[{cluster:1,patents:['US1']},{cluster:2,patents:['US2','US3']},{cluster:3}]);
+ r.rowSources=[{row:1,patentIds:['US2','US3'],representatives:[]},{row:2,patentIds:['US4'],representatives:[]}];
+ const page=readResult(r,{patent:'US3'});
+ assert.equal(page.total,1);assert.equal(page.rows![0].cluster,2);assert.equal(page.rowSources![0].row,1);
+ assert.equal(readResult(r,{patent:'US4'}).rows![0].cluster,3);
+ assert.equal(readResult(r,{patent:'US'}).total,0);
+ assert.equal(readResult(r,{patent:'US1'}).rows![0].cluster,1);
+});

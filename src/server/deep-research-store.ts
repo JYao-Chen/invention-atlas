@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import type {Pool} from 'pg';
 import {z} from 'zod';
 import type {Run} from '../lib/types';
-import type {DeepResearchTask,ResearchEvidence,ResearchOutlineItem} from '../lib/deep-research';
+import type {DeepResearchTask,ResearchEvidence,ResearchOutlineItem,ResearchBrief} from '../lib/deep-research';
 import {connection,currentAccess,transaction} from './postgres';
 import {PostgresStore} from './postgres-store';
 import {JobStore} from './job-store';
@@ -12,6 +12,7 @@ import {researchEditorialIssues} from './research-editorial';
 export class ResearchInputError extends Error{}
 
 export const researchInput=z.object({datasetId:z.string().min(1),goal:z.string().trim().min(3).max(12000),mode:z.enum(['confirm_outline','automatic']).default('confirm_outline'),targetWords:z.number().int().min(1000).max(100000).default(20000),maxModelCalls:z.number().int().min(10).max(1000).default(120)});
+export const briefSchema=z.object({intent:z.string().min(1).max(3000),audience:z.string().min(1).max(1000),scope:z.string().min(1).max(3000),questions:z.array(z.string().min(1).max(1000)).max(8),approach:z.array(z.string().min(1).max(1000)).min(1).max(12),changes:z.string().max(3000)});
 export const outlineSchema=z.array(z.object({id:z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),title:z.string().trim().min(1).max(160),question:z.string().trim().min(1).max(2000),targetWords:z.number().int().min(100).max(15000)})).min(2).max(50).refine(items=>new Set(items.map(i=>i.id)).size===items.length,'章节编号不能重复');
 export class DeepResearchStore{
  constructor(private readonly pool:Pool){}
@@ -35,13 +36,15 @@ export class DeepResearchStore{
  async status(id:string,status:DeepResearchTask['status'],error=''){
   await connection(this.pool).query('UPDATE research_tasks SET status=$2,error=$3,updated_at=now() WHERE id=$1',[id,status,error]);
  }
- async outline(id:string,title:string,outline:ResearchOutlineItem[]){
+ async outline(id:string,title:string,outline:ResearchOutlineItem[],brief?:ResearchBrief){
   const parsed=outlineSchema.parse(outline);
   return transaction(this.pool,async db=>{
    const t=(await db.query('SELECT * FROM research_tasks WHERE id=$1 FOR UPDATE',[id])).rows[0];if(!t)throw new ResearchInputError('深度报告不存在');
    const saved=(await db.query('SELECT id FROM research_chapters WHERE task_id=$1',[id])).rows;
    if(saved.some(c=>!parsed.some(i=>i.id===c.id)))throw new ResearchInputError('已写章节须保留编号；调整标题、顺序或内容后可继续修订');
-   await db.query('UPDATE research_tasks SET title=$2,outline=$3,updated_at=now() WHERE id=$1',[id,title,JSON.stringify(parsed)]);
+   const plan=brief?briefSchema.parse(brief):t.brief;
+   const version={at:new Date().toISOString(),title,outline:parsed,brief:plan,request:t.feedback.at(-1)?.text||''};
+   await db.query('UPDATE research_tasks SET title=$2,outline=$3,brief=$4,planning_history=planning_history||$5::jsonb,updated_at=now() WHERE id=$1',[id,title,JSON.stringify(parsed),plan?JSON.stringify(plan):null,JSON.stringify([version])]);
   });
  }
  async chapter(id:string,chapterId:string,body:string,findings:string,evidenceIds:string[]){
@@ -70,12 +73,14 @@ export class DeepResearchStore{
    if(run&&job?.state==='queued'){run.status='interrupted';await store.saveRun(run);}return this.get(id);
   });
  }
- async resume(id:string,confirm=false,outline?:unknown){
+ async resume(id:string,confirm=false,outline?:unknown,revision?:string){
   return transaction(this.pool,async db=>{
    const task=(await db.query('SELECT * FROM research_tasks WHERE id=$1 FOR UPDATE',[id])).rows[0];if(!task)throw new ResearchInputError('深度报告不存在');
    if(!['awaiting_outline','paused','failed'].includes(task.status))throw new ResearchInputError('当前任务正在执行或已经完成');
-   if(task.status==='awaiting_outline'&&!confirm)throw new ResearchInputError('请确认提纲后继续');
+   if(revision&&task.status!=='awaiting_outline')throw new ResearchInputError('请在方案等待确认时调整');
+   if(task.status==='awaiting_outline'&&!confirm&&!revision)throw new ResearchInputError('请确认提纲后继续');
    const job=(await db.query('SELECT * FROM jobs WHERE run_id=$1 FOR UPDATE',[id])).rows[0];if(!job||job.state==='running')throw new ResearchInputError('后台正在保存暂停状态，请稍后继续');
+   if(revision)await this.feedback(id,z.string().trim().min(1).max(12000).parse(revision));
    if(outline!==undefined)await this.outline(id,task.title,outlineSchema.parse(outline));
    const actor=currentAccess()?.userId;if(!actor)throw new ResearchInputError('继续研究需要项目身份');
    await db.query("UPDATE research_tasks SET status='queued',outline_confirmed=outline_confirmed OR $2,error='',updated_at=now() WHERE id=$1",[id,confirm]);
