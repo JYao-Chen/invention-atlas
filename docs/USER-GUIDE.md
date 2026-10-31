@@ -5,51 +5,52 @@
 登录自己部署的应用，在首页地址后追加章节路由即可打开相应说明，例如 `#guide/start`。
 
 - [01 系统概述](#start)
-- [02 数据导入与管理](#data)
-- [03 组织、项目与成员](#workspace)
-- [04 研究材料与OCR](#materials)
-- [05 技术交底整理](#disclosures)
-- [06 数据概况](#get_dataset_summary)
-- [07 数据质量审计](#audit_dataset)
-- [08 研究范围与计数口径](#tools)
-- [09 专利检索](#search_patents)
-- [10 全文片段检索](#search_patent_passages)
-- [11 检索策略比较](#audit_search_strategy)
-- [12 专利原文与详情](#read_patent_details)
-- [13 技术问题、手段与效果](#analyze_patent_reading)
-- [14 公开趋势分析](#analyze_patent_trend)
-- [15 生命周期统计](#analyze_lifecycle)
-- [16 IPC分类分布](#analyze_ipc_distribution)
-- [17 公开局分布](#analyze_country_distribution)
-- [18 关键词词频分析](#generate_wordcloud)
-- [19 年度关键词分析](#analyze_yearly_keywords)
-- [20 关键词突现分析](#analyze_burst_terms)
-- [21 技术主题聚类](#charts)
-- [22 关键词方法对比](#compare_keyword_methods)
-- [23 申请人专利组合](#analyze_entity_portfolio)
-- [24 竞争者演化分析](#analyze_competitor_evolution)
-- [25 申请人集中度](#analyze_concentration)
-- [26 申请人合作网络](#analyze_co_network)
-- [27 引证、共引与文献耦合](#analyze_citation_network)
-- [28 引证技术主路径](#analyze_tech_roadmap)
-- [29 引证指标筛查](#analyze_patent_valuation)
-- [30 科学论文关联](#external)
-- [31 同族地域分析](#analyze_family_geography)
-- [32 来源时点法律状态统计](#analyze_legal_status)
-- [33 权利要求要素抽取](#analyze_claim_elements)
-- [34 权利要求对照](#compare_claims)
-- [35 技术效果矩阵](#analyze_tech_matrix)
-- [36 技术全景研究](#landscape-workflow)
-- [37 竞争主体专题研究](#competitor-workflow)
-- [38 技术方案查新](#novelty-workflow)
-- [39 专利布局研究](#layout-workflow)
-- [40 数据变化监测](#monitor_patent_changes)
-- [41 综合分析流程](#demo)
-- [42 分析助手](#assistant)
-- [43 报告与研究记录](#history)
-- [44 结论复核与检索实验](#review)
-- [45 模型配置](#settings)
-- [46 开放接口与MCP](#integrations)
+- [02 演示数据与获取](#demo-data)
+- [03 数据导入与管理](#data)
+- [04 组织、项目与成员](#workspace)
+- [05 研究材料与OCR](#materials)
+- [06 技术交底整理](#disclosures)
+- [07 数据概况](#get_dataset_summary)
+- [08 数据质量审计](#audit_dataset)
+- [09 研究范围与计数口径](#tools)
+- [10 专利检索](#search_patents)
+- [11 全文片段检索](#search_patent_passages)
+- [12 检索策略比较](#audit_search_strategy)
+- [13 专利原文与详情](#read_patent_details)
+- [14 技术问题、手段与效果](#analyze_patent_reading)
+- [15 公开趋势分析](#analyze_patent_trend)
+- [16 生命周期统计](#analyze_lifecycle)
+- [17 IPC分类分布](#analyze_ipc_distribution)
+- [18 公开局分布](#analyze_country_distribution)
+- [19 关键词词频分析](#generate_wordcloud)
+- [20 年度关键词分析](#analyze_yearly_keywords)
+- [21 关键词突现分析](#analyze_burst_terms)
+- [22 技术主题聚类](#charts)
+- [23 关键词方法对比](#compare_keyword_methods)
+- [24 申请人专利组合](#analyze_entity_portfolio)
+- [25 竞争者演化分析](#analyze_competitor_evolution)
+- [26 申请人集中度](#analyze_concentration)
+- [27 申请人合作网络](#analyze_co_network)
+- [28 引证、共引与文献耦合](#analyze_citation_network)
+- [29 引证技术主路径](#analyze_tech_roadmap)
+- [30 引证指标筛查](#analyze_patent_valuation)
+- [31 科学论文关联](#external)
+- [32 同族地域分析](#analyze_family_geography)
+- [33 来源时点法律状态统计](#analyze_legal_status)
+- [34 权利要求要素抽取](#analyze_claim_elements)
+- [35 权利要求对照](#compare_claims)
+- [36 技术效果矩阵](#analyze_tech_matrix)
+- [37 技术全景研究](#landscape-workflow)
+- [38 竞争主体专题研究](#competitor-workflow)
+- [39 技术方案查新](#novelty-workflow)
+- [40 专利布局研究](#layout-workflow)
+- [41 数据变化监测](#monitor_patent_changes)
+- [42 综合分析流程](#demo)
+- [43 分析助手](#assistant)
+- [44 报告与研究记录](#history)
+- [45 结论复核与检索实验](#review)
+- [46 模型配置](#settings)
+- [47 开放接口与MCP](#integrations)
 
 <a id="start"></a>
 
@@ -73,9 +74,44 @@ Invention Atlas 是一个专利分析平台，可以检索已导入的专利，�
 
 ## 继续阅读
 
-准备资料时，从[数据导入与管理](#guide/data)开始。已有数据时，可以先看[数据概况](#guide/get_dataset_summary)，再试试[年度关键词分析](#guide/analyze_yearly_keywords)或[技术主题聚类](#guide/charts)。
+首次体验可先看[演示数据与获取](#guide/demo-data)；准备自己的资料时，从[数据导入与管理](#guide/data)开始。已有数据时，可以先看[数据概况](#guide/get_dataset_summary)，再试试[年度关键词分析](#guide/analyze_yearly_keywords)或[技术主题聚类](#guide/charts)。
 
 需要完成一份专题报告，可以按[综合分析流程](#guide/demo)操作；涉及多阶段确认的研究，见“专业研究任务”各章。
+
+---
+
+欢迎使用与共建：[GitHub 仓库](https://github.com/JYao-Chen/invention-atlas) · [反馈问题](https://github.com/JYao-Chen/invention-atlas/issues) · [提交改进](https://github.com/JYao-Chen/invention-atlas/pulls)
+
+
+<a id="demo-data"></a>
+
+# 演示数据与获取
+
+演示数据是一套可下载的固定版本专利资料，包含专利正文、标题摘要向量和预计算示例。安装后可以直接查看报告，并用相同数据体验系统的分析功能。
+
+初次使用时，可以从这套资料开始熟悉检索、图表和原文阅读，也可以沿用它演示完整的专利研究流程。
+
+应用中的章节路由：`#guide/demo-data`。
+
+## 当前使用哪些数据
+
+三个数据集均来自 [ExponentialScience/DLT-Patents](https://huggingface.co/datasets/ExponentialScience/DLT-Patents)：区块链专利库3000条，公开年份为2018—2025年；专利样本库300条，包含2013—2024年中的10个公开年份；公开语料采集100条，公开年份为2023年。合计3400条记录，按公开编号去重为3287件。
+
+记录保存标题、摘要、权利要求、说明书、申请人、分类及公开日期等字段，3400条记录均附有1024维标题摘要向量。35条记录还保存了公开页面补充的同族或法律事件等资料及来源链接。
+
+## 还包含哪些演示内容
+
+数据包还提供3494条专利—论文关联和2417篇 OpenAlex 文献元数据，方便从专利详情继续阅读关联文献。导入后默认选中3000条区块链专利库，报告库中可以直接打开“公开趋势”和“年度关键词”两份预计算示例。
+
+## 到 GitHub 获取
+
+打开 [GitHub 仓库](https://github.com/JYao-Chen/invention-atlas)，按 README 中的“让 AI 帮你安装和启动”提示词操作，也可以阅读[演示数据安装说明](https://github.com/JYao-Chen/invention-atlas/blob/main/docs/DEMO-DATA.md)。固定版本附件位于 [demo-data-v1 下载页](https://github.com/JYao-Chen/invention-atlas/releases/tag/demo-data-v1)。
+
+初始化项目后执行 `npm run demo:import` 即可下载并导入数据。网络不便时，可以从下载页取得 `core.jsonl.gz` 与 `papers.jsonl.gz`，放在同一目录，再按安装说明从本地导入。导入已有向量和查看示例可直接进行；使用分析助手时，在自己的部署中配置模型接口。
+
+## 来源与许可
+
+专利文本来源为 DLT-Patents；专利—论文关联来源为 Matt Marx / Aaron Fuegi 的 Reliance on Science，采用 CC BY-NC 4.0，非商业使用并署名；OpenAlex 文献元数据采用 CC0。完整的版本、来源和署名信息随数据包提供。
 
 ---
 
