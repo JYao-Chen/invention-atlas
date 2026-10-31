@@ -36,7 +36,8 @@ export async function submitReport(pool:Pool,runId:string){
   if(run.status==='running')throw new Error('该任务仍在运行');
   if(!run.results.some(result=>result.status==='completed'))throw new Error('没有可用于报告的工具结果');
   const scope=currentAccess();if(!scope)throw new Error('创建任务需要已授权的项目身份');
-  const existing=(await client.query('SELECT id FROM jobs WHERE run_id=$1 FOR UPDATE',[runId])).rows[0];
+  const existing=(await client.query('SELECT id,kind FROM jobs WHERE run_id=$1 FOR UPDATE',[runId])).rows[0];
+  if(existing?.kind==='research')throw new Error('请在深度报告工作区继续研究或修订章节');
   run.status='running';run.error='';run.answer='';delete run.followups;run.progress={tool:'queue',unit:'等待后台生成报告'};
   await store.saveRun(run);
   if(existing)await client.query("UPDATE jobs SET actor_id=$2,kind='report',payload='{}',state='queued',attempts=0,worker_id=NULL,lease_until=NULL,cancel_requested=false,error='',updated_at=now() WHERE id=$1",[existing.id,scope.userId]);

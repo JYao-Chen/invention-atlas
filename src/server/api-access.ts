@@ -108,7 +108,7 @@ export async function projectRequest(request:Request,path:string[],work:()=>Prom
  if(project.role==='reader'&&resource==='starters'&&method==='GET')return NextResponse.json({version:'readonly',batches:[]});
  return withAccess({userId:session.id,organizationId:project.organizationId,projectId:project.id},work);
 }
-const externalResources=new Set(['openapi','datasets','patents','tools','fulltext','conversations','runs','results','reports','workflows','professional-tasks','project-labels','patent-annotations','disclosures','materials','monitor-subscriptions','monitor-notifications','source-updates','report-tasks','notifications','starters','retrieval-experiments']);
+const externalResources=new Set(['openapi','datasets','patents','tools','fulltext','conversations','runs','results','reports','workflows','professional-tasks','research-tasks','project-labels','patent-annotations','disclosures','materials','monitor-subscriptions','monitor-notifications','source-updates','report-tasks','notifications','starters','retrieval-experiments']);
 export async function apiCredentialRequest(request:Request,path:string[],work:()=>Promise<Response>){
  const credential=await apiCredentials.authenticate(bearerToken(request));if(!credential)return denied('API凭据无效、已过期或权限已撤销',401);
  if(!externalResources.has(path[0]))return denied('此接口不接受项目API凭据');

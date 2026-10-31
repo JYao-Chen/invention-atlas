@@ -3,14 +3,14 @@ import type {Dataset,Params,Patent} from './types';
 export type ProfessionalWorkflow='technology-landscape'|'competitor-analysis'|'novelty-search'|'patent-layout';
 export type ProfessionalPreset={datasetId:string;query?:string;ipc?:string;yearStart?:number;yearEnd?:number;counting?:'publication'|'family';entities?:string;proposal?:string;jurisdictions?:string;objective?:string};
 export type ProfessionalLaunch={id:number;workflow:ProfessionalWorkflow;preset:ProfessionalPreset;question?:string};
-export type GuideModule='workspace'|'materials'|'disclosures'|'credentials'|'review';
+export type GuideModule='workspace'|'materials'|'disclosures'|'credentials'|'review'|'research';
 export const professionalExamples:Record<string,{workflow:ProfessionalWorkflow;question:string}>={
  'landscape-workflow':{workflow:'technology-landscape',question:'研究当前数据集近期公开文献的技术分类、主要主题和申请人布局，结合代表文献生成技术全景报告。'},
  'competitor-workflow':{workflow:'competitor-analysis',question:'选取当前数据集中的两个申请人，比较公开趋势、技术分类组合及共同申请关系，生成竞争主体报告。'},
  'novelty-workflow':{workflow:'novelty-search',question:'以分布式账本数字身份认证方案为演示输入，提取技术特征，确认检索策略和候选专利，再逐特征比较原文。'},
  'layout-workflow':{workflow:'patent-layout',question:'研究数字身份认证中的技术措施与效果关系，结合原文矩阵提出并选择可进一步验证的研发方向。'},
 };
-export const guideModules:Record<string,GuideModule>={workspace:'workspace',materials:'materials',disclosures:'disclosures',integrations:'credentials',review:'review'};
+export const guideModules:Record<string,GuideModule>={'deep-research':'research',workspace:'workspace',materials:'materials',disclosures:'disclosures',integrations:'credentials',review:'review'};
 export function professionalPreset(workflow:ProfessionalWorkflow,dataset:Dataset,records:Patent[]):ProfessionalPreset{
  const years=dataset.years.map(Number).filter(Number.isFinite).sort((a,b)=>a-b);
  const entities=[...new Set(records.flatMap(record=>record.applicants).filter(Boolean))].slice(0,2);

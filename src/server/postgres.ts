@@ -24,6 +24,7 @@ MIGRATIONS.push('041_historical_events');
 MIGRATIONS.push('042_comparison_checkpoint_keys');
 MIGRATIONS.push('043_external_reference_data');
 MIGRATIONS.push('044_human_ai_review');
+MIGRATIONS.push('045_deep_research');
 
 export function assertRuntimeRole(pool:Pool){
  let check=runtimeChecks.get(pool);

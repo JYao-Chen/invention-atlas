@@ -1,3 +1,5 @@
+import {executeDeepResearch} from './deep-research-engine';
+import {DeepResearchStore} from './deep-research-store';
 import {z} from 'zod';
 import type {Job} from './job-store';
 import {run,analysisPatents,saveRun,finishRun,event} from './db';
@@ -24,6 +26,7 @@ async function executeQueuedRunBody(job:Job,signal:AbortSignal){
  const r=await run(job.runId);
  if(!r)throw new Error('任务对应的运行不存在或已撤销访问权限');
  r.model=modelConfig().model;
+ if(job.kind==='research'){try{await executeDeepResearch(db,r,signal);}catch(error){if(!signal.aborted&&r.status==='running'){await new DeepResearchStore(db).status(r.id,'failed',(error as Error).message);r.status='interrupted';r.error=(error as Error).message;await saveRun(r);}throw error;}return;}
  // A process may exit after committing the report but before completing its lease.
  if(r.status!=='running'){
   if(['completed','partial','failed'].includes(r.status)&&typeof job.payload.monitorSubscriptionId==='string')await publishMonitorNotification(db,job.payload.monitorSubscriptionId,r);
@@ -60,6 +63,7 @@ export async function cancelQueuedRun(job:Job){
  if(job.kind==='material-ocr')return;
  const r=await run(job.runId);
  if(!r||r.status!=='running')return;
+ if(job.kind==='research'){await new DeepResearchStore(db).status(r.id,'paused');r.status='interrupted';r.error='';await saveRun(r);return;}
  if(job.kind==='professional')await finishProfessionalExecution(r.id,'cancelled');
  r.status='cancelled';r.error='任务已取消';await finishRun(r);
 }

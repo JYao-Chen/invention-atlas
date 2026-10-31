@@ -3,7 +3,7 @@ import {gfm} from 'micromark-extension-gfm';
 import {gfmFromMarkdown} from 'mdast-util-gfm';
 import {reportSections} from '../lib/report-sections';
 import type {AnalysisResult,ReportConclusion} from '../lib/types';
-export const patentNumberPattern=/\b[A-Z]{2}(?:RE|PP|[DHT])?\d+(?:[A-Z]\d?)?\b/gi;
+export const patentNumberPattern=/\b(?!CR(?:3|5|10)\b)[A-Z]{2}(?:RE|PP|[DHT])?\d+(?:[A-Z]\d?)?\b/gi;
 
 export function resultPatentNumbers(result:AnalysisResult){
  const ids=new Set(result.evidence.map(id=>id.toUpperCase()));

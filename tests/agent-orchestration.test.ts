@@ -141,3 +141,8 @@ test('report correction keeps visible and saved body until the complete replacem
  try{await generateReport(run,[patent],new AbortController().signal);assert.equal(run.answer,'修订后的正文。');assert.equal((await store.run(run.id))?.answer,run.answer);assert.equal((await store.events(run.id)).filter(e=>['text-reset','text-delta'].includes(e.event)).length,0);}
  finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.DASHSCOPE_API_KEY;else process.env.DASHSCOPE_API_KEY=previousKey;}
 });
+
+test('concentration metric names CR3 CR5 and CR10 are not patent identifiers or observed counts',()=>{
+ const result={id:'concentration',tool:'analyze_concentration',title:'集中度',status:'completed' as const,datasetId:'d',params:{},summary:'',rows:[{cr3:0.4,cr5:0.6,cr10:0.8}],warnings:[],method:'',evidence:[],createdAt:''};
+ assert.deepEqual(auditReport('CR3为40%，CR5为60%，CR10为80%。',[result]),[]);
+});

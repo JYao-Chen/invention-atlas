@@ -21,14 +21,16 @@ import {classificationStatistics,keepReviewOnSubject,researchReviewInstruction} 
 import {prepareReport,REPORT_WRITING_GUIDANCE} from './report-preparation';
 import {db} from './db';
 import {JobStore} from './job-store';
+import {DeepResearchStore} from './deep-research-store';
 import {submitAnalysis,submitReport} from './task-submission';
 import {transaction} from './postgres';
 
 export async function stopRun(id:string){
  await transaction(db,async client=>{
-  const job=(await client.query('SELECT id,state FROM jobs WHERE run_id=$1 FOR UPDATE',[id])).rows[0];
+  const job=(await client.query('SELECT id,state,kind FROM jobs WHERE run_id=$1 FOR UPDATE',[id])).rows[0];
   const r=await run(id);if(!r)throw new Error('运行不存在');if(r.status!=='running')return;
   if(job){await new JobStore(db).cancel(job.id);if(job.state==='running')return;}
+  if(job?.kind==='research'){await new DeepResearchStore(db).status(id,'paused');r.status='interrupted';r.error='';await saveRun(r);return;}
   await client.query("UPDATE professional_tasks SET status='cancelled',updated_at=now() WHERE execution_run_id=$1 AND status IN('queued','running')",[id]);
   r.status='cancelled';r.error='任务已取消';await finishRun(r);
  });

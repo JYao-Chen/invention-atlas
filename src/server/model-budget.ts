@@ -3,6 +3,8 @@ import {z} from 'zod';
 import {transaction,currentAccess,connection} from './postgres';
 import {currentModelRun} from './model-usage';
 
+export class ModelBudgetExceeded extends Error{}
+
 export class ModelBudget{
  constructor(private readonly pool:Pool){}
  async read(runId:string){
@@ -20,7 +22,7 @@ export class ModelBudget{
   const run=await client.query('SELECT id,organization_id,project_id FROM runs WHERE id=$1 FOR UPDATE',[runId]);if(!run.rows.length)throw new Error('运行不存在或无访问权限');
   const budget=(await client.query('SELECT * FROM model_call_budgets WHERE run_id=$1',[runId])).rows[0];
   if(!budget){await client.query('INSERT INTO model_call_budgets(run_id,organization_id,project_id,max_calls,started_calls) VALUES($1,$2,$3,NULL,(SELECT count(*)+1 FROM model_usage WHERE run_id=$1))',[runId,run.rows[0].organization_id,run.rows[0].project_id]);return;}
-  if(budget.max_calls!==null&&budget.started_calls>=budget.max_calls)throw new Error('任务模型调用次数已达到预算上限，请增加预算后重试');
+  if(budget.max_calls!==null&&budget.started_calls>=budget.max_calls)throw new ModelBudgetExceeded('任务模型调用次数已达到预算上限，请增加预算后继续研究');
   await client.query('UPDATE model_call_budgets SET started_calls=started_calls+1 WHERE run_id=$1',[runId]);
  });}
 }

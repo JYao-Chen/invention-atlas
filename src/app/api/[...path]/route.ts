@@ -1,3 +1,4 @@
+import {researchEndpoint} from '@/server/deep-research-api';
 import {ExternalReferenceReader} from '@/server/external/store';
 import {humanAiReviewEndpoint} from '@/server/human-ai-review-api';
 import {NextResponse} from 'next/server';
@@ -137,6 +138,7 @@ async function resources(request:Request,{params}:{params:Promise<{path:string[]
   if(id&&method==='PATCH')return NextResponse.json(await annotations.update(id,await request.json()));
   if(id&&method==='DELETE'){await annotations.remove(id);return NextResponse.json({ok:true});}
  }
+ const researchResponse=await researchEndpoint(request,path);if(researchResponse)return researchResponse;
  if(resource==='professional-tasks'){
   const tasks=new ProfessionalStore(db);
   if(method==='GET'){if(!id)return NextResponse.json({tasks:await tasks.list()});const task=await tasks.get(id);return task?NextResponse.json(task):NextResponse.json({error:'专业任务不存在'},{status:404});}

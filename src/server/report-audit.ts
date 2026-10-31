@@ -32,7 +32,7 @@ export function auditReport(answer:string,results:AnalysisResult[],dataset?:Pick
   const withoutCharts=text.replace(/\[\[chart:[^\]]+\]\]/g,'');
   for(const value of new Set([...withoutCharts.matchAll(patentPattern)].map(m=>m[0].toUpperCase())))if(!patents.has(value))issues.push({kind:'patent',value,paragraph:index+1,reason:'公开编号未在工具结果证据中找到'});
   for(const match of text.matchAll(/\[\[chart:([^\]]+)\]\]/g))if(!results.some(r=>r.id===match[1]))issues.push({kind:'chart',value:match[1],paragraph:index+1,reason:'图表结果编号未在运行中找到'});
-  const prose=withoutCharts.replace(patentPattern,'').replace(/^\s*(?:#{1,6}\s+)?\d+[.)、]\s*/gm,'');
+  const prose=withoutCharts.replace(/\bCR(?:3|5|10)\b/gi,'').replace(patentPattern,'').replace(/^\s*(?:#{1,6}\s+)?\d+[.)、]\s*/gm,'');
   for(const value of new Set([...prose.matchAll(numberPattern)].map(m=>m[0])))if(!numbers.has(numericValue(value))&&!hasRoundedEvidence(value,sortedNumbers))issues.push({kind:'number',value,paragraph:index+1,reason:'数值未在工具结果中找到；请核对原始值、单位及推算依据'});
  }
  return issues;

@@ -28,6 +28,7 @@ import ReceivedReports from './ReceivedReports';
 import ReportTaskInbox from './ReportTaskInbox';
 import TaskNotifications from './TaskNotifications';
 import ProfessionalTasks from './ProfessionalTasks';
+import DeepResearch from './DeepResearch';
 import FulltextSearch from './FulltextSearch';
 import type {Dataset,Patent,AnalysisResult,Run,Conversation,Params,Starter,StarterPool} from '@/lib/types';
 import ResultView from './ResultView';
@@ -56,6 +57,7 @@ async function api(path:string,body?:unknown,method?:string){const response=awai
 const titles=atlasPages;
 function defaults(tool:string,first?:string):Params{if(tool==='search_patents')return {query:'blockchain digital identity authentication',top_k:10};if(tool==='read_patent_details'||tool==='analyze_claim_elements')return {patent_numbers:first?[first]:[]};if(tool==='audit_search_strategy')return {strategies:[{name:'v1',query:'blockchain'},{name:'v2',query:'blockchain identity authentication'}],top_k:20};if(tool==='monitor_patent_changes')return {query:'blockchain',strategy_id:'blockchain-monitor',top_k:20};if(tool==='analyze_clustering')return {k:6};return {};}
 export default function Workbench(){
+ const [deepOpen,setDeepOpen]=useState(false),[deepGoal,setDeepGoal]=useState('');
  const [registering,setRegistering]=useState(false),[signingIn,setSigningIn]=useState(false);
  const [workspace,setWorkspace]=useState<Workspace>();
  const readOnly=workspace?.projects.find(project=>project.id===workspace.current?.id)?.role==='reader';
@@ -82,6 +84,7 @@ export default function Workbench(){
   const id=++guideSequence.current;setReport(undefined);setError('');
   if(chapter.example){if(!meta){setError('请先选择数据集，再打开专业任务。');return;}try{const sample=example?(await api('patents?'+new URLSearchParams({dataset:meta.id,page:'1',q:''}))).records:[];if(id!==guideSequence.current)return;setProfessionalLaunch({id,workflow:chapter.example.workflow,preset:example?professionalPreset(chapter.example.workflow,meta,sample):{datasetId:meta.id},question:example?chapter.example.question:undefined});}catch(error){setError('读取演示参数失败：'+(error as Error).message);}return;}
   if(chapter.module==='workspace'||chapter.module==='credentials'){if(management.current)management.current.open=true;if(chapter.module==='workspace')setWorkspaceOpen(id);else setCredentialsOpen(id);return;}
+  if(chapter.module==='research'){setDeepGoal('');setDeepOpen(true);history.replaceState(null,'',location.pathname);return;}
   if(chapter.module==='materials'||chapter.module==='disclosures'){setView('reports');setMobileFocus(false);setMaterialsOpen({id,part:chapter.module});return;}
   if(chapter.module==='review'){history.replaceState(null,'',location.pathname);setMobileFocus(false);const latest=reports[0];if(latest){nextReportTab.current='review';setReport(latest);setView('analysis');}else{setView('reports');setNotice('报告库还没有已保存报告。先在分析助手完成一次分析并保存报告，再打开逐条复核。');}return;}
   setView(chapter.target==='assistant'?'analysis':chapter.target);setMobileFocus(chapter.target==='assistant');
@@ -104,7 +107,8 @@ const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:st
  const [historySelection,setHistorySelection]=useState<string[]>([]),[reportSelection,setReportSelection]=useState<string[]>([]),[deleting,setDeleting]=useState(false);
  const [navigationReady,setNavigationReady]=useState(false);
  const historyPages=Math.max(1,Math.ceil(conversations.length/10)),visibleHistoryPage=Math.min(historyPage,historyPages);
- useEffect(()=>{setSidebarCollapsed(localStorage.getItem('atlas-sidebar-collapsed')==='true');const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);setView(saved.page);setMobileFocus(saved.assistant);setNavigationReady(true);const openGuide=()=>{if(location.hash.startsWith('#guide/')){setView('help');setMobileFocus(false);setReport(undefined);}};addEventListener('hashchange',openGuide);return()=>removeEventListener('hashchange',openGuide);},[]);
+ useEffect(()=>{setSidebarCollapsed(localStorage.getItem('atlas-sidebar-collapsed')==='true');const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);setView(saved.page);setMobileFocus(saved.assistant);setDeepOpen(!location.hash.startsWith('#guide/')&&sessionStorage.getItem('atlas-deep-open')==='true');setNavigationReady(true);const openGuide=()=>{if(location.hash.startsWith('#guide/')){setDeepOpen(false);setView('help');setMobileFocus(false);setReport(undefined);}};addEventListener('hashchange',openGuide);return()=>removeEventListener('hashchange',openGuide);},[]);
+ useEffect(()=>{if(navigationReady)sessionStorage.setItem('atlas-deep-open',String(deepOpen));},[navigationReady,deepOpen]);
  useEffect(()=>{if(navigationReady){sessionStorage.setItem('atlas-navigation',JSON.stringify({page:view,assistant:mobileFocus,reportId:report?.id}));if(view!=='help'&&(location.hash.startsWith('#guide/')||location.hash.startsWith('#section-')))history.replaceState(null,'',location.pathname);}},[navigationReady,view,mobileFocus,report?.id]);
  function toggleSidebar(){setSidebarCollapsed(value=>{localStorage.setItem('atlas-sidebar-collapsed',String(!value));return !value;});}
  async function logout(){await api('logout',{});setLogged(false);newChat();}
@@ -215,12 +219,12 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
  const latestSearch=lastSearch?{query:lastSearch.params.query!,patentNumbers:[...new Set(lastSearch.rows.map(row=>String(row.patent)))],boolean:/\b(AND|OR|NOT)\b/.test(lastSearch.params.query!)}:undefined;
  const toolTitle=toolRun?.progress?.tool==='request'?'提交工具任务':tools.find(t=>t.name===toolRun?.progress?.tool)?.title||'执行分析任务';
  return <div className={`app-shell ${sidebarCollapsed?'sidebar-collapsed':''}`}>
-<AtlasNavigation page={view} assistant={mobileFocus} collapsed={sidebarCollapsed} onToggle={toggleSidebar} onNavigate={key=>{setView(key);setMobileFocus(false);setReport(undefined);if(key!=='help')history.replaceState(null,'',location.pathname);}} onAssistant={()=>{setMobileFocus(true);}} username={settings?.username||'jyao'} onLogout={()=>void logout()}/>
+<AtlasNavigation page={view} assistant={mobileFocus} collapsed={sidebarCollapsed} onToggle={toggleSidebar} onNavigate={key=>{setDeepOpen(false);setView(key);setMobileFocus(false);setReport(undefined);if(key!=='help')history.replaceState(null,'',location.pathname);}} onAssistant={()=>{setDeepOpen(false);setMobileFocus(true);}} username={settings?.username||'jyao'} onLogout={()=>void logout()}/>
 
- <div className={'work-area'+(mobileFocus?' conversation-mode':'')}>
+ <div className={'work-area'+(mobileFocus&&!deepOpen?' conversation-mode':'')+(deepOpen?' research-mode':'')+(report?.run.kind==='research'&&!mobileFocus?' research-report-mode':'')}>
 <header className="topbar">
 <div>
-<h1>{mobileFocus?'分析助手':report?report.title:titles[view]}</h1>
+<h1>{deepOpen?'深度报告':mobileFocus?'分析助手':report?report.title:titles[view]}</h1>
 <span className="dataset-caption">{currentMeta?.name||'尚未导入数据'}</span>
 </div>
 <div className="top-actions">
@@ -236,16 +240,18 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 {workspace&&<OrganizationManager platformAdmin={workspace.user.platformRole==='admin'} onProjectCreated={selectProject} onChanged={async()=>{await refreshWorkspace();}}/>}
 {workspace?.user.platformRole==='admin'&&<UserManager currentUserId={workspace.user.id}/>}
 </div></details>}
-{workspace&&<ProfessionalTasks datasets={catalog} readOnly={Boolean(readOnly)} launch={professionalLaunch} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>}
+{workspace&&<button aria-pressed={deepOpen} onClick={()=>{setDeepGoal('');setDeepOpen(true);}}>深度报告</button>}
+{workspace&&<ProfessionalTasks onDeepResearch={()=>{setDeepGoal('');setDeepOpen(true);}} datasets={catalog} readOnly={Boolean(readOnly)} launch={professionalLaunch} onOpenRun={async id=>{const r:Run=await api('runs/'+id);await openConversation({id:r.conversationId,datasetId:r.datasetId,title:r.question,updatedAt:r.createdAt});}}/>}
 {mobileFocus&&<button aria-label="对话历史" onClick={()=>{setView('history');setMobileFocus(false);setReport(undefined);}}><MessagesSquare size={16}/><span className="mobile-action-label">对话历史</span></button>}
-<button aria-label="新对话" onClick={newChat}>
+<button aria-label="新对话" onClick={()=>{setDeepOpen(false);newChat();}}>
 <Plus size={15}/>
 <span className="mobile-action-label">新对话</span></button>
-<button className="assistant-toggle" aria-label={mobileFocus?'收起助手':'打开助手'} aria-expanded={mobileFocus} aria-controls="analysis-assistant" onClick={()=>setMobileFocus(!mobileFocus)}>
+<button className="assistant-toggle" aria-label={mobileFocus?'收起助手':'打开助手'} aria-expanded={mobileFocus} aria-controls="analysis-assistant" onClick={()=>{setDeepOpen(false);setMobileFocus(!mobileFocus);}}>
 <PanelRight size={16}/>
 <span className="mobile-action-label">{mobileFocus?'返回工作区':'助手'}</span></button>
 </div>
 </header>
+ {deepOpen&&<DeepResearch key={workspace?.current?.id} datasets={catalog} readOnly={Boolean(readOnly)} initialGoal={deepGoal} onClose={()=>setDeepOpen(false)} onPatent={(id,datasetId)=>void openPatent(id,datasetId)} onOpenReport={async id=>{const saved=await api('reports/'+id);setReport(saved);setView('analysis');setMobileFocus(false);setDeepOpen(false);}}/>}
  <div className="workspace">
 <main ref={contentRef} className={`content ${mobileFocus?'mobile-hidden':''}`}>
  {(error||notice)&&<div className={error?'notice error':'notice'} role={error?'alert':'status'}>
@@ -332,7 +338,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 {report&&reportTab==='review'&&<ReportReview key={report.id+':'+(report.revision||0)} reportId={report.id} revision={report.revision||0} results={report.run.results} readOnly={Boolean(readOnly)} currentUserId={workspace?.user.id} toolTitle={name=>tools.find(t=>t.name===name)?.title||name} onPatent={id=>void openPatent(id,report.run.datasetId)}/>}
 {report&&reportTab==='body'&&<article className="markdown report-narrative">
 <ReportDraftEditor key={report.id} reportId={report.id} selectedRevision={report.revision||0} readOnly={Boolean(readOnly)} onRead={version=>setReport(current=>current?{...current,revision:version.revision,title:version.title,run:{...current.run,answer:version.answer}}:current)}/>
-<Markdown>{resultText(report.run.answer).replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>
+<>{report.run.kind==='research'?<PatentNarrative text={report.run.answer} results={report.run.results.filter(r=>r.status==='completed')} appendResults={false} onPatent={(id,datasetId)=>void openPatent(id,datasetId)}/>:<Markdown>{resultText(report.run.answer).replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>}</>
 </article>}{!report&&<>
 <div className="analysis-intro">
 <div>
@@ -411,7 +417,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <header>
 <div>
 <MessagesSquare size={19}/>
-<h2>分析助手</h2>
+<h2>分析助手</h2><button className="assistant-research-entry" onClick={()=>{setDeepGoal(text.trim());setDeepOpen(true);}}>深度报告<ArrowUpRight size={13}/></button>
 </div>
 <button onClick={()=>{setView('history');setMobileFocus(false);setReport(undefined);}} aria-label="对话历史"><MessagesSquare size={16}/>对话历史</button>
 <button onClick={newChat} aria-label="新对话">
@@ -430,12 +436,12 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <SuggestedQuestions datasetId={meta?.id} initialPool={starterPool} onPoolChange={setStarterPool} onChoose={item=>{chosenStarter.current=item;setText(item.question);document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus();}}/>
 </div>}{shownTurns.map(r=>
 <section className="chat-turn" key={r.id}>
-<div className="question">{r.question}</div>{r.kind!=='help'&&<AnalysisProcess run={r} tools={tools} onPatent={openPatent}/>}
+{!(report&&r.kind==='research')&&<div className="question">{r.question}</div>}{r.kind!=='help'&&<AnalysisProcess run={r} tools={tools} onPatent={openPatent}/>}
 {!report&&!r.id.startsWith('pending-')&&<RunBudget key={'budget:'+r.id} runId={r.id} readOnly={Boolean(readOnly)}/>}
 <PatentNarrative text={r.answer||(r.status==='running'?r.kind==='help'?'正在查阅功能说明。':'':r.results.length?'':'本次没有生成结果。')} results={r.results} streaming={r.status==='running'&&!report} onPatent={(id,datasetId,location)=>openPatent(id,datasetId,location)}/>
 {r.kind==='help'&&<small className="graph-note">功能说明 · 依据使用说明回答，未执行数据分析</small>}
 {r.error&&<p className="error">{r.error}</p>}<div className="turn-actions">
-<span>{r.status==='completed'?'已完成':r.status==='partial'?'部分完成':r.status==='running'?'进行中':r.status==='cancelled'?'已停止':r.status==='interrupted'?'运行中断':'失败'}</span>{!report&&r.status!=='running'&&<>
+<span>{r.status==='completed'?'已完成':r.status==='partial'?'部分完成':r.status==='running'?'进行中':r.status==='cancelled'?'已停止':r.status==='interrupted'?'运行中断':'失败'}</span>{!report&&r.kind==='research'&&<button onClick={()=>{sessionStorage.setItem('atlas-deep-research',r.id);setDeepGoal('');setDeepOpen(true);}}>打开研究工作区</button>}{!report&&r.kind!=='research'&&r.status!=='running'&&<>
 <button disabled={busy||!meta} onClick={()=>send(r.question)}>重新运行问题</button>{r.results.length>0&&<button onClick={()=>save(r)}>保存报告</button>}{r.results.some(result=>result.status==='completed')&&<button disabled={busy} onClick={()=>retry(r)}>重新生成报告</button>}</>
 }</div>
 {!report&&r===shownTurns.at(-1)&&['completed','partial'].includes(r.status)&&<div className="followup-questions" aria-label="相关追问"><div className="followup-heading"><small>{suggesting===r.id?'正在生成相关追问…':'相关追问'}</small><button className="followup-refresh" disabled={busy||Boolean(suggesting)} onClick={()=>void suggest(r,true)}><RefreshCw size={13}/>换一组</button></div>{r.followups?.map(question=><button key={question} disabled={busy} onClick={()=>{setText(question);requestAnimationFrame(()=>document.querySelector<HTMLTextAreaElement>('.patent-composer textarea')?.focus());}}>{question}<ArrowUpRight size={14}/></button>)}</div>}
