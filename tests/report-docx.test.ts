@@ -16,7 +16,7 @@ test('Word export retains headings, links, lists and every result row in narrati
  try{
   const file=join(dir,'report.docx');await writeFile(file,await exportReportDocx({title:'专利分析验收',run,revision:2}));
   const xml=(await promisify(execFile)('unzip',['-p',file,'word/document.xml'],{maxBuffer:2*1024*1024})).stdout;
-  assert.ok(xml.includes('专利分析验收'));assert.ok(xml.includes('人工编辑草稿第2版'));assert.match(xml,/w:pStyle w:val="Heading1"/);assert.match(xml,/w:numPr/);
+  assert.ok(xml.includes('专利分析验收'));assert.ok(xml.includes('第1章　结论'));assert.ok(xml.includes('人工编辑草稿第2版'));assert.match(xml,/w:pStyle w:val="Heading1"/);assert.match(xml,/w:numPr/);
   for(let i=0;i<80;i++)assert.ok(xml.includes('term-'+i+'</w:t>'),'missing row '+i);
   assert.ok(xml.indexOf('完整年度结果')<xml.indexOf('结论'));assert.ok(xml.includes('w:tblHeader'));
   assert.ok(xml.includes('<m:oMath>'));assert.ok(xml.includes('<m:f>'));assert.ok(xml.includes('<m:sSubSup>'));assert.ok(xml.includes('<m:rad>'));assert.ok(!xml.includes('未转换公式，LaTeX原式'));

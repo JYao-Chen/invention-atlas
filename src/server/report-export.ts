@@ -1,3 +1,4 @@
+import {presentReport} from '../lib/report-template';
 import {runCopy} from '../lib/result-copy';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -14,7 +15,7 @@ function fallbackResult(result:AnalysisResult){
  return `<section class="result-panel"><h2>${escape(result.title)}</h2><p>${escape(result.summary)}</p><div class="markdown result-method">${reportMarkdownHtml(result.method)}</div>${tables}</section>`;
 }
 export function exportReportHtml(report:{title:string;run:Run},suppliedAssets?:Assets){
- report={...report,run:runCopy(report.run)};
+ report=presentReport({...report,run:runCopy(report.run)});
  const runtime=suppliedAssets||runtimeAssets(),used=new Set<string>();
  const narrative=report.run.answer.split(/(\[\[chart:[a-zA-Z0-9-]+\]\])/g).map(part=>{
   const id=part.match(/^\[\[chart:([^\]]+)\]\]$/)?.[1];
@@ -23,5 +24,5 @@ export function exportReportHtml(report:{title:string;run:Run},suppliedAssets?:A
  }).join('');
  const rest=report.run.results.filter(r=>!used.has(r.id)).map(fallbackResult).join('');
  const json=JSON.stringify(report).replace(/</g,'\\u003c');
- return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(report.title)}</title><style>${runtime.css}</style></head><body><main id="report-root" class="export-document"><header class="export-heading"><h1>${escape(report.title)}</h1><p>数据集 ${escape(report.run.datasetId)} · ${escape(report.run.createdAt)} · 保存时的分析结果</p></header>${narrative}${rest}<noscript><p>启用JavaScript可查看交互图表；公式与完整结果表已保留。</p></noscript></main><script id="report-data" type="application/json">${json}</script><script>${runtime.js.replace(/<\/script/gi,'<\\/script')}</script></body></html>`;
+ return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(report.title)}</title><style>${runtime.css}</style></head><body><main id="report-root" class="export-document report-template-${report.run.reportTemplate}"><header class="export-heading"><h1>${escape(report.title)}</h1><p>数据集 ${escape(report.run.datasetId)} · ${escape(report.run.createdAt)} · 保存时的分析结果</p></header>${narrative}${rest}<noscript><p>启用JavaScript可查看交互图表；公式与完整结果表已保留。</p></noscript></main><script id="report-data" type="application/json">${json}</script><script>${runtime.js.replace(/<\/script/gi,'<\\/script')}</script></body></html>`;
 }

@@ -1,28 +1,18 @@
-import {ArrowDown,ArrowRight,CornerUpLeft} from 'lucide-react';
-import type {ReactNode} from 'react';
-
-function Node({name,children}:{name:string;children:ReactNode}){return <div className="architecture-node"><strong>{name}</strong><span>{children}</span></div>;}
-const Next=()=> <ArrowRight className="architecture-next" size={18} aria-hidden="true"/>;
+'use client';
+import {useState} from 'react';
+import {ArrowRight,CornerUpLeft} from 'lucide-react';
 export default function AgentArchitectureFlow(){
- return <figure className="help-architecture-flow architecture-detail" aria-label="智能体研究流程图">
-  <section aria-labelledby="architecture-chat-title"><header><h4 id="architecture-chat-title">对话分析 · 职责节点交接</h4><p>共享问题、计划、范围、工具结果与报告状态</p></header>
-   <div className="architecture-sequence"><Node name="Planner">研究范围 · 工具步骤与参数</Node><Next/><Node name="Search">命中编号 · 每次查询来源</Node><Next/><Node name="ResearchReview">候选相关性 · 剔除与补检索</Node></div>
-   <p className="architecture-return"><CornerUpLeft size={15} aria-hidden="true"/>需要扩大候选范围：ResearchReview → Search，最多补检索两轮</p>
-   <ArrowDown className="help-flow-down" size={20} aria-hidden="true"/>
-   <div className="architecture-sequence"><Node name="Analysis">趋势 · 主题 · 主体等综合分析</Node><Next/><div className="architecture-branches"><strong>按计划并行进入三条分支</strong><span>Claim · 权利要求要素</span><span>Comparison · 条款比较</span><span>Citation · 引证网络</span></div><Next/><Node name="ExecutionAudit">等待分支汇合 · 检查执行结果</Node></div>
-   <ArrowDown className="help-flow-down" size={20} aria-hidden="true"/>
-   <div className="architecture-sequence"><Node name="Report">综合结果 · 组织正文与图表</Node><Next/><Node name="Audit">核对公开编号与数值</Node><Next/><Node name="完成回答">保存回答、结果与研究范围</Node></div>
-   <p className="architecture-return"><CornerUpLeft size={15} aria-hidden="true"/>需要校正：Audit → ReviseReport → Report，完成一次自动修订</p>
-  </section>
-  <section aria-labelledby="architecture-deep-title"><header><h4 id="architecture-deep-title">深度报告 · 持续研究循环</h4><p>同一个研究 Agent 接续状态，按新结果决定下一步</p></header>
-   <div className="architecture-sequence"><Node name="理解目标与已有状态">research_state</Node><Next/><Node name="保存研究方案">propose_outline</Node><Next/><Node name="确认提纲">confirm_outline · 接收用户调整</Node></div>
-   <p className="architecture-return"><CornerUpLeft size={15} aria-hidden="true"/>修改要求 → 读取反馈 → 更新方案 → 再次确认；全自动模式直接进入研究</p>
-   <ArrowDown className="help-flow-down" size={20} aria-hidden="true"/>
-   <div className="architecture-research-loop"><div className="architecture-loop-heading"><strong>研究 Agent</strong><span>读取当前发现，选择分析、阅读、写作或修订</span></div><div className="architecture-loop-actions"><Node name="分析与结果">run_analysis → read_result</Node><Node name="原文与证据">read_patent / read_patent_papers / read_evidence</Node><Node name="章节与发现">read_chapter → write_chapter</Node></div><p>每次工具返回结果后继续判断；章节发现与证据供后续步骤复用</p></div>
-   <div className="architecture-skill-connection"><strong>Skills 指导方法</strong><span>规划、全景分析、原文研读、证据写作、事实修订、中文整理，通过只读技能目录加载。</span></div>
-   <ArrowDown className="help-flow-down" size={20} aria-hidden="true"/>
-   <div className="help-flow-output"><strong>finish_report → 报告库</strong><span>组装章节，保留来源、图表和版本</span></div>
-  </section>
-  <figcaption>上图的每个节点、工具与技能，在下面的表中分别列出输入、作用与交付内容。</figcaption>
+ const [path,setPath]=useState<'deep'|'chat'>('deep');
+ return <figure className="architecture-map" aria-label="智能体研究流程图">
+  <div className="architecture-path-choice" role="group" aria-label="研究路径"><button type="button" aria-pressed={path==='deep'} onClick={()=>setPath('deep')}>深度报告<span>持续研究与写作</span></button><button type="button" aria-pressed={path==='chat'} onClick={()=>setPath('chat')}>对话分析<span>职责节点协作</span></button></div>
+  {path==='deep'?<div className="architecture-path" aria-label="深度报告流程"><p className="architecture-map-entry">研究目标 <ArrowRight size={15} aria-hidden="true"/> 讨论并确认方案</p>
+   <div className="architecture-decision"><span>Agent</span><h4>当前问题，还需要什么证据？</h4><p>结合已有发现、用户反馈与章节进展，选择下一步。</p></div>
+   <ol className="architecture-action-lanes"><li><strong>检索与阅读</strong><p>寻找能区分解释的资料，定位原文与完整数据。</p><code>run_analysis / read_patent</code></li><li><strong>比较与判断</strong><p>解释差异，核查条件，记录发现和证据缺口。</p><code>read_result / record_research</code></li><li><strong>写作与修订</strong><p>把有依据的判断写入章节，随新发现继续修改。</p><code>write_chapter / read_chapter</code></li></ol>
+   <p className="architecture-loop-note"><CornerUpLeft size={17} aria-hidden="true"/>工具结果与章节发现回到 Agent；按论证需要继续研究。</p><div className="architecture-map-exit"><strong>完成报告</strong><span>综合结论、来源与章节版本一并保存。</span></div>
+  </div>:<div className="architecture-path" aria-label="对话分析流程"><p className="architecture-map-entry">用户问题 <ArrowRight size={15} aria-hidden="true"/> Planner 制定研究计划</p>
+   <ol className="architecture-chat-steps"><li><strong>确定研究范围</strong><span>Search 检索，ResearchReview 审查候选；需要时返回补检索。</span></li><li><strong>执行分析与分工</strong><span>Analysis 综合分析，Claim、Comparison、Citation 按计划执行并汇合。</span></li><li><strong>组织与检查回答</strong><span>ExecutionAudit 检查执行，Report 组织正文，Audit 核对编号与数值。</span></li></ol>
+   <p className="architecture-loop-note"><CornerUpLeft size={17} aria-hidden="true"/>需要校正时，经 ReviseReport 返回报告节点，完成一次自动修订。</p><div className="architecture-map-exit"><strong>保存回答</strong><span>研究范围、实际结果和正文共同保留。</span></div>
+  </div>}
+  <figcaption className="architecture-role-key"><div><strong>Agent</strong><span>判断与组织行动</span></div><div><strong>Tools</strong><span>执行任务，返回实际结果</span></div><div><strong>Skills</strong><span>提供研究方法与读取约定</span></div></figcaption>
  </figure>;
 }

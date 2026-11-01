@@ -1,3 +1,4 @@
+import {presentReport} from '../lib/report-template';
 import {runCopy} from '../lib/result-copy';
 import {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,HeadingLevel,ExternalHyperlink,LevelFormat,ShadingType,BorderStyle,ImageRun,TableLayoutType} from 'docx';
 import {fromMarkdown} from 'mdast-util-from-markdown';
@@ -63,7 +64,7 @@ async function resultBlocks(result:AnalysisResult):Promise<Block[]>{
  return blocks;
 }
 export async function exportReportDocx(report:{title:string;run:Run;revision?:number},format:'Word'|'PDF'='Word'){
- report={...report,run:runCopy(report.run)};
+ report=presentReport({...report,run:runCopy(report.run)});
  const used=new Set<string>(),blocks:Block[]=[new Paragraph({text:report.title,heading:HeadingLevel.TITLE}),new Paragraph({text:`数据集 ${report.run.datasetId} · ${report.run.createdAt}${report.revision?' · 人工编辑草稿第'+report.revision+'版':''}`}),new Paragraph({text:format+'版保留正文与完整工具结果表；交互图表请使用HTML版。无法转换的公式标注并保留LaTeX原式。'})];
  for(const part of report.run.answer.split(/(\[\[chart:[a-zA-Z0-9-]+\]\])/g)){
   const id=part.match(/^\[\[chart:([^\]]+)\]\]$/)?.[1];
@@ -71,5 +72,6 @@ export async function exportReportDocx(report:{title:string;run:Run;revision?:nu
   const result=report.run.results.find(item=>item.id===id);if(result&&!used.has(id)){used.add(id);blocks.push(...await resultBlocks(result));}
  }
  for(const result of report.run.results)if(!used.has(result.id))blocks.push(...await resultBlocks(result));
- return Packer.toBuffer(new Document({creator:'专利分析平台',title:report.title,styles:{default:{document:{run:{font:'Microsoft YaHei',size:22},paragraph:{spacing:{after:120}}}}},numbering:{config:['bullets','numbered'].map(reference=>({reference,levels:Array.from({length:9},(_,level)=>({level,format:reference==='bullets'?LevelFormat.BULLET:LevelFormat.DECIMAL,text:reference==='bullets'?'•':'%'+(level+1)+'.',style:{paragraph:{indent:{left:720*(level+1),hanging:360}}}}))}))},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1273,bottom:1273,left:1273,right:1273}}},children:blocks}]}));
+ const compact=report.run.reportTemplate==='brief';
+ return Packer.toBuffer(new Document({creator:'专利分析平台',title:report.title,styles:{paragraphStyles:[1,2,3,4].map(level=>({id:'Heading'+level,name:'Heading '+level,basedOn:'Normal',next:'Normal',run:{font:'Microsoft YaHei',bold:true,color:'20242B',size:([36,30,26,24][level-1])-(compact?2:0)},paragraph:{spacing:{before:level===2?360:240,after:180},keepNext:true,keepLines:true}})),default:{document:{run:{font:report.run.reportTemplate==='brief'?'Microsoft YaHei':'Noto Serif CJK SC',size:report.run.reportTemplate==='brief'?21:22},paragraph:{spacing:{after:report.run.reportTemplate==='brief'?100:160,line:report.run.reportTemplate==='brief'?300:360}}}}},numbering:{config:['bullets','numbered'].map(reference=>({reference,levels:Array.from({length:9},(_,level)=>({level,format:reference==='bullets'?LevelFormat.BULLET:LevelFormat.DECIMAL,text:reference==='bullets'?'•':'%'+(level+1)+'.',style:{paragraph:{indent:{left:720*(level+1),hanging:360}}}}))}))},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1273,bottom:1273,left:1273,right:1273}}},children:blocks}]}));
 }

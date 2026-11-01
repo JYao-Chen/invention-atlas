@@ -130,7 +130,7 @@ test('report correction keeps visible and saved body until the complete replacem
  const {run,patent}=await fixture();run.results=[mockResult('get_dataset_summary',{},run.datasetId)];run.answer='已经显示的正文。';await store.saveRun(run);
  const previousFetch=globalThis.fetch,previousKey=process.env.DASHSCOPE_API_KEY;process.env.DASHSCOPE_API_KEY='fixture-key';let chunks=0;
  globalThis.fetch=async(_url,options)=>{
-  const request=JSON.parse(String(options?.body));assert.match(request.messages[0].content,/方法与数据限制说明/);
+  const request=JSON.parse(String(options?.body));assert.match(request.messages[0].content,/影响判断的统计范围、缺失情况、方法条件和不确定性/);assert.match(request.messages[0].content,/“统计显著”须有对应检验、阈值与结果/);assert.match(request.messages[0].content,/专利中的效果声明归属于原文作者/);
   return new Response(new ReadableStream({async pull(controller){
    assert.equal(run.answer,'已经显示的正文。');assert.equal((await store.run(run.id))?.answer,'已经显示的正文。');
    const text=['修订','后的正文。'][chunks++];

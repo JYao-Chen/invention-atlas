@@ -1549,3 +1549,120 @@ tbody tr:hover { background:var(--band) }
 
 .report-reading-layout .patent-narrative>.markdown { font:15.5px/1.85 var(--font-reading); color:var(--ink-secondary) }
 @media print { .report-contents { display:none } .report-reading-layout { display:block } .report-reading-layout>.report-narrative { border:0; padding:0 } }
+
+/* Report editions share a restrained hierarchy; numbering is part of the text. */
+.report-template-picker { display:grid; gap:7px; margin:16px 10px 8px; font:500 12px/1.5 var(--font-sans) }
+.report-template-picker select { width:100%; min-width:0; background:var(--paper) }
+.report-template-description { margin:8px 10px 14px; color:var(--muted); font:12px/1.6 var(--font-sans) }
+.report-template-downloads { display:flex; flex-wrap:wrap; gap:12px; margin:0 10px 20px; font-size:12px }
+.report-reading-section:has(h2) { padding-top:20px; margin-top:24px; border-top:1px solid var(--line) }
+.report-reading-section:has(h3) { margin-top:22px }
+.report-narrative .report-reading-section :is(h2,h3,h4) { line-height:1.5; letter-spacing:0; scroll-margin-top:24px }
+.report-narrative .report-reading-section h2 { font-size:23px; margin:0 0 20px }
+.report-narrative .report-reading-section h3 { font-size:18px; margin:0 0 14px }
+.report-narrative .report-reading-section h4 { font-size:16px; margin:20px 0 10px }
+.report-template-academic .report-narrative,.report-template-academic .research-reader,.report-template-academic .patent-narrative>.markdown { font-family:var(--font-reading); line-height:1.95 }
+.report-template-academic .report-reading-section h2 { font-size:22px }
+.report-template-brief .report-narrative,.report-template-brief .research-reader .markdown,.report-template-brief .patent-narrative>.markdown { font-family:var(--font-sans); font-size:14px; line-height:1.75 }
+.report-template-brief .report-reading-section:has(h2) { padding-top:14px; margin-top:16px }
+.report-template-brief .report-narrative .report-reading-section h2 { font-size:20px; margin-bottom:14px }
+.research-cycle-history { margin:20px 0; border-block:1px solid var(--line); padding:16px 0 }
+.research-cycle-history summary { cursor:pointer; font-weight:600 }
+.research-cycle-history>ol { padding-left:24px; margin:20px 0 }
+.research-cycle-history>ol>li { padding:0 0 22px 12px; margin:0 0 20px; border-bottom:1px solid var(--line) }
+.research-cycle-history header { display:flex; justify-content:space-between; gap:16px; margin-bottom:10px }
+.research-cycle-history time { color:var(--muted); font-size:12px; white-space:nowrap }
+.research-cycle-history p,.research-cycle-history ul { margin:8px 0; font-size:13px; line-height:1.75 }
+.research-cycle-history button { margin:6px 8px 0 0; font-size:12px }
+@media(max-width:700px) { .research-cycle-history header{display:block}.report-narrative .report-reading-section h2{font-size:20px} }
+@media print { .report-template-picker,.report-template-description,.report-template-downloads{display:none} }
+
+.research-form-fields .research-template-field { grid-column:1 / -1 }
+
+/* Architecture manual: one reading sequence, with reference material on demand. */
+.architecture-manual .help-prose { display:block }
+.architecture-manual .help-reading-section { margin:0; padding:32px 0; border-bottom:1px solid var(--line) }
+.architecture-manual .help-reading-section:last-child { border-bottom:0 }
+.architecture-manual .help-reading-section>h3 { font-size:19px; margin-bottom:14px }
+.architecture-manual .help-reading-section>.markdown { max-width:78ch; font:14px/1.9 var(--font-sans) }
+.architecture-manual .help-purpose { max-width:78ch }
+.architecture-manual .help-section-links { gap:8px 20px; line-height:1.7 }
+.architecture-map { margin:24px 0 0; border:1px solid var(--line); border-radius:10px; overflow:hidden }
+.architecture-path-choice { display:flex; background:var(--band); padding:8px; gap:8px; border-bottom:1px solid var(--line) }
+.architecture-path-choice button { flex:1; border:1px solid transparent; background:transparent; padding:12px 16px; text-align:left; color:var(--ink-secondary); font-weight:600 }
+.architecture-path-choice button span { display:block; font-size:12px; font-weight:400; color:var(--muted); margin-top:3px }
+.architecture-path-choice button[aria-pressed=true] { background:var(--paper); border-color:var(--line); color:var(--ink) }
+.architecture-path { padding:28px }
+.architecture-map-entry { display:flex; align-items:center; justify-content:center; gap:14px; color:var(--muted); font-size:13px; margin:0 0 24px }
+.architecture-decision { padding:18px 22px; border-left:3px solid var(--accent); background:var(--band) }
+.architecture-decision>span { font-size:12px; color:var(--accent); font-weight:600 }
+.architecture-decision h4 { margin:5px 0 7px; font-size:19px; font-weight:600 }
+.architecture-decision p { margin:0; font-size:13px; color:var(--muted) }
+.architecture-action-lanes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; list-style:none; padding:24px 0 0; margin:0 }
+.architecture-action-lanes li { border-top:2px solid var(--line); padding-top:14px; min-width:0 }
+.architecture-action-lanes strong { font-size:14px }
+.architecture-action-lanes p { margin:7px 0 10px; font-size:13px; color:var(--ink-secondary); line-height:1.75 }
+.architecture-action-lanes code { font-size:11px; color:var(--muted); overflow-wrap:anywhere; background:none; padding:0 }
+.architecture-loop-note { display:flex; gap:9px; align-items:center; color:var(--muted); font-size:12px; margin:24px 0 }
+.architecture-loop-note svg { flex:none; color:var(--accent) }
+.architecture-map-exit { display:flex; align-items:baseline; justify-content:space-between; gap:16px; border-top:1px solid var(--line); padding-top:18px }
+.architecture-map-exit strong { font-size:14px }
+.architecture-map-exit span { font-size:12px; color:var(--muted) }
+.architecture-role-key { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; background:var(--band); padding:18px 28px; border-top:1px solid var(--line) }
+.architecture-role-key strong,.architecture-role-key span { display:block }
+.architecture-role-key strong { font-size:13px }
+.architecture-role-key span { font-size:12px; color:var(--muted); margin-top:3px }
+.architecture-chat-steps { margin:0; padding:0; list-style:none; counter-reset:architecture-step }
+.architecture-chat-steps li { counter-increment:architecture-step; display:grid; grid-template-columns:28px 1fr; gap:3px 12px; padding:16px 0; border-bottom:1px solid var(--line) }
+.architecture-chat-steps li::before { content:counter(architecture-step); grid-row:span 2; color:var(--muted); font-size:13px }
+.architecture-chat-steps strong { font-size:14px }
+.architecture-chat-steps span { font-size:13px; color:var(--ink-secondary) }
+.architecture-node-reference { margin-top:18px; border:1px solid var(--line); border-radius:7px; padding:14px 18px }
+.architecture-node-reference summary,.architecture-workspace-tools summary { cursor:pointer; font-weight:500; font-size:13px }
+.architecture-node-reference>.markdown { overflow-x:auto; padding-top:14px; font-size:13px }
+.architecture-node-reference table { min-width:600px }
+.architecture-catalog-tabs { display:flex; gap:20px; border-bottom:1px solid var(--line); margin-bottom:20px }
+.architecture-catalog-tabs button { border:0; border-bottom:2px solid transparent; border-radius:0; background:none; padding:10px 0; color:var(--muted); font-size:14px }
+.architecture-catalog-tabs button[aria-pressed=true] { color:var(--ink); border-bottom-color:var(--accent); font-weight:600 }
+.architecture-catalog-tabs button span { font-size:11px; margin-left:7px; color:var(--muted) }
+.architecture-catalog-search { display:flex; gap:12px }
+.architecture-catalog-search label { flex:1; position:relative }
+.architecture-catalog-search label svg { position:absolute; left:12px; top:12px; color:var(--muted) }
+.architecture-catalog-search input { width:100%; padding-left:36px }
+.architecture-catalog-search select { max-width:180px }
+.architecture-catalog-count { color:var(--muted); font-size:12px; margin:12px 0 18px }
+.architecture-manual .architecture-catalog-table { width:100%; table-layout:fixed; min-width:0; border-collapse:collapse; font-size:13px; line-height:1.8 }
+.architecture-manual .architecture-catalog-table :is(th,td) { text-align:left; vertical-align:top; padding:14px 12px; border-bottom:1px solid var(--line); overflow-wrap:anywhere }
+.architecture-manual .architecture-catalog-table th { background:var(--band); color:var(--muted); font-size:12px; font-weight:500 }
+.architecture-manual .architecture-catalog-table th:first-child { width:28% }
+.architecture-manual .architecture-catalog-table th:nth-child(2) { width:27% }
+.architecture-manual .architecture-catalog-table td strong,.architecture-manual .architecture-catalog-table td code { display:block }
+.architecture-manual .architecture-catalog-table td strong { font-weight:500 }
+.architecture-manual .architecture-catalog-table td code { background:none; padding:0; font-size:11px; color:var(--muted); white-space:normal }
+.architecture-catalog-empty { padding:28px 0; color:var(--muted) }
+.architecture-workspace-tools { margin-top:22px; padding:16px 0; border-block:1px solid var(--line) }
+.architecture-workspace-tools p { font-size:13px; color:var(--muted) }
+.architecture-workspace-tools dl>div { display:grid; grid-template-columns:110px 1fr; gap:18px; padding:10px 0; font-size:13px }
+.architecture-workspace-tools dd { margin:0 }
+@container(max-width:650px) {
+ .architecture-action-lanes { grid-template-columns:1fr; gap:16px }
+ .architecture-path { padding:20px 16px }
+ .architecture-role-key { gap:10px; padding:16px }
+ .architecture-map-exit { display:block }
+ .architecture-map-exit span { display:block; margin-top:4px }
+ .architecture-path-choice button { padding:10px }
+ .architecture-path-choice button span { font-size:11px }
+ .architecture-catalog-search { flex-direction:column }
+ .architecture-catalog-search select { max-width:none }
+ .architecture-manual .architecture-catalog-table,.architecture-manual .architecture-catalog-table tbody,.architecture-manual .architecture-catalog-table tr,.architecture-manual .architecture-catalog-table td { display:block; width:100% }
+ .architecture-manual .architecture-catalog-table thead { display:none }
+ .architecture-manual .architecture-catalog-table tr { padding:14px 0; border-bottom:1px solid var(--line) }
+ .architecture-manual .architecture-catalog-table td { border:0; padding:5px 0 }
+ .architecture-manual .architecture-catalog-table td:not(:first-child)::before { content:attr(data-label); display:block; color:var(--muted); font-size:11px; margin-bottom:3px }
+ .architecture-loop-note { align-items:flex-start; line-height:1.8 }
+ .architecture-decision h4 { font-size:17px }
+}
+
+.architecture-path-choice button { display:block }
+.architecture-manual .architecture-text { width:min(100%,96ch); font:14px/1.9 var(--font-sans) }
+.architecture-node-scroll { min-width:0; width:100%; overflow-x:auto }

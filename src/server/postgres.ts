@@ -26,6 +26,7 @@ MIGRATIONS.push('043_external_reference_data');
 MIGRATIONS.push('044_human_ai_review');
 MIGRATIONS.push('045_deep_research');
 MIGRATIONS.push('046_research_planning');
+MIGRATIONS.push('047_research_cycles');
 
 export function assertRuntimeRole(pool:Pool){
  let check=runtimeChecks.get(pool);

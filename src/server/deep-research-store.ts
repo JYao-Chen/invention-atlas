@@ -1,8 +1,9 @@
+import {reportChapterBody} from '../lib/report-template';
 import {randomUUID} from 'node:crypto';
 import type {Pool} from 'pg';
 import {z} from 'zod';
 import type {Run} from '../lib/types';
-import type {DeepResearchTask,ResearchEvidence,ResearchOutlineItem,ResearchBrief} from '../lib/deep-research';
+import type {DeepResearchTask,ResearchEvidence,ResearchOutlineItem,ResearchBrief,ResearchCycle} from '../lib/deep-research';
 import {connection,currentAccess,transaction} from './postgres';
 import {PostgresStore} from './postgres-store';
 import {JobStore} from './job-store';
@@ -11,7 +12,7 @@ import {researchEditorialIssues} from './research-editorial';
 
 export class ResearchInputError extends Error{}
 
-export const researchInput=z.object({datasetId:z.string().min(1),goal:z.string().trim().min(3).max(12000),mode:z.enum(['confirm_outline','automatic']).default('confirm_outline'),targetWords:z.number().int().min(1000).max(100000).default(20000),maxModelCalls:z.number().int().min(10).max(1000).default(120)});
+export const researchInput=z.object({datasetId:z.string().min(1),template:z.enum(['standard','academic','brief']).default('standard'),goal:z.string().trim().min(3).max(12000),mode:z.enum(['confirm_outline','automatic']).default('confirm_outline'),targetWords:z.number().int().min(1000).max(100000).default(20000),maxModelCalls:z.number().int().min(10).max(1000).default(120)});
 export const briefSchema=z.object({intent:z.string().min(1).max(3000),audience:z.string().min(1).max(1000),scope:z.string().min(1).max(3000),questions:z.array(z.string().min(1).max(1000)).max(8),approach:z.array(z.string().min(1).max(1000)).min(1).max(12),changes:z.string().max(3000)});
 export const outlineSchema=z.array(z.object({id:z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),title:z.string().trim().min(1).max(160),question:z.string().trim().min(1).max(2000),targetWords:z.number().int().min(100).max(15000)})).min(2).max(50).refine(items=>new Set(items.map(i=>i.id)).size===items.length,'章节编号不能重复');
 export class DeepResearchStore{
@@ -27,7 +28,7 @@ export class DeepResearchStore{
   return transaction(this.pool,async db=>{
    const store=new PostgresStore(this.pool),meta=await store.dataset(input.datasetId);if(!meta)throw new ResearchInputError('请选择数据集');
    const id=randomUUID(),conversation=await store.newConversation(meta.id,input.goal.slice(0,80));
-   const run:Run={id,kind:'research',conversationId:conversation.id,datasetId:meta.id,datasetSnapshot:meta,question:input.goal,status:'running',plan:[],results:[],answer:'',error:'',model,createdAt:new Date().toISOString(),progress:{tool:'research',unit:'正在准备深度研究'}};
+   const run:Run={id,reportTemplate:input.template,kind:'research',conversationId:conversation.id,datasetId:meta.id,datasetSnapshot:meta,question:input.goal,status:'running',plan:[],results:[],answer:'',error:'',model,createdAt:new Date().toISOString(),progress:{tool:'research',unit:'正在准备深度研究'}};
    await store.saveRun(run);
    await db.query("INSERT INTO research_tasks(id,organization_id,project_id,actor_id,input,title,status) VALUES($1,$2,$3,$4,$5,$6,'queued')",[id,access.organizationId,access.projectId,access.userId,JSON.stringify(input),input.goal.slice(0,100)]);
    await new ModelBudget(this.pool).set(id,input.maxModelCalls);await new JobStore(this.pool).enqueue(id,'research',{});return (await this.get(id))!;
@@ -48,7 +49,7 @@ export class DeepResearchStore{
   });
  }
  async chapter(id:string,chapterId:string,body:string,findings:string,evidenceIds:string[]){
-  const issues=researchEditorialIssues(body);if(issues.length)throw new ResearchInputError('请修改正文后重新保存：'+issues.join('、')+'。保留数据名称、数量、年份、计数口径和研究发现，直接分析可用资料，删除附加提醒与未提供字段。');
+  const issues=researchEditorialIssues(body);if(issues.length)throw new ResearchInputError('请修改正文后重新保存：'+issues.join('、')+'。保留数据名称、数量、年份、计数口径、研究发现及影响判断的范围、缺失情况和不确定性，删除通用免责或人工复核套话。');
   return transaction(this.pool,async db=>{
    const task=(await db.query('SELECT * FROM research_tasks WHERE id=$1 FOR UPDATE',[id])).rows[0];if(!task?.outline.some((c:ResearchOutlineItem)=>c.id===chapterId))throw new ResearchInputError('请先将章节加入提纲');
    const evidence=(await db.query('SELECT id FROM research_evidence WHERE task_id=$1 AND id=ANY($2::text[])',[id,evidenceIds])).rows;
@@ -61,6 +62,18 @@ export class DeepResearchStore{
  }
  async evidence(id:string,payload:ResearchEvidence['payload'],key:string=randomUUID()){
   await connection(this.pool).query('INSERT INTO research_evidence(task_id,id,payload) VALUES($1,$2,$3) ON CONFLICT(task_id,id) DO NOTHING',[id,key,JSON.stringify(payload)]);return key;
+ }
+ async cycle(id:string,cycle:Omit<ResearchCycle,'at'>){
+  return transaction(this.pool,async db=>{
+   const task=(await db.query('SELECT outline FROM research_tasks WHERE id=$1 FOR UPDATE',[id])).rows[0];
+   if(!task)throw new ResearchInputError('深度报告不存在');
+   if(cycle.chapterIds.some(ch=>!task.outline.some((item:ResearchOutlineItem)=>item.id===ch)))throw new ResearchInputError('研究记录涉及的章节不在当前提纲');
+   const evidence=(await db.query('SELECT id FROM research_evidence WHERE task_id=$1 AND id=ANY($2::text[])',[id,cycle.evidenceIds])).rows;
+   if(new Set(cycle.evidenceIds).size!==evidence.length)throw new ResearchInputError('研究记录引用了尚未登记的证据');
+   const record={...cycle,at:new Date().toISOString()};
+   await db.query('UPDATE research_tasks SET cycles=cycles||$2::jsonb,updated_at=now() WHERE id=$1',[id,JSON.stringify([record])]);
+   return record;
+  });
  }
  async feedback(id:string,text:string){
   await connection(this.pool).query("UPDATE research_tasks SET feedback=feedback||$2::jsonb,updated_at=now() WHERE id=$1",[id,JSON.stringify([{text,at:new Date().toISOString()}])]);
@@ -95,7 +108,7 @@ export function assembleResearchReport(task:DeepResearchTask){
  const chapters=task.chapters||[],evidence=new Map((task.evidence||[]).map(e=>[e.id,e])),used:string[]=[];
  const text=task.outline.map(item=>{
   const chapter=chapters.find(c=>c.id===item.id);if(!chapter?.body.trim())throw new ResearchInputError('章节尚未完成：'+item.title);
-  return '## '+item.title+'\n\n'+chapter.body.replace(/^#{1,2} /gm,'### ').replace(/\[\[source:([^\]]+)\]\]/g,(_,id:string)=>{if(!evidence.has(id))throw new ResearchInputError('来源不存在：'+id);if(!used.includes(id))used.push(id);return '['+(used.indexOf(id)+1)+']';});
+  return '## '+item.title+'\n\n'+reportChapterBody(chapter.body).replace(/\[\[source:([^\]]+)\]\]/g,(_,id:string)=>{if(!evidence.has(id))throw new ResearchInputError('来源不存在：'+id);if(!used.includes(id))used.push(id);return '['+(used.indexOf(id)+1)+']';});
  }).join('\n\n');
  const sources=used.map((id,index)=>{const e=evidence.get(id)!.payload;return `${index+1}. ${e.url?'['+e.title+']('+e.url+')':e.title}${e.field?' · '+e.field+'，位置 '+e.offset:''}${e.resultId?' · 分析结果 '+e.resultId:''}`;});
  return '# '+task.title+'\n\n'+text+(sources.length?'\n\n## 资料来源\n\n'+sources.join('\n\n'):'');

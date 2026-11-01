@@ -31,7 +31,7 @@ class ScriptedModel extends BaseChatModel{
 }
 const brief={intent:'研究身份认证方案',audience:'研发团队',scope:'测试资料',questions:[],approach:['比较实际原文'],changes:''};
 const outline=[{id:'overview',title:'数据与技术全景',question:'技术全景如何？',targetWords:500},{id:'directions',title:'研发方向',question:'下一步研究什么？',targetWords:500}];
-const prose='研究数据展示了技术措施与应用目标之间的联系。通过逐项阅读公开文本，可以比较不同方案的设计与技术效果，并结合分析结果进一步确定研究方向。'.repeat(8);
+const prose='在本次检索范围内，观察到的联系可能与分类有关。专利所述效果属于原文声明，非独立实验验证。'+ '研究数据展示了技术措施与应用目标之间的联系。通过逐项阅读公开文本，可以比较不同方案的设计与技术效果，并结合分析结果进一步确定研究方向。'.repeat(8);
 
 test('deep report defaults to outline confirmation and preserves dynamic chapter ids',()=>{
  assert.equal(researchInput.parse({datasetId:'d',goal:'研究技术路线'}).mode,'confirm_outline');
@@ -66,7 +66,7 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
     if(step===13){const missing=JSON.parse(String(messages.at(-1)!.content));assert.equal(missing.found,false);assert.equal(missing.nextOffset,null);}
     if(step===5)assert.ok(messages.some(m=>m instanceof HumanMessage&&String(m.content).includes('更重视权利要求比较')));
     if(step===1)assert.ok(JSON.stringify(messages).includes('研究规划'),JSON.stringify(messages.at(-1)!.content));
-    const calls=[{name:'read_file',args:{file_path:'/skills/research-planning/SKILL.md'}},{name:'research_state',args:{}},{name:'run_analysis',args:{name:'get_dataset_summary',params:{}}},{name:'propose_outline',args:{title:'身份认证研究',outline,brief}},{name:'confirm_outline',args:{}},
+    const calls=[{name:'read_file',args:{file_path:'/skills/research-planning/SKILL.md'}},{name:'research_state',args:{}},{name:'run_analysis',args:{question:'本次研究数据与问题如何对应？',name:'get_dataset_summary',params:{}}},{name:'propose_outline',args:{title:'身份认证研究',outline,brief}},{name:'confirm_outline',args:{}},
      {name:'propose_outline',args:{title:'身份认证研究',outline,brief:{intent:'比较认证方案',audience:'研发团队',scope:'测试资料',questions:['更关注哪种认证场景？'],approach:['阅读权利要求'],changes:'补充权利要求比较'}}},
      {name:'confirm_outline',args:{}},
      {name:'read_patent',args:{patentId:record.id,question:'身份认证的实现步骤是什么？',field:'abstract',offset:0,length:6000}},
@@ -76,6 +76,9 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
      {name:'read_patent',args:{patentId:record.id,question:'verification原文在哪里？',field:'description',find:'VERIFICATION',offset:0,length:1000}},
      {name:'read_patent',args:{patentId:record.id,question:'是否包含不存在的字面术语？',field:'description',find:'absent literal',offset:0,length:1000}},
      {name:'write_chapter',args:{chapterId:'overview',body:prose+' [[source:'+sourceId+']]',findings:'技术与身份认证有关',evidenceIds:[sourceId]}},
+     {name:'record_research',args:{question:'认证措施是否足以解释效果？',finding:'摘要只说明认证对象，需要核对实际条款。',evidenceIds:[sourceId],gaps:['技术措施需回到权利要求核查'],nextAction:'读取权利要求，再修订已写章节。',chapterIds:['overview']}},
+     {name:'read_patent',args:{patentId:record.id,question:'权利要求如何限定认证措施？',field:'claims',offset:0,length:1000}},
+     {name:'record_research',args:{question:'认证措施是否足以解释效果？',finding:'已读权利要求限定verification apparatus；原文声明与实验效果分别表述。',evidenceIds:[sourceId],gaps:[],nextAction:'将条款发现并入比较，收窄效果判断，修订概述。',chapterIds:['overview','directions']}},
      {name:'write_chapter',args:{chapterId:'directions',body:prose,findings:'进一步比较认证流程',evidenceIds:[]}},
      {name:'write_chapter',args:{chapterId:'overview',body:prose+'经过跨章比较后修订。 [[source:'+sourceId+']]',findings:'比较完成并修订',evidenceIds:[sourceId]}},
      {name:'finish_report',args:{}}];
@@ -90,9 +93,10 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
    const revised=(await tasks.get(task.id))!;assert.equal(revised.status,'awaiting_outline');assert.equal(revised.outline_confirmed,false);assert.equal(revised.chapters?.length,0);assert.equal(revised.brief?.audience,'研发团队');assert.equal(revised.planning_history?.length,2);
    await pool.query("UPDATE jobs SET state='completed' WHERE run_id=$1",[task.id]);
    const edited=outline.map((c,i)=>i===0?{...c,title:'用户确认的数据与全景'}:c);await tasks.resume(task.id,true,edited);await tasks.feedback(task.id,'增加跨章比较');
-   await execute();const completed=(await tasks.get(task.id))!;assert.equal(completed.status,'completed');assert.ok(completed.report_id);assert.equal(completed.outline[0].title,edited[0].title);assert.equal(completed.chapters?.length,2);assert.equal(completed.evidence!.filter(e=>e.payload.kind==='patent').length,2);assert.equal(completed.evidence!.find(e=>e.payload.kind==='paper')!.payload.url,'https://openalex.org/W9021001');const finalState=await new ResearchCheckpointer(pool,task.id).getTuple({configurable:{thread_id:task.id}});assert.equal((finalState!.checkpoint.channel_values.researchFeedbackSeen as string[]).length,2);assert.equal((finalState!.checkpoint.channel_values.messages as BaseMessage[]).filter(m=>m instanceof HumanMessage&&m.content==='用户补充要求：\n更重视权利要求比较').length,1);
-   assert.equal((await tasks.versions(task.id,'overview')).length,2);assert.equal(completed.chapters?.find(c=>c.id==='overview')?.revision,2);
+   await execute();const completed=(await tasks.get(task.id))!;assert.equal(completed.status,'completed');assert.ok(completed.report_id);assert.equal(completed.outline[0].title,edited[0].title);assert.equal(completed.chapters?.length,2);assert.equal(completed.evidence!.filter(e=>e.payload.kind==='patent').length,3);assert.equal(completed.evidence!.find(e=>e.payload.kind==='paper')!.payload.url,'https://openalex.org/W9021001');const finalState=await new ResearchCheckpointer(pool,task.id).getTuple({configurable:{thread_id:task.id}});assert.equal((finalState!.checkpoint.channel_values.researchFeedbackSeen as string[]).length,2);assert.equal((finalState!.checkpoint.channel_values.messages as BaseMessage[]).filter(m=>m instanceof HumanMessage&&m.content==='用户补充要求：\n更重视权利要求比较').length,1);
+   assert.equal((await tasks.versions(task.id,'overview')).length,2);assert.equal(completed.chapters?.find(c=>c.id==='overview')?.revision,2);assert.equal(completed.cycles?.length,2);assert.equal(completed.cycles?.[0].gaps.length,1);assert.equal(completed.cycles?.[1].gaps.length,0);assert.ok(JSON.stringify((await new ResearchCheckpointer(pool,task.id).getTuple({configurable:{thread_id:task.id}}))?.checkpoint.channel_values).includes('技术措施需回到权利要求核查'));
    const report=(await store.reports()).find(r=>r.id===completed.report_id)!;assert.ok(report.run.answer.includes('用户确认的数据与全景'));assert.ok(report.run.answer.includes('[1]'));assert.ok(report.run.answer.includes('资料来源'));assert.ok(report.run.answer.includes('经过跨章比较后修订'));assert.equal(report.run.results.length,1);
+   await assert.rejects(tasks.cycle(task.id,{question:'测试问题',finding:'测试发现',evidenceIds:['unknown-evidence'],gaps:[],nextAction:'继续',chapterIds:['overview']}),/尚未登记/);
    await assert.rejects(tasks.chapter(task.id,'overview',prose,'unsupported',['unknown-evidence']),/尚未登记/);
    await assert.rejects(tasks.outline(task.id,'new title',[{...outline[0],id:'replacement'},outline[1]]),/保留编号/);
    const readScope={...scope,userId:reader.user.id};assert.equal((await withAccess(readScope,()=>tasks.get(task.id)))?.chapters?.length,2);await withAccess(readScope,()=>tasks.feedback(task.id,'reader feedback'));assert.equal((await tasks.get(task.id))!.feedback.length,2);await assert.rejects(withAccess(readScope,()=>tasks.chapter(task.id,'overview',prose,'reader',[])),/提纲|权限|row-level/);
@@ -100,8 +104,8 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
    // Full automation continues after a natural-language stop and survives a budget stop.
    const automatic=await tasks.create({datasetId:meta.id,goal:'全自动完成技术研究',mode:'automatic',targetWords:1200,maxModelCalls:10},'test');
    const automaticModel=new ScriptedModel(step=>[
-    {name:'run_analysis',args:{name:'analyze_patent_reading',params:{patent_numbers:[record.id]}}},
-    {name:'run_analysis',args:{name:'get_dataset_summary',params:{}}},
+    {name:'run_analysis',args:{question:'本次研究数据与问题如何对应？',name:'analyze_patent_reading',params:{patent_numbers:[record.id]}}},
+    {name:'run_analysis',args:{question:'本次研究数据与问题如何对应？',name:'get_dataset_summary',params:{}}},
     {name:'propose_outline',args:{title:'自动研究',outline,brief}},
     {name:'write_chapter',args:{chapterId:'overview',body:prose,findings:'已完成概况研究',evidenceIds:[]}},
     {name:'end_naturally',args:{}},
@@ -123,7 +127,7 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
    const native=await tasks.create({datasetId:meta.id,goal:'真实模型适配器预算测试',mode:'automatic',targetWords:1000,maxModelCalls:10},'adapter-test');
    let requests=0;const serverErrors:string[]=[];
    const nativeCalls=[
-    {name:'run_analysis',args:{name:'get_dataset_summary',params:{}}},
+    {name:'run_analysis',args:{question:'本次研究数据与问题如何对应？',name:'get_dataset_summary',params:{}}},
     {name:'propose_outline',args:{title:'HTTP适配器研究',outline,brief}},
     {name:'write_chapter',args:{chapterId:'overview',body:prose,findings:'HTTP主流程写入完成',evidenceIds:[]}},
     {name:'write_chapter',args:{chapterId:'directions',body:prose,findings:'中断后完成下一章',evidenceIds:[]}},
@@ -162,8 +166,9 @@ test('long report assembly keeps chapter bodies, ordering and missing chapters v
 });
 
 test('research writing removes requested disclaimer patterns while retaining substantive negative findings',()=>{
- assert.ok(researchEditorialIssues('## 字段覆盖：状态字段缺失\nlegalStatus 覆盖率为0，因此不涉及法律判断。').length);
- assert.ok(researchEditorialIssues('这种形态描述本语料，而非整个行业。').length);
+ assert.deepEqual(researchEditorialIssues('## 字段覆盖：状态字段缺失\nlegalStatus 覆盖率为0，因此不涉及法律判断。'),[]);
+ assert.deepEqual(researchEditorialIssues('这种形态描述本语料，而非整个行业。'),[]);
+ assert.deepEqual(researchEditorialIssues('专利原文声明，非独立实验验证。未检出不等于不存在；在本次范围内可能与年份缺失有关。'),[]);
  assert.ok(researchEditorialIssues('方法与数据限制说明：需要人工复核，仅供参考。').length);
  assert.deepEqual(researchEditorialIssues('2018年公开11件，2019年公开1件。申请人采用名称计数；同一公开件可以计入多个申请人。没有形成单一主体优势。'),[]);
 });
