@@ -5,10 +5,10 @@ export type ProfessionalPreset={datasetId:string;query?:string;ipc?:string;yearS
 export type ProfessionalLaunch={id:number;workflow:ProfessionalWorkflow;preset:ProfessionalPreset;question?:string};
 export type GuideModule='workspace'|'materials'|'disclosures'|'credentials'|'review'|'research';
 export const professionalExamples:Record<string,{workflow:ProfessionalWorkflow;question:string}>={
- 'landscape-workflow':{workflow:'technology-landscape',question:'研究当前数据集近期公开文献的技术分类、主要主题和申请人布局，结合代表文献生成技术全景报告。'},
- 'competitor-workflow':{workflow:'competitor-analysis',question:'选取当前数据集中的两个申请人，比较公开趋势、技术分类组合及共同申请关系，生成竞争主体报告。'},
- 'novelty-workflow':{workflow:'novelty-search',question:'以分布式账本数字身份认证方案为演示输入，提取技术特征，确认检索策略和候选专利，再逐特征比较原文。'},
- 'layout-workflow':{workflow:'patent-layout',question:'研究数字身份认证中的技术措施与效果关系，结合原文矩阵提出并选择可进一步验证的研发方向。'},
+ 'landscape-workflow':{workflow:'technology-landscape',question:'我想了解这个领域有哪些技术路线，供研发选题参考。'},
+ 'competitor-workflow':{workflow:'competitor-analysis',question:'帮我比较主要竞争者各自擅长什么。'},
+ 'novelty-workflow':{workflow:'novelty-search',question:'我有一个数字身份认证方案，想看看已有专利里有没有类似做法。'},
+ 'layout-workflow':{workflow:'patent-layout',question:'我想做身份认证方面的研发，帮我找值得深入研究的问题。'},
 };
 export const guideModules:Record<string,GuideModule>={'deep-research':'research',workspace:'workspace',materials:'materials',disclosures:'disclosures',integrations:'credentials',review:'review'};
 export function professionalPreset(workflow:ProfessionalWorkflow,dataset:Dataset,records:Patent[]):ProfessionalPreset{

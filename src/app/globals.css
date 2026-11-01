@@ -1465,3 +1465,87 @@ tbody tr:hover { background:var(--band) }
  .conversation-mode .assistant-welcome { margin-top:12px }
 }
 @media(prefers-reduced-motion:reduce) { button,.button,input,textarea,select { transition:none } button:active,.button:active { transform:none } }
+
+/* Architecture documentation: explicit handoffs, shared state and research loops. */
+.architecture-detail { padding:0; margin-top:20px; border:0 }
+.architecture-detail>section { padding:20px 0; border-block:1px solid var(--line) }
+.architecture-detail>section+section { border-top:0 }
+.architecture-detail header { margin-bottom:18px }
+.architecture-detail header h4 { margin:0 0 4px; font-size:15px }
+.architecture-detail header p { margin:0; font-size:12px; color:var(--muted) }
+.architecture-sequence { display:flex; align-items:center; gap:12px }
+.architecture-node { flex:1; min-width:0; padding:14px 16px; border:1px solid var(--line); border-radius:7px; background:var(--band) }
+.architecture-node strong,.architecture-node span { display:block; overflow-wrap:anywhere }
+.architecture-node strong { font-size:13px; font-weight:600 }
+.architecture-node span { margin-top:5px; font-size:12px; line-height:1.65; color:var(--muted) }
+.architecture-next { flex:none; color:var(--muted) }
+.architecture-return { display:flex; align-items:baseline; gap:7px; margin:12px 0 0!important; font-size:12px; color:var(--muted) }
+.architecture-return svg { flex:none; align-self:center }
+.architecture-branches { flex:1; min-width:0; padding:12px 16px; border:1px solid var(--selected-line); border-radius:7px; background:var(--selected) }
+.architecture-branches strong,.architecture-branches span { display:block; font-size:12px; line-height:1.9 }
+.architecture-branches strong { font-weight:600; margin-bottom:5px }
+.architecture-research-loop { border:1px solid var(--selected-line); border-radius:7px; padding:16px }
+.architecture-loop-heading { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 16px; margin-bottom:12px }
+.architecture-loop-heading strong { font-size:14px }
+.architecture-loop-heading span,.architecture-research-loop>p { color:var(--muted); font-size:12px }
+.architecture-loop-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px }
+.architecture-research-loop>p { margin:12px 0 0 }
+.architecture-skill-connection { display:flex; align-items:baseline; flex-wrap:wrap; gap:6px 16px; margin-top:14px; font-size:12px; color:var(--muted) }
+.architecture-skill-connection strong { color:var(--ink-secondary); font-weight:600 }
+.help-article:has(.architecture-detail) .help-section-wide table { display:table; min-width:720px; font-size:13px; line-height:1.7 }
+.help-article:has(.architecture-detail) .help-section-wide:has(table) { overflow-x:auto }
+.help-article:has(.architecture-detail) .help-section-wide table th { background:var(--band); position:static }
+.help-article:has(.architecture-detail) .help-section-wide table td:first-child { width:25%; min-width:180px }
+.help-article:has(.architecture-detail) .help-section-wide table code { font-size:11.5px; white-space:normal; overflow-wrap:anywhere }
+@container(max-width:680px) {
+ .architecture-sequence { flex-direction:column; align-items:stretch; gap:8px }
+ .architecture-next { transform:rotate(90deg); align-self:center }
+ .architecture-loop-actions { grid-template-columns:minmax(0,1fr) }
+ .architecture-detail .help-flow-down { margin-block:12px }
+ .architecture-return { align-items:flex-start; line-height:1.7 }
+ .architecture-node { padding:12px }
+}
+
+/* Report reading keeps chapters beside the argument and source links beside claims. */
+.content>.report-reading-layout { max-width:none }
+.report-reading-layout { display:grid; grid-template-columns:210px minmax(0,1fr); align-items:start; gap:24px; width:100%; min-width:0 }
+.report-contents { position:sticky; top:0; max-height:calc(100dvh - 135px); overflow-y:auto; padding:12px 12px 16px 0; scrollbar-width:thin }
+.report-contents h3 { font:600 13px/1.6 var(--font-sans); margin:0 10px 12px }
+.report-contents button { display:block; width:100%; min-height:32px; padding:6px 10px; border:0; text-align:left; font:12px/1.65 var(--font-sans); background:transparent; color:var(--ink-secondary); overflow-wrap:anywhere }
+.report-contents button:hover { background:var(--soft) }
+.report-contents button[aria-current] { background:var(--selected); color:var(--accent) }
+.report-contents .report-contents-sub { padding-left:22px; font-size:11.5px; color:var(--muted) }
+.report-reading-layout>.report-narrative { width:100%; min-width:0; max-width:none!important; margin:0; padding:28px 32px }
+.report-reading-section { scroll-margin-top:20px; min-width:0 }
+.report-citation { font-family:var(--font-sans); font-size:.72em; vertical-align:super; line-height:0; margin-inline:1px }
+.report-citation a { color:var(--accent); text-decoration:none; padding:1px }
+.report-citation a:hover { text-decoration:underline }
+.report-reference-list { padding-left:24px }
+.report-reference-list li { padding:8px 4px; scroll-margin-top:24px; overflow-wrap:anywhere }
+.report-reference-list li:focus,.research-sources>div:focus { outline:2px solid var(--action); outline-offset:4px }
+.report-reference-list li>p { margin:0 }
+.research-stages li { padding:0; align-items:stretch }
+.research-stages li>button { width:100%; justify-content:flex-start; border:0; background:none; color:inherit; border-radius:0; font-size:12px; padding:0 10px 12px 0; min-height:36px }
+.research-stages button>span { display:grid; place-items:center; min-width:22px; height:22px; border:1px solid var(--line-strong); border-radius:50%; font-size:11px }
+.research-stages li[aria-current] button>span { background:var(--action); color:var(--paper); border-color:var(--action) }
+.research-stages button:hover:enabled { color:var(--accent) }
+.research-stage-history { background:var(--paper); padding:20px; margin:16px 0 24px; border:1px solid var(--line); border-radius:7px }
+.research-stage-history h4 { margin:0 0 12px; font-size:15px }
+.research-stage-history h4:not(:first-child) { margin-top:24px }
+.research-stage-history time { font-size:11px; color:var(--muted) }
+.research-results-history { margin:20px 0; padding-bottom:16px; border-bottom:1px solid var(--line) }
+.research-results-history select { margin:10px 0 }
+.research-sources>div { scroll-margin-top:24px }
+@media(max-width:1000px) {
+ .report-reading-layout { grid-template-columns:180px minmax(0,1fr); gap:16px }
+ .report-reading-layout>.report-narrative { padding:24px }
+}
+@media(max-width:730px) {
+ .report-reading-layout { grid-template-columns:minmax(0,1fr) }
+ .report-contents { position:static; max-height:190px; padding:12px; border:1px solid var(--line); border-radius:7px; background:var(--paper) }
+ .report-reading-layout>.report-narrative { padding:20px 16px }
+ .research-stages li>button { font-size:11px; flex-direction:column; gap:5px; align-items:flex-start; padding-right:4px }
+}
+
+.report-reading-layout .patent-narrative>.markdown { font:15.5px/1.85 var(--font-reading); color:var(--ink-secondary) }
+@media print { .report-contents { display:none } .report-reading-layout { display:block } .report-reading-layout>.report-narrative { border:0; padding:0 } }

@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {questions} from '@/lib/suggestions';
 import type {StarterPool,Patent} from '@/lib/types';
 import {analysisPatents,setting,dataset} from './db';
 import {starterCandidates,generateStarters} from './starters';
@@ -11,6 +12,7 @@ export async function readyStarterPool(id:string,consumed:string[]=[]):Promise<S
  const pool=await saved(id)||{version:randomUUID(),batches:[]};
  pool.batches=pool.batches.filter(b=>!consumed.includes(b.id));
  if(pool.batches.length<3){const records=(await analysisPatents(id));while(pool.batches.length<3){const previous=pool.batches.at(-1)?.items.map(i=>i.name)||[];const items=starterCandidates(records,id,previous);if(!items.length)break;pool.batches.push({id:randomUUID(),items});}}
+ for(const batch of pool.batches)for(const item of batch.items)if(item.question.length>70||/调用|K-means|TF-IDF|CR3|HHI|完整读取/.test(item.question)){item.question=questions[item.name]||item.question;}
  (await setting(key(id),JSON.stringify(pool)));return pool;
 }
 // Only reserve batches are refined. Displayed batches keep their wording and bound parameters.

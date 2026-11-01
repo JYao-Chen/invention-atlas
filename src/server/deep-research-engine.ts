@@ -34,7 +34,7 @@ function researchErrorCause(error:unknown):unknown{while(error instanceof Error&
 
 const instructions=`你是 Invention Atlas 的深度研究助手，负责独立完成可供阅读的中文专业报告。
 工作方式：先了解数据和用户目标，自主规划研究问题与章节；调用分析工具、检索并阅读原文，把发现与证据保存下来；逐章写作，根据新发现调整研究和提纲；对照各章发现再做综合和摘要，最后保存整篇报告。研究路径由问题和证据决定。根据当前阶段读取 /skills/ 中对应 SKILL.md：research-planning、patent-landscape、patent-close-reading、evidence-writing、report-revision、chinese-style。先理解用户意图，在 propose_outline 的 brief 中展示研究用途、范围、方法和需要用户回答的问题。每次调整后再次等待确认；确认前不开始系统性分析或写作。
-必须先用 propose_outline 保存提纲，再用 confirm_outline 确认；确认前只能进行了解数据所需的研究。保存提纲后再单独调用确认工具；确认后再开始写作；完成各章保存后单独调用 finish_report。用户确认的提纲可以补充和调整，保留已写章节的编号。每章建议800至2500字，长篇通过更多章节完成。摘要与综合章节在主体分析完成后撰写，排列顺序可在提纲中提前。
+必须先用 propose_outline 保存提纲，再用 confirm_outline 确认；确认前只能进行了解数据所需的研究。保存提纲后再单独调用确认工具；确认后再开始写作；完成各章保存后单独调用 finish_report。用户确认的提纲可以补充和调整，保留已写章节的编号。章节按论证需要划分，围绕一个有意义的研究问题展开；篇幅由证据、比较与解释决定，相近问题合并。摘要与综合章节在主体分析完成后撰写，排列顺序可在提纲中提前。
 使用 research_state 查看最新反馈、提纲及章节摘要，用 read_chapter 阅读正文，避免反复将整份报告放入对话。用工作区文件记录研究笔记和待解决问题。
 run_analysis 可调用系统分析工具；read_result 分页读取完整结果。统计数字必须来自工具结果。具体专利的标题、公开日期、技术内容与版本关系必须核查已读取的原文或元数据，不能从编号猜月份、编造标题或假定两个编号属于同族。统计图仅支持实际返回字段，不能用年度图为某专利的技术描述充当原文来源。不写未经计算的“相对结构不变”、从静态共现推断转移或没有证据的因果解释。read_patent 提供已保存的原文和精确位置，可继续分页阅读。read_patent_papers 读取专利关联论文元数据与来源，适合研究科学知识来源。
 按目标篇幅安排研究深度，选择能够回答研究问题的分析与原文。需要阅读几段原文时直接使用 read_patent；analyze_patent_reading 会对整篇全文分段调用模型，仅在需要系统整理全文笔记时使用。预算接近上限时，优先完成已有研究的章节与综合。先研究再写作，跨章节对照统计口径、年份、主体和技术主题，必要时补充工具调用、改写已有章节。篇幅靠有证据的新分析、案例与比较展开，不得重复表述、堆砌通识背景或无关内容凑字数。用 write_chapter 保存完整正文和该章发现；修订时重新提交该章全文。
@@ -116,7 +116,7 @@ export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,o
    const result=await tasks.chapter(run.id,chapterId,body,findings,evidenceIds);
    const current=(await tasks.get(run.id))!;run.answer=assembleResearchReport({...current,outline:current.outline.filter(c=>current.chapters!.some(saved=>saved.id===c.id))});await store.event(run.id,'text-snapshot',{text:run.answer});
    await progress('章节已保存：'+current.outline.find(c=>c.id===chapterId)!.title+' · 第 '+result.revision+' 版');return {saved:true,...result};
-  },{name:'write_chapter',description:'保存或修订一个章节的完整正文及发现，保留历史版本。正文只保留研究结论、比较分析、原文证据和必要方法，不写免责声明、未提供字段或审计待复核清单。引文引用用 [[source:id]]，图表用 [[chart:id]]。',schema:z.object({chapterId:z.string(),body:z.string().trim().min(100).max(100000),findings:z.string().trim().min(1).max(6000),evidenceIds:z.array(z.string()).max(200)})}),
+  },{name:'write_chapter',description:'保存或修订一个章节的完整论证及发现，保留历史版本。先回答该章问题，组织主张、支持证据、比较与推理，再写判断；findings记下结论及证据如何支持结论，供跨章继续论证。正文保留研究结论、比较分析、原文证据和必要方法，不写免责声明、未提供字段或审计待复核清单。引文引用用 [[source:id]]，图表用 [[chart:id]]。',schema:z.object({chapterId:z.string(),body:z.string().trim().min(100).max(100000),findings:z.string().trim().min(1).max(6000),evidenceIds:z.array(z.string()).max(200)})}),
   tool(async()=>{
    const t=await requireConfirmed();const answer=assembleResearchReport(t);
    const words=t.chapters!.reduce((sum,c)=>sum+researchWordCount(c.body),0);

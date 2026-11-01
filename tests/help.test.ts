@@ -61,7 +61,26 @@ test('manual cross-references point to existing chapter routes',()=>{
 test('architecture guide describes the actual agent modes and exports its research flow',()=>{
  const chapter=guideChapters.find(c=>c.id==='architecture')!;
  assert.ok(chapter);assert.ok(chapter.sections.some(s=>s.diagram==='agent-architecture'));
- for(const term of ['Agent','Tools','Skills','LangGraph','Deep Agents','用户'])assert.ok((chapter.intro+chapter.body).includes(term),term);
+ for(const term of ['Agent','工具','Skills','LangGraph','Deep Agents','用户'])assert.ok((chapter.intro+chapter.body).includes(term),term);
  assert.ok(readFileSync('docs/USER-GUIDE.md','utf8').includes(agentArchitectureMermaid));
  assert.ok(guideChapters[0].intro.includes('多智能体协作'));
+});
+
+
+test('architecture inventories cover current nodes, analysis tools, research tools and skills',async()=>{
+ const {TOOL_DEFS}=await import('../src/lib/tool-definitions');
+ const {RESEARCH_SKILLS}=await import('../src/server/research-skills');
+ const {researchToolRows,skillRows}=await import('../src/lib/architecture-guide');
+ const chapter=guideChapters.find(c=>c.id==='architecture')!;
+ for(const [id]of TOOL_DEFS)assert.ok(chapter.body.includes('`'+id+'`'),id);
+ for(const skill of RESEARCH_SKILLS)assert.ok(chapter.body.includes('`'+skill.id+'`'),skill.id);
+ assert.deepEqual(skillRows.map(row=>row[0]).sort(),RESEARCH_SKILLS.map(s=>s.id).sort());
+ const engine=readFileSync('src/server/deep-research-engine.ts','utf8');
+ const tools=[...engine.matchAll(/\},\{name:'([^']+)'/g)].map(m=>m[1]);
+ assert.deepEqual(researchToolRows.map(row=>row[0]).sort(),tools.sort());
+ const graph=readFileSync('src/server/agent.ts','utf8');
+ for(const node of [...graph.matchAll(/\.addNode\('([^']+)'/g)].map(m=>m[1]))assert.ok(chapter.body.includes(node),node);
+ assert.ok(chapter.sections.filter(s=>s.body.includes('| ---')).every(s=>s.wide));
+ assert.ok(agentArchitectureMermaid.includes('ExecutionAudit'));
+ assert.ok(agentArchitectureMermaid.includes('ReviseReport'));
 });

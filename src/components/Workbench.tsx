@@ -1,4 +1,5 @@
 'use client';
+import ReportReader from './ReportReader';
 import {resultText} from '@/lib/result-copy';
 import {useEffect,useState,useRef} from 'react';
 import {MessagesSquare,FileText,LogOut,Plus,Send,Square,PanelRight,Search,ArrowUpRight,ChevronDown,ChevronLeft,X,Play,RefreshCw,ShieldCheck,Upload} from 'lucide-react';
@@ -336,10 +337,9 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <Play size={16}/>
 历史运行 · 数据集 {report.run.datasetId.slice(0,8)} · {new Date(report.run.createdAt).toLocaleString('zh-CN')}</div>}{report&&<div className="report-tabs" role="tablist" aria-label="报告视图">{(['body','review'] as const).map(key=><button key={key} type="button" role="tab" aria-selected={reportTab===key} className={reportTab===key?'active':''} onClick={()=>setReportTab(key)}>{key==='body'?'报告正文':'逐条复核'}</button>)}</div>}
 {report&&reportTab==='review'&&<ReportReview key={report.id+':'+(report.revision||0)} reportId={report.id} revision={report.revision||0} results={report.run.results} readOnly={Boolean(readOnly)} currentUserId={workspace?.user.id} toolTitle={name=>tools.find(t=>t.name===name)?.title||name} onPatent={id=>void openPatent(id,report.run.datasetId)}/>}
-{report&&reportTab==='body'&&<article className="markdown report-narrative">
+{report&&reportTab==='body'&&<ReportReader text={report.run.answer} results={report.run.results.filter(r=>r.status==='completed')} onPatent={(id,datasetId)=>void openPatent(id,datasetId)}>
 <ReportDraftEditor key={report.id} reportId={report.id} selectedRevision={report.revision||0} readOnly={Boolean(readOnly)} onRead={version=>setReport(current=>current?{...current,revision:version.revision,title:version.title,run:{...current.run,answer:version.answer}}:current)}/>
-<>{report.run.kind==='research'?<PatentNarrative text={report.run.answer} results={report.run.results.filter(r=>r.status==='completed')} appendResults={false} onPatent={(id,datasetId)=>void openPatent(id,datasetId)}/>:<Markdown>{resultText(report.run.answer).replace(/\[\[chart:[^\]]+\]\]/g,'')}</Markdown>}</>
-</article>}{!report&&<>
+</ReportReader>}{!report&&<>
 <div className="analysis-intro">
 <div>
 <h2>运行查询与分析</h2>
