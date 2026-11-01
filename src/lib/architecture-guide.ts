@@ -60,7 +60,8 @@ export const researchToolRows=[
  ['record_research','形成实质发现、识别缺口或改变方向时','保存研究问题、发现、证据编号、剩余缺口、下一步和涉及章节；后续模型调用读取近期记录，用户可回溯判断怎样更新。'],
  ['read_chapter','续写、交叉比较或修订时','恢复指定章节的正文、发现、证据和版本。'],
  ['write_chapter','一章分析成形或修订完成时','保存完整章节正文、具体发现和证据编号；保留历史版本，供后续章节读取。'],
- ['finish_report','章节完成且达到目标字数时','检查章节与字数，按提纲组装报告并保存到报告库，结束研究任务。'],
+ ['read_report','交付前核对或章节修订后','读取当前报告全文、来源目录与版本，用于核对事实、推理和跨章一致性。'],
+ ['finish_report','全文核对完成且达到目标字数时','提交核对结论及完整章节版本，检查已记录缺口并保存到报告库。'],
 ] as const;
 export const researchToolTable=table(['研究工具','调用时机','作用与交付对象'],researchToolRows.map(([id,when,effect])=>[`\`${id}\``,when,effect]));
 export const skillRows=[

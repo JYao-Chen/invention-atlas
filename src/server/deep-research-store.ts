@@ -13,8 +13,12 @@ import {researchEditorialIssues} from './research-editorial';
 export class ResearchInputError extends Error{}
 
 export const researchInput=z.object({datasetId:z.string().min(1),template:z.enum(['standard','academic','brief']).default('standard'),goal:z.string().trim().min(3).max(12000),mode:z.enum(['confirm_outline','automatic']).default('confirm_outline'),targetWords:z.number().int().min(1000).max(100000).default(20000),maxModelCalls:z.number().int().min(10).max(1000).default(120)});
-export const briefSchema=z.object({intent:z.string().min(1).max(3000),audience:z.string().min(1).max(1000),scope:z.string().min(1).max(3000),questions:z.array(z.string().min(1).max(1000)).max(8),approach:z.array(z.string().min(1).max(1000)).min(1).max(12),changes:z.string().max(3000)});
+export const briefSchema=z.object({intent:z.string().min(1).max(3000),audience:z.string().min(1).max(1000),scope:z.string().min(1).max(3000),questions:z.array(z.string().min(1).max(1000)).max(8),approach:z.array(z.string().min(1).max(1000)).min(1).max(12),changes:z.string().max(3000).default('')});
 export const outlineSchema=z.array(z.object({id:z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),title:z.string().trim().min(1).max(160),question:z.string().trim().min(1).max(2000),targetWords:z.number().int().min(100).max(15000)})).min(2).max(50).refine(items=>new Set(items.map(i=>i.id)).size===items.length,'章节编号不能重复');
+export function openResearchQuestions(cycles:ResearchCycle[]=[]){
+ const latest=new Map<string,ResearchCycle>();for(const cycle of cycles)latest.set(cycle.question,cycle);
+ return [...latest.values()].filter(c=>c.gaps.length&&!c.resolution);
+}
 export class DeepResearchStore{
  constructor(private readonly pool:Pool){}
  async list():Promise<DeepResearchTask[]>{return (await connection(this.pool).query('SELECT * FROM research_tasks ORDER BY updated_at DESC LIMIT 100')).rows;}
@@ -55,9 +59,14 @@ export class DeepResearchStore{
    const evidence=(await db.query('SELECT id FROM research_evidence WHERE task_id=$1 AND id=ANY($2::text[])',[id,evidenceIds])).rows;
    if(new Set(evidenceIds).size!==evidence.length)throw new ResearchInputError('章节引用了尚未登记的证据');
    for(const match of body.matchAll(/\[\[source:([^\]]+)\]\]/g))if(!evidenceIds.includes(match[1]))throw new ResearchInputError('正文引用须加入 evidenceIds');
-   const r=(await db.query('INSERT INTO research_chapters(task_id,id,body,findings,evidence_ids,revision) VALUES($1,$2,$3,$4,$5,1) ON CONFLICT(task_id,id) DO UPDATE SET body=excluded.body,findings=excluded.findings,evidence_ids=excluded.evidence_ids,revision=research_chapters.revision+1,updated_at=now() RETURNING revision',[id,chapterId,body,findings,JSON.stringify(evidenceIds)])).rows[0];
-   await db.query('INSERT INTO research_chapter_versions(task_id,chapter_id,revision,body,findings,evidence_ids) VALUES($1,$2,$3,$4,$5,$6)',[id,chapterId,r.revision,body,findings,JSON.stringify(evidenceIds)]);
-   await db.query('UPDATE research_tasks SET updated_at=now() WHERE id=$1',[id]);return r;
+   const previous=(await db.query('SELECT body,findings,evidence_ids,revision FROM research_chapters WHERE task_id=$1 AND id=$2',[id,chapterId])).rows[0];
+   const selected=[...new Set(evidenceIds)].sort();
+   if(previous&&previous.body===body&&previous.findings===findings&&JSON.stringify([...new Set(previous.evidence_ids)].sort())===JSON.stringify(selected))return {revision:previous.revision,changed:false};
+   const r=(await db.query('INSERT INTO research_chapters(task_id,id,body,findings,evidence_ids,revision) VALUES($1,$2,$3,$4,$5,1) ON CONFLICT(task_id,id) DO UPDATE SET body=excluded.body,findings=excluded.findings,evidence_ids=excluded.evidence_ids,revision=research_chapters.revision+1,updated_at=now() RETURNING revision',[id,chapterId,body,findings,JSON.stringify(selected)])).rows[0];
+   await db.query('INSERT INTO research_chapter_versions(task_id,chapter_id,revision,body,findings,evidence_ids) VALUES($1,$2,$3,$4,$5,$6)',[id,chapterId,r.revision,body,findings,JSON.stringify(selected)]);
+   const chapter=task.outline.find((c:ResearchOutlineItem)=>c.id===chapterId)!;
+   const record={at:new Date().toISOString(),question:'章节进展：'+chapter.title,finding:findings,evidenceIds:selected,gaps:[],nextAction:'章节已保存；具体未解问题继续按对应阶段记录处理，依据新发现补证或推进其余研究问题。',chapterIds:[chapterId]};
+   await db.query('UPDATE research_tasks SET cycles=cycles||$2::jsonb,updated_at=now() WHERE id=$1',[id,JSON.stringify([record])]);return {...r,changed:true};
   });
  }
  async evidence(id:string,payload:ResearchEvidence['payload'],key:string=randomUUID()){
@@ -70,6 +79,7 @@ export class DeepResearchStore{
    if(cycle.chapterIds.some(ch=>!task.outline.some((item:ResearchOutlineItem)=>item.id===ch)))throw new ResearchInputError('研究记录涉及的章节不在当前提纲');
    const evidence=(await db.query('SELECT id FROM research_evidence WHERE task_id=$1 AND id=ANY($2::text[])',[id,cycle.evidenceIds])).rows;
    if(new Set(cycle.evidenceIds).size!==evidence.length)throw new ResearchInputError('研究记录引用了尚未登记的证据');
+   if(cycle.resolution)z.object({kind:z.enum(['resolved','scoped']),reason:z.string().trim().min(10).max(2000)}).parse(cycle.resolution);
    const record={...cycle,at:new Date().toISOString()};
    await db.query('UPDATE research_tasks SET cycles=cycles||$2::jsonb,updated_at=now() WHERE id=$1',[id,JSON.stringify([record])]);
    return record;

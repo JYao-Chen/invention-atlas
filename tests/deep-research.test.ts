@@ -8,14 +8,14 @@ import {emptyCheckpoint} from '@langchain/langgraph-checkpoint';
 import {postgresPool,withAccess,type AccessScope} from '../src/server/postgres';
 import {IdentityStore} from '../src/server/identity';
 import {PostgresStore} from '../src/server/postgres-store';
-import {DeepResearchStore,assembleResearchReport,researchInput,outlineSchema} from '../src/server/deep-research-store';
+import {DeepResearchStore,assembleResearchReport,researchInput,outlineSchema,openResearchQuestions,briefSchema} from '../src/server/deep-research-store';
 import {ResearchCheckpointer} from '../src/server/research-checkpointer';
 import {executeDeepResearch} from '../src/server/deep-research-engine';
 import {normalize,datasetMeta} from '../src/server/importers';
 import {withModelSettings} from '../src/server/config';
 import {ModelBudget} from '../src/server/model-budget';
 import {executeTool} from '../src/server/tools';
-import {requireResearchSelection,researchToolPolicy} from '../src/server/research-tool-policy';
+import {requireResearchSelection,researchToolPolicy,requireResearchCapacity} from '../src/server/research-tool-policy';
 import {researchResultPreview,researchResultPage} from '../src/server/research-results';
 import type {AnalysisResult} from '../src/lib/types';
 import {researchWordCount} from '../src/lib/research-words';
@@ -27,7 +27,19 @@ class ScriptedModel extends BaseChatModel{
  constructor(private readonly script:(step:number,messages:BaseMessage[])=>{name:string;args:Record<string,unknown>}){super({});}
  _llmType(){return 'research-test';}
  bindTools(){return this;}
- async _generate(messages:BaseMessage[]){const call=this.script(this.step++,messages);this.calls.push(call);return {generations:[{text:'',message:new AIMessage({content:call.name==='end_naturally'?'已整理当前发现。':'',tool_calls:call.name==='end_naturally'?[]:[{id:'call_'+this.step,type:'tool_call',...call}],usage_metadata:{input_tokens:10,output_tokens:10,total_tokens:20}})}]};}
+ async _generate(messages:BaseMessage[]){
+  const last=messages.at(-1);let call:{name:string;args:Record<string,unknown>}|undefined;
+  if(last?.name==='finish_report'||last?.name==='read_report'){
+   try{const result=JSON.parse(String(last.content));if(result.reviewRequired){
+    if(last.name==='read_report'){assert.ok(result.chapters.every((c:{body:string})=>c.body.length>=100));call={name:'finish_report',args:{review:{revisions:result.revisions,summary:'已回读完整章节，核对研究问题、正文与引用，确认当前测试数据一致。'}}};}
+    else call={name:'read_report',args:{}};
+   }}catch(error){if(error instanceof assert.AssertionError)throw error;}
+  }
+  call??=this.script(this.step++,messages);
+  if(call.name==='finish_report'&&!call.args.review)call={name:'read_report',args:{}};
+  this.calls.push(call);return {generations:[{text:'',message:new AIMessage({content:call.name==='end_naturally'?'已整理当前发现。':'',tool_calls:call.name==='end_naturally'?[]:[{id:'call_'+this.calls.length,type:'tool_call',...call}],usage_metadata:{input_tokens:10,output_tokens:10,total_tokens:20}})}]};
+ }
+
 }
 const brief={intent:'研究身份认证方案',audience:'研发团队',scope:'测试资料',questions:[],approach:['比较实际原文'],changes:''};
 const outline=[{id:'overview',title:'数据与技术全景',question:'技术全景如何？',targetWords:500},{id:'directions',title:'研发方向',question:'下一步研究什么？',targetWords:500}];
@@ -35,6 +47,7 @@ const prose='在本次检索范围内，观察到的联系可能与分类有关�
 
 test('deep report defaults to outline confirmation and preserves dynamic chapter ids',()=>{
  assert.equal(researchInput.parse({datasetId:'d',goal:'研究技术路线'}).mode,'confirm_outline');
+ const {changes,...initialBrief}=brief;assert.equal(briefSchema.parse(initialBrief).changes,'');
  assert.equal(outlineSchema.safeParse([outline[0],outline[0]]).success,false);
 });
 
@@ -58,6 +71,7 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
    const task=await tasks.create({datasetId:meta.id,goal:'研究身份认证技术路线',targetWords:1000,maxModelCalls:30},'test');
    let sourceId='';
    const model=new ScriptedModel((step,messages)=>{
+    if(step===20){assert.ok(JSON.stringify(messages).includes('全部章节已保存。现在进入交付'));assert.ok(String(messages.at(-1)!.content).includes('通过 write_chapter 保存'));assert.equal(messages.at(-1)!.getType(),'tool');}
     if(step===8)sourceId=JSON.parse(String([...messages].reverse().find(m=>m._getType()==='tool')!.content)).evidenceId;
     if(step===9){const reused=JSON.parse(String(messages.at(-1)!.content));assert.equal(reused.evidenceId,sourceId);assert.equal(reused.quote,record.abstract);assert.equal(reused.question,'身份认证的实现步骤是什么？');}
     if(step===10){const page=JSON.parse(String(messages.at(-1)!.content));assert.equal(page.links.length,1);assert.equal(page.nextOffset,null);}
@@ -75,13 +89,14 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
      {name:'read_patent_papers',args:{patentIds:[record.id],offset:50}},
      {name:'read_patent',args:{patentId:record.id,question:'verification原文在哪里？',field:'description',find:'VERIFICATION',offset:0,length:1000}},
      {name:'read_patent',args:{patentId:record.id,question:'是否包含不存在的字面术语？',field:'description',find:'absent literal',offset:0,length:1000}},
-     {name:'write_chapter',args:{chapterId:'overview',body:prose+' [[source:'+sourceId+']]',findings:'技术与身份认证有关',evidenceIds:[sourceId]}},
+     {name:'write_chapter',args:{chapterId:'overview',body:prose+' [[source:'+sourceId+']]',findings:'技术与身份认证有关',evidenceIds:[sourceId,sourceId]}},
      {name:'record_research',args:{question:'认证措施是否足以解释效果？',finding:'摘要只说明认证对象，需要核对实际条款。',evidenceIds:[sourceId],gaps:['技术措施需回到权利要求核查'],nextAction:'读取权利要求，再修订已写章节。',chapterIds:['overview']}},
      {name:'read_patent',args:{patentId:record.id,question:'权利要求如何限定认证措施？',field:'claims',offset:0,length:1000}},
      {name:'record_research',args:{question:'认证措施是否足以解释效果？',finding:'已读权利要求限定verification apparatus；原文声明与实验效果分别表述。',evidenceIds:[sourceId],gaps:[],nextAction:'将条款发现并入比较，收窄效果判断，修订概述。',chapterIds:['overview','directions']}},
      {name:'write_chapter',args:{chapterId:'directions',body:prose,findings:'进一步比较认证流程',evidenceIds:[]}},
      {name:'write_chapter',args:{chapterId:'overview',body:prose+'经过跨章比较后修订。 [[source:'+sourceId+']]',findings:'比较完成并修订',evidenceIds:[sourceId]}},
-     {name:'finish_report',args:{}}];
+     {name:'edit_file',args:{file_path:'/skills/chinese-style/SKILL.md',old_string:'指导',new_string:'正文'}},
+     {name:'finish_report',args:{review:{revisions:{overview:1,directions:1},summary:'旧版本核对结果不能用于已修订的第二版章节。'}}}];
     assert.ok(calls[step], 'agent continued after finish_report');return calls[step];
    });
    const execute=()=>withModelRun(task.id,async()=>executeDeepResearch(pool,(await store.run(task.id))!,new AbortController().signal,{model}));
@@ -94,13 +109,15 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
    await pool.query("UPDATE jobs SET state='completed' WHERE run_id=$1",[task.id]);
    const edited=outline.map((c,i)=>i===0?{...c,title:'用户确认的数据与全景'}:c);await tasks.resume(task.id,true,edited);await tasks.feedback(task.id,'增加跨章比较');
    await execute();const completed=(await tasks.get(task.id))!;assert.equal(completed.status,'completed');assert.ok(completed.report_id);assert.equal(completed.outline[0].title,edited[0].title);assert.equal(completed.chapters?.length,2);assert.equal(completed.evidence!.filter(e=>e.payload.kind==='patent').length,3);assert.equal(completed.evidence!.find(e=>e.payload.kind==='paper')!.payload.url,'https://openalex.org/W9021001');const finalState=await new ResearchCheckpointer(pool,task.id).getTuple({configurable:{thread_id:task.id}});assert.equal((finalState!.checkpoint.channel_values.researchFeedbackSeen as string[]).length,2);assert.equal((finalState!.checkpoint.channel_values.messages as BaseMessage[]).filter(m=>m instanceof HumanMessage&&m.content==='用户补充要求：\n更重视权利要求比较').length,1);
-   assert.equal((await tasks.versions(task.id,'overview')).length,2);assert.equal(completed.chapters?.find(c=>c.id==='overview')?.revision,2);assert.equal(completed.cycles?.length,2);assert.equal(completed.cycles?.[0].gaps.length,1);assert.equal(completed.cycles?.[1].gaps.length,0);assert.ok(JSON.stringify((await new ResearchCheckpointer(pool,task.id).getTuple({configurable:{thread_id:task.id}}))?.checkpoint.channel_values).includes('技术措施需回到权利要求核查'));
+   assert.equal((await tasks.versions(task.id,'overview')).length,2);assert.equal(completed.chapters?.find(c=>c.id==='overview')?.revision,2);assert.equal(completed.cycles?.length,7);const explicit=completed.cycles!.filter(c=>c.question==='认证措施是否足以解释效果？');assert.equal(explicit[0].gaps.length,1);assert.equal(explicit[1].gaps.length,0);assert.ok(completed.cycles!.some(c=>c.chapterIds.includes('directions')&&c.finding==='进一步比较认证流程'));const savedChapter=completed.chapters!.find(c=>c.id==='overview')!;const unchanged=await tasks.chapter(task.id,savedChapter.id,savedChapter.body,savedChapter.findings,[...savedChapter.evidence_ids,...savedChapter.evidence_ids]);assert.equal(unchanged.changed,false);assert.equal(unchanged.revision,2);assert.equal((await tasks.versions(task.id,'overview')).length,2);assert.equal((await tasks.get(task.id))!.cycles!.length,7);assert.ok(JSON.stringify((await new ResearchCheckpointer(pool,task.id).getTuple({configurable:{thread_id:task.id}}))?.checkpoint.channel_values).includes('技术措施需回到权利要求核查'));
    const report=(await store.reports()).find(r=>r.id===completed.report_id)!;assert.ok(report.run.answer.includes('用户确认的数据与全景'));assert.ok(report.run.answer.includes('[1]'));assert.ok(report.run.answer.includes('资料来源'));assert.ok(report.run.answer.includes('经过跨章比较后修订'));assert.equal(report.run.results.length,1);
    await assert.rejects(tasks.cycle(task.id,{question:'测试问题',finding:'测试发现',evidenceIds:['unknown-evidence'],gaps:[],nextAction:'继续',chapterIds:['overview']}),/尚未登记/);
    await assert.rejects(tasks.chapter(task.id,'overview',prose,'unsupported',['unknown-evidence']),/尚未登记/);
    await assert.rejects(tasks.outline(task.id,'new title',[{...outline[0],id:'replacement'},outline[1]]),/保留编号/);
    const readScope={...scope,userId:reader.user.id};assert.equal((await withAccess(readScope,()=>tasks.get(task.id)))?.chapters?.length,2);await withAccess(readScope,()=>tasks.feedback(task.id,'reader feedback'));assert.equal((await tasks.get(task.id))!.feedback.length,2);await assert.rejects(withAccess(readScope,()=>tasks.chapter(task.id,'overview',prose,'reader',[])),/提纲|权限|row-level/);
    const foreignScope={...scope,organizationId:foreignOrg.id,projectId:foreignProject.id};assert.equal(await withAccess(foreignScope,()=>tasks.get(task.id)),undefined);assert.equal(await withAccess(foreignScope,()=>new ResearchCheckpointer(pool,task.id).getTuple({configurable:{thread_id:task.id}})),undefined);
+   await tasks.cycle(task.id,{question:'原文是否提供实测收益？',finding:'原文无实测，正文仅比较技术机制并保留验证问题。',evidenceIds:[sourceId],gaps:['原文没有实测数据'],nextAction:'按限定范围交付。',chapterIds:['overview'],resolution:{kind:'scoped',reason:'概述结论已收窄为原文技术机制比较，未作性能优越判断。'}});
+   const scoped=(await tasks.get(task.id))!.cycles!.at(-1)!;assert.equal(scoped.resolution?.kind,'scoped');assert.equal(scoped.gaps.length,1);assert.deepEqual(openResearchQuestions((await tasks.get(task.id))!.cycles),[]);
    // Full automation continues after a natural-language stop and survives a budget stop.
    const automatic=await tasks.create({datasetId:meta.id,goal:'全自动完成技术研究',mode:'automatic',targetWords:1200,maxModelCalls:10},'test');
    const automaticModel=new ScriptedModel(step=>[
@@ -119,9 +136,9 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
    const automaticExecute=()=>withModelRun(automatic.id,async()=>executeDeepResearch(pool,(await store.run(automatic.id))!,new AbortController().signal,{model:automaticModel,execute:async(name,input,meta,records,context)=>{if(name==='get_dataset_summary')for(let i=0;i<=10000;i++)context?.onWork?.(i,10000,'high-volume progress');if(name==='analyze_patent_reading')throw new Error('阅读底稿引文不能定位到原文');return executeTool(name,input,meta,records,context);}}));
    await assert.rejects(automaticExecute(),/预算上限/);assert.equal((await tasks.get(automatic.id))!.status,'paused');assert.equal(automaticModel.step,2);
    assert.equal((await new ModelBudget(pool).read(automatic.id)).started_calls,2);
-   await new ModelBudget(pool).set(automatic.id,10);await tasks.resume(automatic.id);await automaticExecute();
+   await new ModelBudget(pool).set(automatic.id,13);await tasks.resume(automatic.id);await automaticExecute();
    const autoCompleted=(await tasks.get(automatic.id))!;assert.equal(autoCompleted.status,'completed');assert.equal(autoCompleted.chapters?.length,2);assert.equal(automaticModel.step,10);const failedId=(await store.run(automatic.id))!.results.find(r=>r.status==='failed')!.id;assert.ok(!autoCompleted.evidence?.some(e=>e.id===failedId));
-   assert.equal((await new ModelBudget(pool).read(automatic.id)).started_calls,10);assert.ok(Number((await pool.query("SELECT count(*) n FROM events WHERE run_id=$1 AND event='progress'",[automatic.id])).rows[0].n)<=3);
+   assert.equal((await new ModelBudget(pool).read(automatic.id)).started_calls,13);assert.ok(Number((await pool.query("SELECT count(*) n FROM events WHERE run_id=$1 AND event='progress'",[automatic.id])).rows[0].n)<=3);
    // Exercise the real ChatOpenAI tool binding and HTTP path: configuration
    // cloning must neither lose the meter nor issue a request past the budget.
    const native=await tasks.create({datasetId:meta.id,goal:'真实模型适配器预算测试',mode:'automatic',targetWords:1000,maxModelCalls:10},'adapter-test');
@@ -131,7 +148,8 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
     {name:'propose_outline',args:{title:'HTTP适配器研究',outline,brief}},
     {name:'write_chapter',args:{chapterId:'overview',body:prose,findings:'HTTP主流程写入完成',evidenceIds:[]}},
     {name:'write_chapter',args:{chapterId:'directions',body:prose,findings:'中断后完成下一章',evidenceIds:[]}},
-    {name:'finish_report',args:{}},
+    {name:'read_report',args:{}},
+    {name:'finish_report',args:{review:{revisions:{overview:1,directions:1},summary:'已回读当前两章全文并核对引用、计数与章节结论。'}}},
    ];
    const server=createServer(async(request,response)=>{
     try{
@@ -147,9 +165,9 @@ test('native Deep Agents pauses for edited outline, resumes tools and saves revi
     await new ModelBudget(pool).set(native.id,3);await assert.rejects(nativeExecute(),/预算上限/);
     assert.equal(requests,3);assert.equal((await tasks.get(native.id))!.status,'paused');assert.equal((await tasks.get(native.id))!.chapters?.length,1);
     await new ModelBudget(pool).set(native.id,10);await tasks.resume(native.id);await nativeExecute();
-    assert.equal(requests,5);assert.equal((await tasks.get(native.id))!.status,'completed');assert.equal((await tasks.versions(native.id,'overview')).length,1);
-    assert.equal((await new ModelBudget(pool).read(native.id)).started_calls,5);
-    assert.equal(Number((await admin.query('SELECT count(*) n FROM model_usage WHERE run_id=$1',[native.id])).rows[0].n),5);assert.deepEqual(serverErrors,[]);
+    assert.equal(requests,6);assert.equal((await tasks.get(native.id))!.status,'completed');assert.equal((await tasks.versions(native.id,'overview')).length,1);
+    assert.equal((await new ModelBudget(pool).read(native.id)).started_calls,6);
+    assert.equal(Number((await admin.query('SELECT count(*) n FROM model_usage WHERE run_id=$1',[native.id])).rows[0].n),6);assert.deepEqual(serverErrors,[]);
    }finally{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));}
    // Serialized messages must return as native objects, not plain JSON data.
    const isolated=await tasks.create({datasetId:meta.id,goal:'序列化研究状态',mode:'automatic',targetWords:1000},'test'),saver=new ResearchCheckpointer(pool,isolated.id),checkpoint=emptyCheckpoint();
@@ -189,3 +207,17 @@ test('research writing removes requested disclaimer patterns while retaining sub
  });
 
  test('research patent checks ignore UUID reference handles while retaining publication identifiers',()=>{assert.deepEqual(researchPatentMentions('BM25 bm25 CR3 11.8% [[chart:e366303e-406e-4f85-8a8c-4b0d52b59b83]] [[source:80b646d2-bb2f-45af-b8c1-4443f641c9b2]] US9021001B1'),['US9021001B1']);});
+
+ test('delivery keeps actual research gaps open until the same question is resolved',()=>{
+ const issue={at:'now',question:'分母是否一致？',finding:'需要核对',evidenceIds:[],gaps:['分母未核对'],nextAction:'读取来源',chapterIds:['overview']};
+ const chapter={...issue,question:'章节进展：概述',gaps:[]};
+ assert.deepEqual(openResearchQuestions([issue,chapter]),[issue]);
+ const scoped={...issue,resolution:{kind:'scoped' as const,reason:'原文未给实测数据，结论已限定为技术机制比较，保留实验验证问题。'}};assert.deepEqual(openResearchQuestions([issue,scoped]),[]);assert.equal(scoped.gaps.length,1);
+ assert.deepEqual(openResearchQuestions([issue,chapter,{...issue,finding:'已核对并收窄结论',gaps:[]}]),[]);
+ });
+
+ test('full-text analysis preserves enough calls to write unfinished chapters and finish',()=>{
+ assert.throws(()=>requireResearchCapacity(48,50,6),/48.*50.*8/);
+ assert.doesNotThrow(()=>requireResearchCapacity(10,50,6));
+ assert.doesNotThrow(()=>requireResearchCapacity(0,8,6));
+ });

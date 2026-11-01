@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {researchWordCount} from '../lib/research-words';
 import {researchPatentMentions} from './research-editorial';
-import {researchToolPolicy,requireResearchSelection} from './research-tool-policy';
+import {researchToolPolicy,requireResearchSelection,requireResearchCapacity} from './research-tool-policy';
 import {RESEARCH_SKILLS} from './research-skills';
 import type {Pool} from 'pg';
 import {randomUUID} from 'node:crypto';
@@ -14,7 +14,7 @@ import {createMiddleware} from 'langchain';
 import {createDeepAgent,registerHarnessProfile,CompositeBackend,StateBackend,FilesystemBackend,pinnedSkillsValue} from 'deepagents';
 import {Command,interrupt,isGraphBubbleUp,StateSchema} from '@langchain/langgraph';
 import type {Run,AnalysisResult} from '../lib/types';
-import {DeepResearchStore,assembleResearchReport,outlineSchema,briefSchema,ResearchInputError} from './deep-research-store';
+import {DeepResearchStore,assembleResearchReport,outlineSchema,briefSchema,ResearchInputError,openResearchQuestions} from './deep-research-store';
 import {ResearchCheckpointer} from './research-checkpointer';
 import {PostgresStore} from './postgres-store';
 import {executeTool,TOOL_DEFS} from './tools';
@@ -26,6 +26,7 @@ import {REPORT_WRITING_GUIDANCE} from './report-preparation';
 import {toolInformation} from './result-contract';
 import {transaction} from './postgres';
 import {modelConfig} from './config';
+import {sourceChunks} from './substantive-analysis';
 import {ModelBudget,ModelBudgetExceeded} from './model-budget';
 import {ModelUsage,providerTokens} from './model-usage';
 
@@ -37,12 +38,12 @@ const instructions=`你是 Invention Atlas 的深度研究助手，负责独立�
 必须先用 propose_outline 保存提纲，再用 confirm_outline 确认；确认前只能进行了解数据所需的研究。保存提纲后再单独调用确认工具；确认后再开始写作；完成各章保存后单独调用 finish_report。用户确认的提纲可以补充和调整，保留已写章节的编号。章节按论证需要划分，围绕一个有意义的研究问题展开；篇幅由证据、比较与解释决定，相近问题合并。摘要与综合章节在主体分析完成后撰写，排列顺序可在提纲中提前。
 研究不是先跑完工具再统一扩写的单向阶段。围绕当前研究问题反复执行：提出待判断的主张，选择能支持或反驳它的证据，读取结果与原文，分析差异和其他解释，形成阶段判断并写入章节。写作中发现新问题、相反证据或跨章冲突时，立即回到检索、计算或原文阅读，随后修订受影响章节；已写章节可以在后续研究中多次改写。下一步由尚未回答的问题决定，不按工具目录轮流运行，也不为展示流程重复调用工具。
 在形成有意义的阶段发现、改变研究方向或发现需要补证的问题时，用 record_research 保存可供回溯的研究记录：问题、证据支持的发现、尚未解决的缺口、下一步及涉及章节。记录的是研究判断与依据，不是隐藏思维过程；不要求为每次工具调用写一条记录。用工作区笔记展开材料，在 record_research 中保留后续决策需要的信息。没有缺口时可记录空gaps，但完成前应回看历次记录，说明此前问题如何被证据解决或通过收窄结论处理。
-使用 research_state 查看最新反馈、提纲及章节摘要，用 read_chapter 阅读正文，避免反复将整份报告放入对话。用工作区文件记录研究笔记和待解决问题。
-run_analysis 可调用系统分析工具；read_result 分页读取完整结果。统计数字必须来自工具结果。具体专利的标题、公开日期、技术内容与版本关系必须核查已读取的原文或元数据，不能从编号猜月份、编造标题或假定两个编号属于同族。统计图仅支持实际返回字段，不能用年度图为某专利的技术描述充当原文来源。不写未经计算的“相对结构不变”、从静态共现推断转移或没有证据的因果解释。read_patent 提供已保存的原文和精确位置，可继续分页阅读。read_patent_papers 读取专利关联论文元数据与来源，适合研究科学知识来源。
+使用 research_state 查看最新反馈、提纲及章节摘要，用 read_chapter 阅读正文，避免反复将整份报告放入对话。用工作区文件记录研究笔记和待解决问题。/skills/ 中的文件是只读指导，不是待编辑稿件；不能对技能本身做润色或修改。按技能要求修改的是章节正文，用 write_chapter 保存；临时笔记放在 /notes/。
+分析目录中的 search_patents 等名称是 run_analysis 的 name 参数，不是可直接调用的顶层工具。所有目录分析一律通过 run_analysis({name,params,question}) 执行。run_analysis 可调用系统分析工具；read_result 分页读取完整结果。统计数字必须来自工具结果。具体专利的标题、公开日期、技术内容与版本关系必须核查已读取的原文或元数据，不能从编号猜月份、编造标题或假定两个编号属于同族。统计图仅支持实际返回字段，不能用年度图为某专利的技术描述充当原文来源。不写未经计算的“相对结构不变”、从静态共现推断转移或没有证据的因果解释。read_patent 提供已保存的原文和精确位置，可继续分页阅读。read_patent_papers 读取专利关联论文元数据与来源，适合研究科学知识来源。
 按目标篇幅安排研究深度，选择能够回答研究问题的分析与原文。需要阅读几段原文时直接使用 read_patent；analyze_patent_reading 会对整篇全文分段调用模型，仅在需要系统整理全文笔记时使用。预算接近上限时，优先完成已有研究的章节与综合。对当前问题取证并解释后，及时将已有依据的判断写入章节，再按缺口继续研究。跨章节对照统计口径、年份、主体和技术主题，必要时补充工具调用、改写已有章节。篇幅靠有证据的新分析、案例与比较展开，不得重复表述、堆砌通识背景或无关内容凑字数。用 write_chapter 保存完整正文和该章发现；修订时重新提交该章全文。
 直接介绍数据名称、记录数、年份、计数口径及选择方式。影响结论的缺失情况、方法条件、样本范围与不确定性，放在对应判断附近说明具体影响；无需等待用户追问。删除通用免责声明、重复提醒、自动审计待复核清单、提示词和写作过程。正文以有依据的结论、比较、解释和实例回答研究问题；证据不足时补充研究或收窄判断，不编造数值、专利或引文。
 引用已登记证据用 [[source:证据编号]]，图表用 [[chart:分析结果编号]]，引文保留原文。引用须列入章节 evidenceIds。不同章节引用同一数据时保持口径一致。正文只写章节内容，章节标题由系统组装。
-达到研究目标、所有章节完成并检查跨章节一致性后调用 finish_report；该工具会直接将报告保存到报告库。`;
+达到研究目标、所有章节完成后用 read_report 回读全文并检查跨章节一致性，再带完整版本表和核对结论调用 finish_report；该工具会直接将报告保存到报告库。`;
 
 export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,overrides:{model?:BaseLanguageModel;execute?:typeof executeTool}={}){
  const tasks=new DeepResearchStore(pool),store=new PostgresStore(pool),task=await tasks.get(run.id);if(!task)throw new ResearchInputError('深度报告不存在');
@@ -56,7 +57,7 @@ export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,o
  const requireConfirmed=async()=>{await checkPause();const t=await tasks.get(run.id);if(!t?.outline.length||task.input.mode==='confirm_outline'&&!t.outline_confirmed)throw new ResearchInputError('请先保存并确认提纲');return t;};
  const tools=[
   tool(async()=>{
-   const t=(await tasks.get(run.id))!;return {goal:t.input.goal,targetWords:t.input.targetWords,title:t.title,outline:t.outline,confirmed:t.outline_confirmed,feedback:t.feedback,researchCycles:t.cycles,
+   const t=(await tasks.get(run.id))!;return {analysisInvocation:{tool:'run_analysis',arguments:['name','params','question'],note:'下面tools目录的name只能作为run_analysis.name，不能直接调用。'},goal:t.input.goal,targetWords:t.input.targetWords,title:t.title,outline:t.outline,confirmed:t.outline_confirmed,feedback:t.feedback,researchCycles:t.cycles,
     budget:await new ModelBudget(pool).read(run.id),chapters:t.chapters?.map(({id,revision,findings,body})=>({id,revision,findings,words:researchWordCount(body)})),results:run.results.filter(r=>r.status==='completed').map(r=>({id:r.id,tool:r.tool,title:r.title,chartReference:'[[chart:'+r.id+']]',sourceReference:'[[source:'+r.id+']]'})),skills:RESEARCH_SKILLS,brief:t.brief,planningHistory:t.planning_history,evidence:t.evidence?.map(e=>({id:e.id,title:e.payload.title,kind:e.payload.kind,patent:e.payload.patent,field:e.payload.field,offset:e.payload.offset,chars:e.payload.quote?.length,question:e.payload.question,reference:'[[source:'+e.id+']]'})),dataset:meta,
     tools:TOOL_DEFS.filter(d=>d[0]!=='monitor_patent_changes').map(d=>({name:d[0],title:d[1],...toolInformation(d[0]),...researchToolPolicy(d[0])}))};
   },{name:'research_state',description:'读取研究目标、最新用户要求、提纲、已写章节发现、证据目录与系统分析工具说明。',schema:z.object({})}),
@@ -73,6 +74,17 @@ export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,o
   tool(async({name,params,question})=>{
    if(!TOOL_DEFS.some(d=>d[0]===name)||name==='monitor_patent_changes')throw new ResearchInputError('请选择研究工具目录中的分析工具');
    requireResearchSelection(name,params,records);
+   if(name==='analyze_tech_matrix'){
+    const budget=await new ModelBudget(pool).read(run.id),current=(await tasks.get(run.id))!;
+    if(budget?.max_calls!==null&&budget){
+     let pending=0;
+     for(const record of records.filter(p=>(params.patent_numbers as string[]).includes(p.id))){
+      const original=await store.fullPatent(meta.id,record);
+      for(const part of sourceChunks(original))if(!await store.effectCheckpoint(meta.id,record.id,'full-text-evidence-v3:'+modelConfig().model,part.section,part.start))pending++;
+     }
+     requireResearchCapacity(pending,budget.max_calls-budget.started_calls,current.outline.filter(c=>!current.chapters?.some(ch=>ch.id===c.id)).length);
+    }
+   }
    await progress('正在研究：'+question);
    const entityRules=JSON.parse((await store.setting('entities:'+run.datasetId))||'[]');
    let progressWrites=Promise.resolve(),lastProgressAt=0;
@@ -89,7 +101,7 @@ export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,o
    signal.throwIfAborted();
    await transaction(pool,async()=>{run.results.push(result);await store.saveResult(result);await store.saveRun(run);if(result.status==='completed')await tasks.evidence(run.id,{kind:'result',title:result.title,resultId:result.id,question},result.id);});
    return {...researchResultPreview(result),researchQuestion:question,next:'先解释该结果能支持什么、还缺什么，再决定继续读结果、查原文、补充分析或写入章节。'};
-  },{name:'run_analysis',description:'先明确当前要回答的question，再查research_state中工具的execution/selection/reading约定。统计可覆盖全库；全文分段模型工具必须显式提供patent_numbers，每批最多5件，不用整库全文抽取代替全库统计。保存完整结果，返回20行预览；详细行用read_result按问题分页，图表引用结果编号。',schema:z.object({question:z.string().trim().min(3).max(2000),name:z.string(),params:z.record(z.unknown())})}),
+  },{name:'run_analysis',description:'分析目录名称只作为本工具name参数，例如run_analysis({name:"search_patents",params:{query:"parallel execution"},question:"哪些案例相关？"})，不要直接调用目录名称。先明确当前要回答的question，再查research_state中工具的execution/selection/reading约定。统计可覆盖全库；全文分段模型工具必须显式提供patent_numbers，每批最多5件，不用整库全文抽取代替全库统计。保存完整结果，返回20行预览；详细行用read_result按问题分页，图表引用结果编号。',schema:z.object({question:z.string().trim().min(3).max(2000),name:z.string(),params:z.record(z.unknown())})}),
   tool(async({resultId,...input})=>{const result=run.results.find(r=>r.id===resultId);if(!result)throw new ResearchInputError('该分析结果不属于当前研究');return researchResultPage(result,input);},{name:'read_result',description:'按结果编号和问题分页读取完整数据。用patent精确核查某公开编号所属主题或统计行；读取返回的method及原始行关联，不根据标题猜测归属。',schema:z.object({resultId:z.string(),offset:z.number().int().nonnegative().default(0),limit:z.number().int().min(1).max(100).default(50),word:z.string().optional(),patent:z.string().optional(),year:z.string().optional(),section:z.string().optional()})}),
   tool(async({evidenceId})=>{const evidence=(await tasks.get(run.id))!.evidence?.find(e=>e.id===evidenceId);if(!evidence)throw new ResearchInputError('该证据不属于当前研究');return {evidenceId:evidence.id,sourceReference:'[[source:'+evidence.id+']]',...evidence.payload};},{name:'read_evidence',description:'复用当前研究已登记的原文片段与位置。先按research_state证据目录的问题、字段与偏移选编号，恢复已读证据；不重复登记，不额外调用模型。',schema:z.object({evidenceId:z.string().min(1)})}),
   tool(async({patentId,field,offset,length,question,find})=>{
@@ -114,7 +126,7 @@ export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,o
    await progress('研究进展：'+record.question);
    await store.event(run.id,'research-cycle',saved);
    return {saved:true,record:saved,action:'依据当前缺口选择下一步：补充证据、撰写或修订相关章节；问题已回答时进入下一个研究问题。'};
-  },{name:'record_research',description:'保存阶段性研究判断及下一步，供持续研究和用户回溯。记录实际发现、支持证据、具体缺口和受影响章节；发现变化后可再次记录同一问题。无需每次工具调用都记录，不保存隐藏思维过程。',schema:z.object({question:z.string().trim().min(3).max(2000),finding:z.string().trim().min(1).max(6000),evidenceIds:z.array(z.string()).max(200),gaps:z.array(z.string().trim().min(1).max(2000)).max(12),nextAction:z.string().trim().min(1).max(2000),chapterIds:z.array(z.string()).max(50)})}),
+  },{name:'record_research',description:'保存阶段性研究判断及下一步，供持续研究和用户回溯。记录实际发现、支持证据、具体缺口和受影响章节；发现变化后可再次记录同一问题。无需每次工具调用都记录，不保存隐藏思维过程。已有问题补证完成用resolution.kind=resolved；资料无法补齐而已将结论收窄时用scoped，reason说明具体处理，gaps保留资料缺口。',schema:z.object({question:z.string().trim().min(3).max(2000),finding:z.string().trim().min(1).max(6000),evidenceIds:z.array(z.string()).max(200),gaps:z.array(z.string().trim().min(1).max(2000)).max(12),nextAction:z.string().trim().min(1).max(2000),chapterIds:z.array(z.string()).max(50),resolution:z.object({kind:z.enum(['resolved','scoped']),reason:z.string().trim().min(10).max(2000)}).optional()})}),
   tool(async({chapterId})=>{const t=await tasks.get(run.id),chapter=t?.chapters?.find(c=>c.id===chapterId);return chapter||{message:'该章尚未撰写'};},{name:'read_chapter',description:'读取指定章节全文、发现、证据和修订版本。',schema:z.object({chapterId:z.string()})}),
   tool(async({chapterId,body,findings,evidenceIds})=>{
    await requireConfirmed();
@@ -123,21 +135,33 @@ export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,o
    if(unknown.length)throw new ResearchInputError('正文公开编号未在当前语料或分析证据中找到：'+unknown.join('、')+'。请核对实际编号并阅读原文，不编造案例。');
    for(const match of body.matchAll(/\[\[chart:([^\]]+)\]\]/g))if(!run.results.some(r=>r.id===match[1]&&r.status==='completed'))throw new ResearchInputError('图表编号“'+match[1]+'”不属于当前研究。请使用真实编号：'+run.results.filter(r=>r.status==='completed').map(r=>r.title+' [[chart:'+r.id+']]').join('；'));
    const result=await tasks.chapter(run.id,chapterId,body,findings,evidenceIds);
+   if(!result.changed)return {saved:true,changed:false,revision:result.revision,next:'正文、发现和证据均未变化，沿用当前版本。推进尚未回答的问题；确有新发现时才修订本章。'};
    const current=(await tasks.get(run.id))!;run.answer=assembleResearchReport({...current,outline:current.outline.filter(c=>current.chapters!.some(saved=>saved.id===c.id))});await store.event(run.id,'text-snapshot',{text:run.answer});
    await progress('章节已保存：'+current.outline.find(c=>c.id===chapterId)!.title+' · 第 '+result.revision+' 版');return {saved:true,...result,researchQuestion:current.outline.find(c=>c.id===chapterId)!.question,recentResearch:current.cycles?.slice(-3),next:'检查本章是否回答问题；若发现证据缺口或与其他章节冲突，继续分析、阅读原文并修订。已有证据充分时推进下一问题，全部完成后综合并调用finish_report。'};
   },{name:'write_chapter',description:'保存或修订一个章节的完整论证及发现，保留历史版本。先回答该章问题，组织主张、支持证据、比较与推理，再写判断；findings记下结论及证据如何支持结论，供跨章继续论证。正文保留研究结论、比较分析、原文证据和必要方法，保留影响判断的范围、缺失情况与成立条件，不写通用免责声明或审计待复核清单。引文引用用 [[source:id]]，图表用 [[chart:id]]。',schema:z.object({chapterId:z.string(),body:z.string().trim().min(100).max(100000),findings:z.string().trim().min(1).max(6000),evidenceIds:z.array(z.string()).max(200)})}),
   tool(async()=>{
-   const t=await requireConfirmed();const answer=assembleResearchReport(t);
+   const t=await requireConfirmed(),revisions=Object.fromEntries(t.chapters!.map(c=>[c.id,c.revision]));
+   await tasks.cycle(run.id,{question:'交付前全文回读',finding:'已提供当前章节全文与来源目录供交付核对。',revisions,evidenceIds:[],gaps:[],nextAction:'核对具体事实、推理与跨章一致性；必要时回查来源并修订，再提交核对结论。',chapterIds:t.chapters!.map(c=>c.id)});
+   await progress('正在核对报告全文与来源');
+   return {reviewRequired:true,revisions,chapters:t.outline.map(item=>({question:item.question,...t.chapters!.find(c=>c.id===item.id)})).filter(c=>c.body),evidence:t.evidence?.map(e=>({id:e.id,kind:e.payload.kind,title:e.payload.title,question:e.payload.question,patent:e.payload.patent,field:e.payload.field,offset:e.payload.offset})),action:'此阶段只修改影响事实、证据或推理的具体问题，不再做同义改写或扩充背景。回读当前全文，按来源目录通过read_result、read_evidence或read_patent核查具体依据。核对汇总与明细、年度实际升降、样本口径、主体身份及投入的证据、原文声明与推论、跨章一致性。修订后再次read_report取得新版本；没有实际问题就停止修改，带这里完整的revisions与核对结论调用finish_report。'};
+  },{name:'read_report',description:'交付前读取当前报告全文、来源目录及章节版本，供事实与跨章核对。修订后重新读取，再调用finish_report。',schema:z.object({})}),
+  tool(async({review})=>{
+   const t=await requireConfirmed();const gaps=openResearchQuestions(t.cycles);if(gaps.length)return {ready:false,unresolved:gaps,message:'这些已记录问题仍未处理。补证完成后，用record_research同一question及resolution:{kind:resolved,reason:具体依据}记录；原文缺少实测、全库计数等资料而无法补齐时，先在正文收窄判断，再用resolution:{kind:scoped,reason:具体收窄方式及所影响章节}记录，gaps保留实际资料缺口。无需声称缺失资料已获得。'};const answer=assembleResearchReport(t);
    const words=t.chapters!.reduce((sum,c)=>sum+researchWordCount(c.body),0);
    if(words<t.input.targetWords)return {ready:false,words,targetWords:t.input.targetWords,message:'请继续研究并充实章节，达到目标篇幅后完成报告'};
    if(!run.results.some(r=>r.status==='completed'))return {ready:false,message:'请先调用分析工具取得支持报告结论的数据'};
+   const revisions=Object.fromEntries(t.chapters!.map(c=>[c.id,c.revision])),read=[...(t.cycles||[])].reverse().find(c=>c.question==='交付前全文回读');
+   const matches=(value:Record<string,number>|undefined)=>Boolean(value&&Object.keys(value).length===t.chapters!.length&&t.chapters!.every(c=>value[c.id]===c.revision));
+   if(!matches(read?.revisions))return {ready:false,reviewRequired:true,revisions,action:'请先调用 read_report 读取当前全文与版本，再核对并提交 review。章节修改后重新读取当前全文；不要仅凭摘要交付。'};
+   if(!matches(review.revisions))return {ready:false,reviewRequired:true,revisions,action:'全文已提供，但review.revisions未匹配。请使用这里完整的revisions提交核对结论；已核对且未变化的正文无需重复改写。'};
+   await tasks.cycle(run.id,{question:'交付核对',finding:review.summary,evidenceIds:[],gaps:[],nextAction:'按已核对的章节版本保存报告。',chapterIds:t.chapters!.map(c=>c.id)});
    await transaction(pool,async db=>{
     const locked=(await db.query('SELECT report_id FROM research_tasks WHERE id=$1 FOR UPDATE',[run.id])).rows[0];if(locked.report_id)return;
     run.answer=answer;run.status='completed';run.error='';run.progress={tool:'research',unit:'深度报告已完成'};
     await store.saveRun(run);const reportId=await store.saveReport(run,t.title);
     await db.query("UPDATE research_tasks SET status='completed',report_id=$2,error='',updated_at=now() WHERE id=$1",[run.id,reportId]);await store.event(run.id,'text-snapshot',{text:answer});await store.event(run.id,'done',{status:'completed'});
    });return {saved:true,reportId:(await tasks.get(run.id))!.report_id};
-  },{name:'finish_report',description:'先核对研究目标、阶段发现与缺口，回读相关章节并解决关键冲突；所有章节及综合摘要完成后，按提纲组装正文，保存到报告库并结束任务。',schema:z.object({})}),
+  },{name:'finish_report',description:'先用read_report读取当前全文并核对，再提供review核对结论和完整章节版本表，检查缺口和篇幅、保存报告并结束任务。',schema:z.object({review:z.object({revisions:z.record(z.number().int().positive()),summary:z.string().trim().min(10).max(6000)})})}),
  ];
  const cfg=modelConfig();
  const metered=async<T extends {usage_metadata?:{input_tokens:number|null;output_tokens:number|null;total_tokens:number|null};meterStatus?:'completed'|'failed'}>(call:()=>Promise<T>)=>{
@@ -164,6 +188,10 @@ export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,o
   beforeModel:{canJumpTo:['end'],hook:async state=>{await checkPause();const t=await tasks.get(run.id);if(t?.status==='completed')return {jumpTo:'end' as const};const pending=t?.feedback.slice((state.researchFeedbackSeen||[]).length)||[],pins=!skillsPinned?await pinSkills():{};if(pending.length)await progress('已收到补充要求，正在调整研究与正文');return {...pins,...(pending.length?{messages:pending.map(f=>new HumanMessage('用户补充要求：\n'+f.text)),researchFeedbackSeen:t!.feedback.map(f=>f.at)}:{})};}},
   wrapToolCall:async(request,handler)=>{
    try{
+    if(['edit_file','write_file'].includes(request.toolCall.name)){
+     const file=String(request.toolCall.args.file_path||request.toolCall.args.path||'');
+     if(file.startsWith('/skills/'))return new ToolMessage({content:JSON.stringify({error:'技能文件只读；你正在编辑研究指导，而不是报告正文。',action:'将技能规则应用于章节正文，通过 write_chapter 保存；不要重试修改技能。研究笔记写入 /notes/。'}),tool_call_id:request.toolCall.id||'',name:request.toolCall.name,status:'error'});
+    }
     if(request.toolCall.name==='read_file'){const file=String(request.toolCall.args.file_path||request.toolCall.args.path||'');const skill=RESEARCH_SKILLS.find(s=>file==='/skills/'+s.id+'/SKILL.md');if(skill)await progress('正在使用技能：'+skill.title);}
     return await handler(request);
    }catch(error){
@@ -178,8 +206,8 @@ export async function executeDeepResearch(pool:Pool,run:Run,signal:AbortSignal,o
    const t=await tasks.get(run.id),budget=await new ModelBudget(pool).read(run.id);
    const unfinished=t?.outline.filter(item=>!t.chapters?.some(ch=>ch.id===item.id))||[],remainingCalls=budget?budget.max_calls-budget.started_calls:undefined;
    const writingPriority=remainingCalls!==undefined&&Boolean(t?.outline.length)&&remainingCalls<=unfinished.length*2+4;
-   const guidance=writingPriority?'剩余调用需兼顾未完成章节、综合和保存。先将现有证据已经支持的论证写入章节；只继续收集会改变判断的关键证据，不默认遍历全部候选或字段。证据不足的论点收窄表述，不能用猜测补齐。若关键证据确实不足，保存已完成研究并说明具体缺口。':'按当前未解问题选择下一步；证据支持的局部判断及时保存为章节，写作中出现新疑问再补证与修订。';
-   const call=async()=>handler({...request,systemMessage:request.systemMessage.concat('\n当前研究状态：'+JSON.stringify({budget,remainingCalls,unfinishedChapters:unfinished.map(c=>({id:c.id,question:c.question})),nextActionGuidance:guidance,outline:t?.outline,feedbackCount:t?.feedback.length,researchCycles:t?.cycles?.slice(-8),chapters:t?.chapters?.map(c=>({id:c.id,revision:c.revision,findings:c.findings}))}))});
+   const guidance=t?.outline.length&&unfinished.length===0?'全部章节已保存。现在进入交付：只处理明确影响结论的事实、证据、推理或跨章冲突，不再新增背景、同义改写或反复润色。已记录缺口经补证或收窄处理后，read_report回读当前全文；没有具体错误就带完整版本表和核对结论调用finish_report。不要为展示修订而反复改写已经回答的问题。':writingPriority?'剩余调用需兼顾未完成章节、综合和保存。先将现有证据已经支持的论证写入章节；只继续收集会改变判断的关键证据，不默认遍历全部候选或字段。证据不足的论点收窄表述，不能用猜测补齐。若关键证据确实不足，保存已完成研究并说明具体缺口。':'按当前未解问题选择下一步；证据支持的局部判断及时保存为章节，写作中出现新疑问再补证与修订。';
+   const call=async()=>handler({...request,systemMessage:request.systemMessage.concat('\n当前研究状态：'+JSON.stringify({budget,remainingCalls,unfinishedChapters:unfinished.map(c=>({id:c.id,question:c.question})),nextActionGuidance:guidance,outline:t?.outline,feedbackCount:t?.feedback.length,researchCycles:t?.cycles?.slice(-8),openQuestions:openResearchQuestions(t?.cycles),chapters:t?.chapters?.map(c=>({id:c.id,revision:c.revision,words:researchWordCount(c.body),findings:c.findings})),availableEvidence:{total:t?.evidence?.length,readingQuestions:[...new Set(t?.evidence?.map(e=>e.payload.question).filter(Boolean))]},writingReminder:'先检查已有证据能否支持本章的局部判断。能支持就先保存正文，再补会改变判断的缺口；不要等全部候选都读完。章节保存自动记录发现，实际缺口和判断变化用record_research补充。'}))});
    return overrides.model?metered(call):call();
   },
  });

@@ -44,7 +44,8 @@ export const agentArchitectureMermaid=`flowchart TD
  L --> G
  G --> W[read_chapter / write_chapter 章节与发现]
  W --> G
- G --> Z[finish_report 组装并入库]
+ G --> R[read_report 全文核对]
+ R --> Z[finish_report 组装并入库]
  end`;
 
 const chapters=[
@@ -56,7 +57,7 @@ const chapters=[
  c("architecture","认识系统","智能体协作与技术架构","一个研究问题如何变成有依据的报告？Agent 决定下一步，Tools 取得数据与原文，Skills 提供研究方法。结果回到 Agent，推动下一轮分析、写作和修订。","本章先解释协作方式，再分别介绍对话分析与深度报告。工具和技能的具体用途可在本章手册中查阅。", [
   {...s("研究怎样组织","用户提出研究目标，与助手确认用途、范围和提纲。执行中，Agent 根据当前发现选择行动：需要分布数据时调用分析工具，需要解释技术差异时读取原文，证据充分时写入章节。新发现改变判断时，再补证或修订。"),diagram:'agent-architecture' as const,wide:true},
   {...s("对话分析：节点怎样交接","对话分析由 LangGraph 组织职责节点。它们共享问题、候选范围、工具结果与正文，各自处理一次分析中的具体工作。\n\n"+agentNodeTable+"\n\n检索与范围审查可以往返，最多补检索两轮。分析职责分支汇合后交给报告节点；编号或数值需要校正时，经修订路由返回报告节点，执行一次自动修订。"),disclosure:'查看 11 个职责节点的输入与交接',wide:true},
-  {...s("深度报告：研究怎样继续","深度报告由 Deep Agents 中的同一个研究 Agent 持续推进。先通过 propose_outline 保存研究意图、范围和提纲，再由 confirm_outline 等待用户确认；用户提出修改时更新方案，全自动模式直接继续。\n\n研究开始后，工具返回内容进入下一轮判断。Agent 读取完整结果和相关原文，把阶段发现、证据缺口与下一步保存到 record_research。写作中出现新问题时，可以返回检索、计算或原文阅读，再修订已经写过的章节。\n\n章节 findings 供后续比较，正文保存历次版本。每轮同时读取剩余预算和未完成章节，及时保存已有证据支持的论证。研究目标得到回答后，finish_report 组装正文并保存到报告库。"),wide:true},
+  {...s("深度报告：研究怎样继续","深度报告由 Deep Agents 中的同一个研究 Agent 持续推进。先通过 propose_outline 保存研究意图、范围和提纲，再由 confirm_outline 等待用户确认；用户提出修改时更新方案，全自动模式直接继续。\n\n研究开始后，工具返回内容进入下一轮判断。Agent 读取完整结果和相关原文，把阶段发现、证据缺口与下一步保存到 record_research。写作中出现新问题时，可以返回检索、计算或原文阅读，再修订已经写过的章节。\n\n章节 findings 供后续比较，正文保存历次版本。每轮同时读取剩余预算和未完成章节，及时保存已有证据支持的论证。研究目标得到回答后，read_report 返回当前全文、来源目录和版本供核对；需要修订时更新章节，再读取最新版本。核对完成后，finish_report 保存整篇报告与核对记录。"),wide:true},
   {...s("工具与技能手册","分析工具取得结果，研究工具连接任务与材料，Skills 说明怎样研究和判断。按当前问题选择所需能力。\n\n### 专利分析工具\n\n"+analyticalToolTable+"\n\n### 研究控制与阅读工具\n\n"+researchToolTable+"\n\n### Agent Skills\n\n"+skillTable+"\n\n### 工作区工具\n\n"+frameworkToolTable),catalog:'architecture' as const,wide:true},
   {...s("证据与反馈如何保留","用户在方案阶段讨论方向，在研究中补充问题或调整重点。新反馈进入原研究线程，Agent 在下一步读取。\n\n分析结果保留范围、参数、方法与完整数据；原文证据保存公开编号、字段、位置和逐字片段。章节引用这些来源，并保留发现与修订版本。后续步骤可以复用已有证据，重新打开报告直接显示保存的正文。"),wide:true}
  ],"assistant"),

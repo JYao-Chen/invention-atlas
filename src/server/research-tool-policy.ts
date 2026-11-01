@@ -14,3 +14,8 @@ export function requireResearchSelection(name:string,params:Record<string,unknow
  if(records){const missing=ids.filter(id=>!records.some(p=>p.id===id));if(missing.length)throw new ResearchInputError('指定公开编号不在当前数据集：'+missing.join('、')+'。请从实际结果选择，不推测编号。');}
  if(name==='compare_claims'&&new Set(ids).size<2)throw new ResearchInputError('权利要求对照至少指定两个公开编号，第一个为基准。');
 }
+
+export function requireResearchCapacity(pendingCalls:number,remainingCalls:number,unfinishedChapters:number){
+ const writingCalls=unfinishedChapters+2;
+ if(pendingCalls+writingCalls>remainingCalls)throw new ResearchInputError(`该全文分析至少还需 ${pendingCalls} 次模型调用，当前剩余 ${remainingCalls} 次；未完成章节、全文回读及最终保存至少需要 ${writingCalls} 次。请缩小所选专利集合，或用 read_patent 按具体问题阅读关键片段，先保存已有证据支持的章节。`);
+}
