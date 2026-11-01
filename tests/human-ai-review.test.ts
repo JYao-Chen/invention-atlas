@@ -91,3 +91,8 @@ test('044 is repeatable; non-owner RLS enforces reader/writer and same-organizat
   if(runtime)await runtime.end();await admin.query(`REVOKE ALL ON ALL TABLES IN SCHEMA ${schema} FROM ${role}`).catch(()=>{});await admin.query(`REVOKE ALL ON ALL SEQUENCES IN SCHEMA ${schema} FROM ${role}`).catch(()=>{});await admin.query(`REVOKE ALL ON SCHEMA ${schema} FROM ${role}`).catch(()=>{});await admin.query(`DROP ROLE IF EXISTS ${role}`);await admin.end();
  }
 });
+
+test('retrieval method BM25 is not linked as a patent while publication numbers remain linked',()=>{
+ const items=reportConclusions('bm25',0,'使用BM25检索并核查 US123001B1。',[]);
+ assert.deepEqual(items[0].patentNumbers,['US123001B1']);
+});

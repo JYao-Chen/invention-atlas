@@ -188,4 +188,4 @@ test('research writing removes requested disclaimer patterns while retaining sub
  assert.doesNotThrow(()=>requireResearchSelection('analyze_tech_matrix',{patent_numbers:['US1']}));assert.throws(()=>requireResearchSelection('analyze_tech_matrix',{patent_numbers:['US2']},[{id:'US1'}]),/不在当前数据集/);assert.doesNotThrow(()=>requireResearchSelection('analyze_patent_trend',{}));assert.ok(researchToolPolicy('analyze_tech_matrix').execution.includes('模型'));
  });
 
- test('research patent checks ignore UUID reference handles while retaining publication identifiers',()=>{assert.deepEqual(researchPatentMentions('CR3 11.8% [[chart:e366303e-406e-4f85-8a8c-4b0d52b59b83]] [[source:80b646d2-bb2f-45af-b8c1-4443f641c9b2]] US9021001B1'),['US9021001B1']);});
+ test('research patent checks ignore UUID reference handles while retaining publication identifiers',()=>{assert.deepEqual(researchPatentMentions('BM25 bm25 CR3 11.8% [[chart:e366303e-406e-4f85-8a8c-4b0d52b59b83]] [[source:80b646d2-bb2f-45af-b8c1-4443f641c9b2]] US9021001B1'),['US9021001B1']);});
