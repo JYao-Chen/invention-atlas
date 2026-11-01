@@ -1666,3 +1666,17 @@ tbody tr:hover { background:var(--band) }
 .architecture-path-choice button { display:block }
 .architecture-manual .architecture-text { width:min(100%,96ch); font:14px/1.9 var(--font-sans) }
 .architecture-node-scroll { min-width:0; width:100%; overflow-x:auto }
+
+.login-devices { border-block:1px solid var(--line); padding-block:20px; margin-bottom:24px }
+.device-heading,.device-heading>div { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap }
+.device-heading h3 { margin:0 }
+.device-list { list-style:none; padding:0; margin:16px 0 0 }
+.device-list li { display:flex; align-items:flex-start; gap:12px; padding:16px 0; border-top:1px solid var(--line) }
+.device-icon { color:var(--muted); padding-top:3px }
+.device-details { flex:1; min-width:0; overflow-wrap:anywhere }
+.device-current { display:inline-block; color:var(--accent); font-size:12px; margin-left:10px }
+.device-details dl { margin:8px 0 0; color:var(--muted); font-size:13px; display:grid; grid-template-columns:1fr 1fr; gap:6px 16px }
+.device-details dl div { display:flex; gap:8px; flex-wrap:wrap }
+.device-details dt { flex-shrink:0 }
+.device-details dd { margin:0 }
+@media(max-width:600px) { .device-details dl { grid-template-columns:1fr } .device-heading>div { width:100% } }

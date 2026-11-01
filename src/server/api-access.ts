@@ -8,7 +8,7 @@ const loginAttempts=new Map<string,{failures:number;expires:number}>();
 const denied=(message:string,status=403)=>NextResponse.json({error:message},{status});
 const projectSchema=z.object({projectId:z.string().min(1)});
 function signedIn(userId:string,request:Request){
- return login(userId).then(token=>{
+ return login(userId,{userAgent:request.headers.get('user-agent')||'',ipAddress:request.headers.get('x-real-ip')||''}).then(token=>{
   const response=NextResponse.json({ok:true});
   response.cookies.set(COOKIE,token,{httpOnly:true,sameSite:'lax',secure:new URL(request.url).protocol==='https:'||request.headers.get('x-forwarded-proto')==='https',path:'/',maxAge:7*86400});
   return response;
@@ -34,6 +34,19 @@ export async function identityEndpoint(request:Request,path:string[]):Promise<Re
  }
  const session=await currentSession(request);
  if(!session)return denied('请先登录',401);
+ if(resource==='login-devices'&&!id&&path.length===1){
+  if(request.headers.has('authorization'))return denied('请使用网页登录管理登录设备');
+  const userId=new URL(request.url).searchParams.get('userId')||session.id;
+  if(userId!==session.id&&session.platformRole!=='admin')return denied('需要平台管理员权限');
+  const token=sessionToken(request),headers={'Cache-Control':'no-store'};
+  if(method==='GET')return NextResponse.json({devices:await identity.loginDevices(session.id,userId,token)},{headers});
+  if(method==='DELETE'){
+   const body=z.union([z.object({id:z.string().uuid()}),z.object({others:z.literal(true)})]).parse(await request.json());
+   const result=await identity.revokeLoginDevices(session.id,userId,token,'id' in body?body.id:undefined,'others' in body);
+   const response=NextResponse.json(result,{headers});if(result.loginRequired)response.cookies.delete(COOKIE);return response;
+  }
+  return denied('登录设备接口不支持此操作',405);
+ }
  if(resource==='api-credentials'){
   if(request.headers.has('authorization'))return denied('API凭据不能管理其他凭据');if(!session.projectId)return denied('请先选择项目');
   if(method==='GET'&&!id)return NextResponse.json({credentials:await apiCredentials.list(session.id,session.projectId)},{headers:{'Cache-Control':'no-store'}});

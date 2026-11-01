@@ -55,11 +55,11 @@ export class IdentityStore {
   const {passwordHash:_,...user}=stored;return user;
  }
 
- async createSession(userId:string){
+ async createSession(userId:string,device:{userAgent?:string;ipAddress?:string}={}){
   const token=randomBytes(32).toString('hex');
   const user=await this.user(userId);if(!user?.enabled)throw new Error('账号不可用');
   const project=(await this.projects(userId))[0];
-  await this.connection.query('INSERT INTO sessions(token,expires_at,user_id,project_id) VALUES($1,$2,$3,$4)',[token,Date.now()+7*86400000,userId,project?.id||null]);
+  await this.connection.query('INSERT INTO sessions(token,expires_at,user_id,project_id,user_agent,ip_address,created_at,last_active_at) VALUES($1,$2,$3,$4,$5,$6,$7,$7)',[token,Date.now()+7*86400000,userId,project?.id||null,device.userAgent||'',device.ipAddress||'',Date.now()]);
   return token;
  }
 
@@ -69,7 +69,24 @@ export class IdentityStore {
  }
 
  async session(token:string):Promise<UserSession|undefined>{
-  return (await this.connection.query(`SELECT u.id,u.username,u.display_name AS "displayName",u.platform_role AS "platformRole",u.enabled,s.project_id AS "projectId" FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=$1 AND s.expires_at>$2 AND u.enabled`,[token,Date.now()])).rows[0];
+  return (await this.connection.query(`WITH activity AS (UPDATE sessions SET last_active_at=$2 WHERE token=$1 AND expires_at>$2 AND (last_active_at IS NULL OR last_active_at<$2-60000)) SELECT u.id,u.username,u.display_name AS "displayName",u.platform_role AS "platformRole",u.enabled,s.project_id AS "projectId" FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=$1 AND s.expires_at>$2 AND u.enabled`,[token,Date.now()])).rows[0];
+ }
+
+ async loginDevices(actorId:string,userId:string,currentToken:string){
+  await this.requireDeviceAccess(actorId,userId);
+  return (await this.connection.query(`SELECT id,user_agent AS "userAgent",ip_address AS "ipAddress",created_at AS "createdAt",last_active_at AS "lastActiveAt",expires_at AS "expiresAt",token=$3 AS current FROM sessions WHERE user_id=$1 AND expires_at>$2 ORDER BY last_active_at DESC NULLS LAST`,[userId,Date.now(),currentToken])).rows.map(row=>({...row,createdAt:row.createdAt===null?null:Number(row.createdAt),lastActiveAt:row.lastActiveAt===null?null:Number(row.lastActiveAt),expiresAt:Number(row.expiresAt)}));
+ }
+
+ private async requireDeviceAccess(actorId:string,userId:string){
+  const actor=await this.user(actorId);
+  if(!actor?.enabled||actorId!==userId&&actor.platformRole!=='admin')throw new Error('需要本人或平台管理员权限');
+ }
+
+ async revokeLoginDevices(actorId:string,userId:string,currentToken:string,deviceId?:string,others=false){
+  await this.requireDeviceAccess(actorId,userId);
+  if(!deviceId&&!others)throw new Error('请选择需要下线的设备');
+  const result=await this.connection.query(`DELETE FROM sessions WHERE user_id=$1 AND ${others?'token<>$2':'id=$2::uuid'} RETURNING token`,[userId,others?currentToken:deviceId]);
+  return {ok:true,count:result.rowCount||0,loginRequired:result.rows.some(row=>row.token===currentToken)};
  }
 
  async chooseProject(token:string,userId:string,projectId:string){
