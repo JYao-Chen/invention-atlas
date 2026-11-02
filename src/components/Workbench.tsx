@@ -87,7 +87,7 @@ export default function Workbench(){
   if(chapter.module==='workspace'||chapter.module==='credentials'){if(management.current)management.current.open=true;if(chapter.module==='workspace')setWorkspaceOpen(id);else setCredentialsOpen(id);return;}
   if(chapter.module==='research'){setDeepGoal('');setDeepOpen(true);history.replaceState(null,'',location.pathname);return;}
   if(chapter.module==='materials'||chapter.module==='disclosures'){setView('reports');setMobileFocus(false);setMaterialsOpen({id,part:chapter.module});return;}
-  if(chapter.module==='review'){history.replaceState(null,'',location.pathname);setMobileFocus(false);const latest=reports[0];if(latest){nextReportTab.current='review';setReport(latest);setView('analysis');}else{setView('reports');setNotice('报告库还没有已保存报告。先在分析助手完成一次分析并保存报告，再打开逐条复核。');}return;}
+  if(chapter.module==='review'){history.replaceState(null,'',location.pathname);setMobileFocus(false);const latest=reports[0];if(latest){void openSavedReport(latest.id,true);}else{setView('reports');setNotice('报告库还没有已保存报告。先在分析助手完成一次分析并保存报告，再打开逐条复核。');}return;}
   setView(chapter.target==='assistant'?'analysis':chapter.target);setMobileFocus(chapter.target==='assistant');
   history.replaceState(null,'',location.pathname);
   if(chapter.tool){
@@ -100,9 +100,9 @@ export default function Workbench(){
  }
  const chosenStarter=useRef<Starter|undefined>(undefined);
  const [starterPool,setStarterPool]=useState<StarterPool>({version:'',batches:[]});
- const [logged,setLogged]=useState<boolean|null>(null),[view,setView]=useState<keyof typeof titles>('data'),[meta,setMeta]=useState<Dataset>(),[catalog,setCatalog]=useState<Dataset[]>([]),[tools,setTools]=useState<Tool[]>([]),[records,setRecords]=useState<Patent[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState('');
+ const [logged,setLogged]=useState<boolean|null>(null),[view,setView]=useState<keyof typeof titles>('data'),[dataLoading,setDataLoading]=useState(true),[meta,setMeta]=useState<Dataset>(),[catalog,setCatalog]=useState<Dataset[]>([]),[tools,setTools]=useState<Tool[]>([]),[records,setRecords]=useState<Patent[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState('');
  const [conversations,setConversations]=useState<Conversation[]>([]),[conversationId,setConversationId]=useState(''),[turns,setTurns]=useState<Run[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState(''),[results,setResults]=useState<AnalysisResult[]>([]),[selectedTool,setSelectedTool]=useState('search_patents'),[parameters,setParameters]=useState(JSON.stringify(defaults('search_patents'),null,2)),[toolBusy,setToolBusy]=useState(false),[mobileFocus,setMobileFocus]=useState(false),[toolRun,setToolRun]=useState<Run>(),[reportTab,setReportTab]=useState<'body'|'review'>('body');
-const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;run:Run}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run;revision?:number}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
+const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:string;title:string;createdAt:string;resultCount:number}[]>([]),[report,setReport]=useState<{id:string;title:string;run:Run;revision?:number}>(),[settings,setSettings]=useState<{model:string;embedding:string;configured:boolean;dimensions:number;username:string;base:string}>();
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
  const [historyPage,setHistoryPage]=useState(1);
  const [historySelection,setHistorySelection]=useState<string[]>([]),[reportSelection,setReportSelection]=useState<string[]>([]),[deleting,setDeleting]=useState(false);
@@ -123,9 +123,24 @@ const [patent,setPatent]=useState<Patent>(),[reports,setReports]=useState<{id:st
  useEffect(()=>{contentRef.current?.scrollTo({top:0});},[view,report?.id]);
  const nextReportTab=useRef<'body'|'review'>('body');
  useEffect(()=>{setReportTab(nextReportTab.current);nextReportTab.current='body';},[report?.id]);
-async function loadData(id?:string){const request=++dataRequest.current,recordRequest=++recordsRequest.current;setRecordLabel(null);setQuery('');setRecords([]);setTotal(0);const [d,config]=await Promise.all([api('datasets'),api('settings'),refreshHistory()]);if(request!==dataRequest.current)return;setSettings(config);setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;if(selected){const starters=await api('starters?dataset='+selected.id);if(request!==dataRequest.current)return;setStarterPool(starters);setMeta(selected);const t=await api('tools?dataset='+selected.id);if(request!==dataRequest.current)return;setTools(t.tools);if(recordRequest===recordsRequest.current)await loadRecords(selected.id,1,'',null);}else{setMeta(undefined);setStarterPool({version:"",batches:[]});setTools([]);setRecords([]);setTotal(0);}}
+async function loadData(id?:string){
+ const request=++dataRequest.current,recordRequest=++recordsRequest.current;
+ setDataLoading(true);setRecordLabel(null);setQuery('');setRecords([]);setTotal(0);setStarterPool({version:'',batches:[]});setTools([]);
+ const backgroundError=(e:Error)=>{if(request===dataRequest.current)setError(e.message);};
+ void api('settings').then(config=>{if(request===dataRequest.current)setSettings(config);}).catch(backgroundError);
+ void refreshHistory().catch(backgroundError);
+ const d=await api('datasets').catch(e=>{if(request===dataRequest.current)setDataLoading(false);throw e;});if(request!==dataRequest.current)return;setDataLoading(false);
+ setCatalog(d.datasets);const selected=d.datasets.find((x:Dataset)=>x.id===(id||d.active));chosenStarter.current=undefined;setMeta(selected);
+ if(selected){await Promise.all([
+  api('starters?dataset='+selected.id).then(starters=>{if(request===dataRequest.current)setStarterPool(starters);}).catch(e=>backgroundError(new Error('推荐问题加载失败：'+e.message))),
+  api('tools?dataset='+selected.id).then(t=>{if(request===dataRequest.current)setTools(t.tools);}).catch(e=>backgroundError(new Error('工具目录加载失败：'+e.message))),
+  recordRequest===recordsRequest.current?loadRecords(selected.id,1,'',null):Promise.resolve()
+ ]);}else{setRecords([]);setTotal(0);}
+}
+ async function openSavedReport(id:string,review=false){try{const item=await api('reports/'+id);nextReportTab.current=review?'review':'body';setReport(item);setView('analysis');setMobileFocus(false);}catch(e){setError((e as Error).message);}}
+
  async function changeAfterEdit(id?:string){sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);clearToolRun();setQuery('');setReport(undefined);await loadData(id);}
- async function refreshHistory(){const [{conversations},{reports}]=await Promise.all([api('conversations'),api('reports')]);setConversations(conversations);setReports(reports);setHistorySelection(ids=>ids.filter(id=>conversations.some((c:Conversation)=>c.id===id)));setReportSelection(ids=>ids.filter(id=>reports.some((r:{id:string})=>r.id===id)));}
+ async function refreshHistory(){const [{conversations},{reports}]=await Promise.all([api('conversations'),api('reports?summary=1')]);setConversations(conversations);setReports(reports);setHistorySelection(ids=>ids.filter(id=>conversations.some((c:Conversation)=>c.id===id)));setReportSelection(ids=>ids.filter(id=>reports.some((r:{id:string})=>r.id===id)));}
  function selectSaved(kind:'reports'|'conversations',id:string,selected:boolean){const update=kind==='reports'?setReportSelection:setHistorySelection;update(ids=>selected?[...new Set([...ids,id])]:ids.filter(value=>value!==id));}
  async function removeSaved(kind:'reports'|'conversations',ids:string[]){
   if(deleting||!ids.length)return;
@@ -141,7 +156,7 @@ async function loadData(id?:string){const request=++dataRequest.current,recordRe
   }catch(error){setError((error as Error).message);}finally{setDeleting(false);}
  }
 async function loadRecords(id:string,p:number,q:string,label:RecordLabelSelection=recordLabel){const request=++recordsRequest.current;const params=new URLSearchParams({dataset:id,page:String(p),q,...(label?{label:label.id,includeChildren:String(label.includeChildren)}:{})});const data=await api('patents?'+params);if(request!==recordsRequest.current)return;setRecords(data.records);setTotal(data.total);setPage(p);}
-useEffect(()=>{let current=true;const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);api('workspace').then(async(next:Workspace)=>{if(!current)return;setWorkspace(next);setLogged(true);if(!next.current)return;await loadData();if(!current)return;if(saved.reportId&&saved.page==='analysis'){const item=(await api('reports')).reports.find((r:{id:string})=>r.id===saved.reportId);if(item){setReport(item);return;}}const toolRunId=sessionStorage.getItem('atlas-tool-run');if(toolRunId&&saved.page==='analysis'){try{const run:Run=await api('runs/'+toolRunId);if(!current)return;setToolRun(run);setResults(run.results);if(run.status==='running')void follow(run.id,'tool',true);}catch{sessionStorage.removeItem('atlas-tool-run');}}const remembered=sessionStorage.getItem('patent-conversation');if(remembered&&(saved.page==='analysis'||saved.assistant)){const items=(await api('conversations')).conversations;const c=items.find((item:Conversation)=>item.id===remembered);if(c){await openConversation(c,false);}else sessionStorage.removeItem('patent-conversation');}}).catch(()=>{if(current)setLogged(false);});return()=>{current=false;stream.current?.abort();toolStream.current?.abort();};},[]);
+useEffect(()=>{let current=true;const saved=restoredNavigation(sessionStorage.getItem('atlas-navigation'),location.hash);api('workspace').then(async(next:Workspace)=>{if(!current)return;setWorkspace(next);setLogged(true);if(!next.current)return;await loadData();if(!current)return;if(saved.reportId&&saved.page==='analysis'){const item=await api('reports/'+saved.reportId);if(item){setReport(item);return;}}const toolRunId=sessionStorage.getItem('atlas-tool-run');if(toolRunId&&saved.page==='analysis'){try{const run:Run=await api('runs/'+toolRunId);if(!current)return;setToolRun(run);setResults(run.results);if(run.status==='running')void follow(run.id,'tool',true);}catch{sessionStorage.removeItem('atlas-tool-run');}}const remembered=sessionStorage.getItem('patent-conversation');if(remembered&&(saved.page==='analysis'||saved.assistant)){const items=(await api('conversations')).conversations;const c=items.find((item:Conversation)=>item.id===remembered);if(c){await openConversation(c,false);}else sessionStorage.removeItem('patent-conversation');}}).catch(()=>{if(current)setLogged(false);});return()=>{current=false;stream.current?.abort();toolStream.current?.abort();};},[]);
 useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElement;const dialog=document.querySelector<HTMLElement>('.patent-detail');dialog?.querySelector<HTMLElement>('button')?.focus();const handle=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPatent(undefined);return;}if(event.key==='Tab'&&dialog){const controls=[...dialog.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],summary,input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')];const visible=controls.filter(control=>control.getClientRects().length>0);const first=visible[0],last=visible.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};document.addEventListener('keydown',handle);return()=>{document.removeEventListener('keydown',handle);opener?.focus();};},[Boolean(patent)]);
  async function changeDataset(id:string){stream.current?.abort();await api('datasets',{id},'PATCH');sessionStorage.removeItem('patent-conversation');setConversationId('');setTurns([]);clearToolRun();setReport(undefined);await loadData(id);}
  async function openPatent(id:string,datasetId=meta?.id,location?:PatentEvidenceLocation){try{const record=await api(`patents/${id}?dataset=${datasetId}`);setPatentEvidence(location);setPatentDatasetId(datasetId);setPatent(record);}catch(e){setError((e as Error).message);}}
@@ -226,7 +241,7 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <header className="topbar">
 <div className="page-heading">
 <h1>{deepOpen?'深度报告':mobileFocus?'分析助手':report?report.title:titles[view]}</h1>
-<span className="dataset-caption">{currentMeta?.name||'尚未导入数据'}</span>
+<span className="dataset-caption">{currentMeta?.name||(dataLoading?'正在加载数据…':'尚未导入数据')}</span>
 </div>
 <div className="top-actions">
 {workspace&&<details ref={management} className="workspace-actions"><summary>管理<ChevronDown size={15} aria-hidden="true"/></summary><div>
@@ -396,10 +411,10 @@ useEffect(()=>{if(!patent)return;const opener=document.activeElement as HTMLElem
 <FileText size={24}/>
 <div>
 <h3>{item.title}</h3>
-<p>{new Date(item.createdAt).toLocaleString('zh-CN')} · {item.run.results.length} 项工具</p>
+<p>{new Date(item.createdAt).toLocaleString('zh-CN')} · {item.resultCount} 项工具</p>
 </div>
-<button onClick={()=>{setReport(item);setView('analysis');setMobileFocus(false);}}>查看报告</button>
-<button onClick={()=>{nextReportTab.current='review';setReport(item);setView('analysis');setMobileFocus(false);}}>逐条复核</button>
+<button onClick={()=>void openSavedReport(item.id)}>查看报告</button>
+<button onClick={()=>void openSavedReport(item.id,true)}>逐条复核</button>
 <a className="button" href={'/api/reports/'+item.id+'/html'}>HTML</a>
 <a className="button" href={'/api/reports/'+item.id+'/markdown'}>Markdown</a>
 <button className="danger-action" disabled={deleting} onClick={()=>void removeSaved('reports',[item.id])}>删除</button>

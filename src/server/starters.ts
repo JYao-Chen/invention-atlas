@@ -30,6 +30,7 @@ export function starterCandidates(records:Patent[],datasetId:string,previous:str
   if(['generate_wordcloud','analyze_yearly_keywords','analyze_entity_portfolio'].includes(t.name))params.top_k=[10,15,20][Math.floor(random()*3)];
   if(t.name==='analyze_clustering')params.k=Math.min(records.length,[3,4,5,6][Math.floor(random()*4)]);
   if(['read_patent_details','analyze_claim_elements','analyze_tech_matrix','compare_claims'].includes(t.name)&&readable.length){const p=readable[Math.floor(random()*readable.length)];params.patent_numbers=[p.id];if(t.name==='compare_claims')params.patent_numbers.push(readable.find(x=>x.id!==p.id)!.id);prefix=params.patent_numbers.join(' 与 ')+'：';}
+  if(t.name==='analyze_patent_reading'){const candidates=records.filter(p=>p.abstract);params.patent_numbers=[candidates[Math.floor(random()*candidates.length)].id];}
   let question=prefix+questions[t.name];
   const source=records[Math.floor(random()*records.length)],terms=tokens(source.title).slice(0,4),query=terms.join(' ')||source.title;
   if(t.name==='search_patents'){params.query=source.title;question='检索与“'+source.title+'”相近的专利，列出相关记录和摘要依据。';}

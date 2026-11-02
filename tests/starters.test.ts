@@ -35,3 +35,8 @@ test('a bound starter plan saves effective defaults and audits its actual execut
  await saveRun(task);await executeRun(task,[{tool:'analyze_country_distribution',params:{}}],true,new AbortController().signal);task.status='completed';await finishRun(task);
  const current=(await run(task.id))!;assert.equal(current.status,'completed');assert.equal(current.audit?.[0].status,'completed');assert.equal(current.plan[0].params.top_k,20);assert.deepEqual(current.plan[0].params,current.results[0].params);
 });
+
+test('recommendations for an abstract-only dataset bind the patent reading identifier',()=>{
+ const small=[normalize({id:'US999001B1',title:'Blockchain transaction processing',abstract:'A transaction processing method.'},'UNIT TEST ONLY')];
+ for(let seed=1;seed<=30;seed++){let state=seed;const items=starterCandidates(small,'small',[],()=>((state=state*16807%2147483647)/2147483647));for(const item of items)assert.ok(stepSchema.safeParse({tool:item.name,params:item.params}).success);}
+});

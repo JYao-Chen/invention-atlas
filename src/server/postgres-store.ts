@@ -151,6 +151,10 @@ export class PostgresStore {
   return id;
  }
 
+ async reportSummaries():Promise<{id:string;title:string;createdAt:string;resultCount:number}[]>{
+  return (await this.connection.query(`SELECT id,title,created_at AS "createdAt",coalesce(jsonb_array_length(payload->'run'->'results'),0) AS "resultCount" FROM reports ORDER BY created_at DESC`)).rows;
+ }
+
  async reports():Promise<{id:string;title:string;createdAt:string;run:Run}[]>{
   return (await this.connection.query('SELECT id,title,created_at,payload FROM reports ORDER BY created_at DESC')).rows.map(row=>({id:row.id,title:row.title,createdAt:row.created_at,...row.payload,run:runCopy(row.payload.run)}));
  }
