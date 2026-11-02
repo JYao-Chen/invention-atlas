@@ -17,7 +17,7 @@ test('manual exposes contribution links in a dedicated footer and the navigation
 import {questions} from '../src/lib/suggestions';
 test('manual has distinct chapters, valid destinations, sections and documented demos',()=>{
  assert.equal(new Set(guideChapters.map(c=>c.id)).size,guideChapters.length);
- assert.equal(guideChapters.length,50);
+ assert.equal(guideChapters.length,49);
  for(const [index,c] of guideChapters.entries()){assert.ok(['data','analysis','history','reports','settings','assistant'].includes(c.target));assert.ok(c.body.includes('## '));assert.equal(c.number,String(index+1).padStart(2,'0'));assert.ok(!c.title.includes('：'));if(c.question)assert.ok(c.question.length>10);}
 });
 test('manual documents released professional, material, project and integration workflows',()=>{
@@ -86,16 +86,4 @@ test('architecture inventories cover current nodes, analysis tools, research too
  assert.ok(chapter.sections.filter(s=>s.body.includes('| ---')).every(s=>s.wide));
  assert.ok(agentArchitectureMermaid.includes('ExecutionAudit'));
  assert.ok(agentArchitectureMermaid.includes('ReviseReport'));
-});
-
-test('presentation shortcuts point to available functions and prefill questions without running them',()=>{
- const chapter=guideChapters.find(c=>c.id==='presentation')!;
- assert.equal(chapter.title,'演示');assert.equal(chapter.target,'assistant');
- const actions=chapter.sections.flatMap(s=>s.actions||[]);
- assert.ok(actions.some(a=>a.target==='assistant'&&a.question));
- for(const action of actions){
-  if(action.chapterId)assert.ok(guideChapters.some(c=>c.id===action.chapterId),action.chapterId);
-  if(action.guideId)assert.ok(guideChapters.some(c=>c.id===action.guideId),action.guideId);
-  if(action.mode)assert.ok(['fill','assistant'].includes(action.mode));
- }
 });
