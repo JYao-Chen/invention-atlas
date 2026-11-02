@@ -1701,3 +1701,6 @@ tbody tr:hover { background:var(--band) }
  .architecture-mobile-flow p { font-size:13px; line-height:1.9; color:var(--ink-secondary); margin:6px 0 0 }
  .architecture-flow-intro,.architecture-flow-caption { padding-inline:16px }
 }
+
+.help-section-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px }
+.help-section-actions button { display:inline-flex; align-items:center; gap:8px; text-align:left; white-space:normal }

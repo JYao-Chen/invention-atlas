@@ -85,7 +85,7 @@ export default function Workbench(){
   const id=++guideSequence.current;setReport(undefined);setError('');
   if(chapter.example){if(!meta){setError('请先选择数据集，再打开专业任务。');return;}try{const sample=example?(await api('patents?'+new URLSearchParams({dataset:meta.id,page:'1',q:''}))).records:[];if(id!==guideSequence.current)return;setProfessionalLaunch({id,workflow:chapter.example.workflow,preset:example?professionalPreset(chapter.example.workflow,meta,sample):{datasetId:meta.id},question:example?chapter.example.question:undefined});}catch(error){setError('读取演示参数失败：'+(error as Error).message);}return;}
   if(chapter.module==='workspace'||chapter.module==='credentials'){if(management.current)management.current.open=true;if(chapter.module==='workspace')setWorkspaceOpen(id);else setCredentialsOpen(id);return;}
-  if(chapter.module==='research'){setDeepGoal('');setDeepOpen(true);history.replaceState(null,'',location.pathname);return;}
+  if(chapter.module==='research'){setDeepGoal(example?chapter.question||'':'');setDeepOpen(true);history.replaceState(null,'',location.pathname);return;}
   if(chapter.module==='materials'||chapter.module==='disclosures'){setView('reports');setMobileFocus(false);setMaterialsOpen({id,part:chapter.module});return;}
   if(chapter.module==='review'){history.replaceState(null,'',location.pathname);setMobileFocus(false);const latest=reports[0];if(latest){void openSavedReport(latest.id,true);}else{setView('reports');setNotice('报告库还没有已保存报告。先在分析助手完成一次分析并保存报告，再打开逐条复核。');}return;}
   setView(chapter.target==='assistant'?'analysis':chapter.target);setMobileFocus(chapter.target==='assistant');

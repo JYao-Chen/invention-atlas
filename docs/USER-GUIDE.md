@@ -5,54 +5,55 @@
 登录自己部署的应用，在首页地址后追加章节路由即可打开相应说明，例如 `#guide/start`。
 
 - [01 系统概述](#start)
-- [02 智能体协作与技术架构](#architecture)
-- [03 演示数据与获取](#demo-data)
-- [04 数据导入与管理](#data)
-- [05 组织、项目与成员](#workspace)
-- [06 研究材料与OCR](#materials)
-- [07 技术交底整理](#disclosures)
-- [08 数据概况](#get_dataset_summary)
-- [09 数据质量审计](#audit_dataset)
-- [10 研究范围与计数口径](#tools)
-- [11 专利检索](#search_patents)
-- [12 全文片段检索](#search_patent_passages)
-- [13 检索策略比较](#audit_search_strategy)
-- [14 专利原文与详情](#read_patent_details)
-- [15 技术问题、手段与效果](#analyze_patent_reading)
-- [16 公开趋势分析](#analyze_patent_trend)
-- [17 生命周期统计](#analyze_lifecycle)
-- [18 IPC分类分布](#analyze_ipc_distribution)
-- [19 公开局分布](#analyze_country_distribution)
-- [20 关键词词频分析](#generate_wordcloud)
-- [21 年度关键词分析](#analyze_yearly_keywords)
-- [22 关键词突现分析](#analyze_burst_terms)
-- [23 技术主题聚类](#charts)
-- [24 关键词方法对比](#compare_keyword_methods)
-- [25 申请人专利组合](#analyze_entity_portfolio)
-- [26 竞争者演化分析](#analyze_competitor_evolution)
-- [27 申请人集中度](#analyze_concentration)
-- [28 申请人合作网络](#analyze_co_network)
-- [29 引证、共引与文献耦合](#analyze_citation_network)
-- [30 引证技术主路径](#analyze_tech_roadmap)
-- [31 引证指标筛查](#analyze_patent_valuation)
-- [32 科学论文关联](#external)
-- [33 同族地域分析](#analyze_family_geography)
-- [34 来源时点法律状态统计](#analyze_legal_status)
-- [35 权利要求要素抽取](#analyze_claim_elements)
-- [36 权利要求对照](#compare_claims)
-- [37 技术效果矩阵](#analyze_tech_matrix)
-- [38 技术全景研究](#landscape-workflow)
-- [39 竞争主体专题研究](#competitor-workflow)
-- [40 技术方案查新](#novelty-workflow)
-- [41 专利布局研究](#layout-workflow)
-- [42 数据变化监测](#monitor_patent_changes)
-- [43 综合分析流程](#demo)
-- [44 分析助手](#assistant)
-- [45 深度报告](#deep-research)
-- [46 报告与研究记录](#history)
-- [47 结论复核与检索实验](#review)
-- [48 模型配置](#settings)
-- [49 开放接口与MCP](#integrations)
+- [02 演示](#presentation)
+- [03 智能体协作与技术架构](#architecture)
+- [04 演示数据与获取](#demo-data)
+- [05 数据导入与管理](#data)
+- [06 组织、项目与成员](#workspace)
+- [07 研究材料与OCR](#materials)
+- [08 技术交底整理](#disclosures)
+- [09 数据概况](#get_dataset_summary)
+- [10 数据质量审计](#audit_dataset)
+- [11 研究范围与计数口径](#tools)
+- [12 专利检索](#search_patents)
+- [13 全文片段检索](#search_patent_passages)
+- [14 检索策略比较](#audit_search_strategy)
+- [15 专利原文与详情](#read_patent_details)
+- [16 技术问题、手段与效果](#analyze_patent_reading)
+- [17 公开趋势分析](#analyze_patent_trend)
+- [18 生命周期统计](#analyze_lifecycle)
+- [19 IPC分类分布](#analyze_ipc_distribution)
+- [20 公开局分布](#analyze_country_distribution)
+- [21 关键词词频分析](#generate_wordcloud)
+- [22 年度关键词分析](#analyze_yearly_keywords)
+- [23 关键词突现分析](#analyze_burst_terms)
+- [24 技术主题聚类](#charts)
+- [25 关键词方法对比](#compare_keyword_methods)
+- [26 申请人专利组合](#analyze_entity_portfolio)
+- [27 竞争者演化分析](#analyze_competitor_evolution)
+- [28 申请人集中度](#analyze_concentration)
+- [29 申请人合作网络](#analyze_co_network)
+- [30 引证、共引与文献耦合](#analyze_citation_network)
+- [31 引证技术主路径](#analyze_tech_roadmap)
+- [32 引证指标筛查](#analyze_patent_valuation)
+- [33 科学论文关联](#external)
+- [34 同族地域分析](#analyze_family_geography)
+- [35 来源时点法律状态统计](#analyze_legal_status)
+- [36 权利要求要素抽取](#analyze_claim_elements)
+- [37 权利要求对照](#compare_claims)
+- [38 技术效果矩阵](#analyze_tech_matrix)
+- [39 技术全景研究](#landscape-workflow)
+- [40 竞争主体专题研究](#competitor-workflow)
+- [41 技术方案查新](#novelty-workflow)
+- [42 专利布局研究](#layout-workflow)
+- [43 数据变化监测](#monitor_patent_changes)
+- [44 综合分析流程](#demo)
+- [45 分析助手](#assistant)
+- [46 深度报告](#deep-research)
+- [47 报告与研究记录](#history)
+- [48 结论复核与检索实验](#review)
+- [49 模型配置](#settings)
+- [50 开放接口与MCP](#integrations)
 
 <a id="start"></a>
 
@@ -76,9 +77,86 @@ Invention Atlas 是一个由智能体组织研究的专利分析平台。系统�
 
 ## 继续阅读
 
-了解 Agent、Tools 和 Skills 如何配合，可先看[智能体协作与技术架构](#guide/architecture)。首次体验可先看[演示数据与获取](#guide/demo-data)；准备自己的资料时，从[数据导入与管理](#guide/data)开始。已有数据时，可以先看[数据概况](#guide/get_dataset_summary)，再试试[年度关键词分析](#guide/analyze_yearly_keywords)或[技术主题聚类](#guide/charts)。
+介绍项目时，可以从[演示](#guide/presentation)直接进入助手、工具和报告。了解 Agent、Tools 和 Skills 如何配合，可先看[智能体协作与技术架构](#guide/architecture)。首次体验可先看[演示数据与获取](#guide/demo-data)；准备自己的资料时，从[数据导入与管理](#guide/data)开始。已有数据时，可以先看[数据概况](#guide/get_dataset_summary)，再试试[年度关键词分析](#guide/analyze_yearly_keywords)或[技术主题聚类](#guide/charts)。
 
 需要完成一份专题报告，可以按[综合分析流程](#guide/demo)操作；涉及多阶段确认的研究，见“专业研究任务”各章。
+
+---
+
+欢迎使用与共建：[GitHub 仓库](https://github.com/JYao-Chen/invention-atlas) · [反馈问题](https://github.com/JYao-Chen/invention-atlas/issues) · [提交改进](https://github.com/JYao-Chen/invention-atlas/pulls)
+
+
+<a id="presentation"></a>
+
+# 演示
+
+沿着“提出问题、分析资料、研读原文、形成报告”的顺序，介绍 Invention Atlas。页面中的按钮可以直接进入对应功能，示例问题会填入对话助手，确认后再发送。
+
+以区块链专利的技术路线、竞争布局与研发机会为主线，完整讲解约十分钟。可以按现场节奏选取其中几个环节，随时回到本页继续。
+
+应用中的章节路由：`#guide/presentation`。
+
+## 演示入口
+
+提前登录并选择演示数据集，准备一份已完成的深度研究任务和报告。下面的入口可直接打开数据页、对话助手、深度报告和报告库。
+
+## 介绍项目
+
+可以用下面这段话开场：
+
+> Invention Atlas 是一个由智能体组织研究的专利分析平台。用户提出研究问题后，系统可以检索专利、分析技术分布、阅读原文，并逐步形成带有来源引用的报告。今天围绕区块链专利，看看系统怎样从总体分布走到具体技术方案，再把证据组织成研究判断。
+
+## 查看数据与研究范围
+
+打开“数据与证据”，展示选中的数据集、记录数量和资料来源。随项目提供的区块链演示数据包含 3,000 件、覆盖 2018—2025 年的美国专利公开记录。使用自己的资料演示时，按实际数据集介绍来源和范围。
+
+> 研究首先要明确使用哪些资料。接下来的检索、统计和原文阅读，都会围绕当前选定的数据集展开。
+
+也可以打开年度关键词工具，展示一次可设置参数的分析，再返回本页进入助手。
+
+## 让对话助手分析
+
+点击下面的按钮，进入对话助手并填入问题。查看当前数据集后发送，展示任务计划、工具执行进度和回答。
+
+> 请分析这批专利中技术路线的变化，并找出值得进一步研究的方向。
+
+> 用户用普通语言提出目标。助手根据问题规划分析步骤，调用工具取得实际结果，再组织解读。可以从结果中选出一个值得继续追问的变化，观察研究怎样深入。
+
+## 继续追问并查看原文
+
+在刚才的对话中继续追问，挑选代表案例，解释技术差异。下面的按钮会把追问填入助手，保留当前对话。
+
+> 挑选有代表性的专利，比较它们解决问题的方式，并给出原文依据。
+
+展示工具结果、公开编号与相关原文。围绕一个具体判断讲清：用了哪些数据，比较了哪些技术条件，原文在哪里支持这一判断。
+
+## 展示深度研究与写作
+
+打开深度报告，可以用一句研究目标开始讨论，也可以回看提前准备好的已完成任务。
+
+> 研究区块链专利的技术路线、竞争布局与研发机会。
+
+> 用户先与 Agent 确认研究范围和提纲。研究开始后，Agent 根据已有发现选择工具，读取分析结果和原文，保存阶段判断，再组织章节。发现证据缺口或章节之间有冲突时，可以继续补证和修订。
+
+依次回看“理解需求”“讨论方案”“研究与写作”，选择一条包含具体发现、来源与后续动作的记录展开。用当前任务中真实保存的记录，说明研究方向和章节怎样调整。
+
+## 阅读报告与核查证据
+
+进入报告库，打开提前准备好的完整报告，从左侧目录进入一个有比较结论的章节。指出一个论点，说明它用了哪些数据或案例；点击上标引用，展示来源与原文位置；最后返回综合结论，说明这些分析怎样支持研发选题或后续验证。
+
+> 我们可以从报告中的判断，一直回到支撑它的数据和原文。例如这里比较两种技术方案，报告需要说明它们分别解决什么问题、采用什么机制，以及在什么条件下具有不同取舍。引用把这些判断与具体资料连接起来，方便继续核查和研究。
+
+## 解释智能体如何工作
+
+打开架构说明，先展示对话分析路径，再切到深度报告路径。用图中的箭头解释结果怎样返回，研究怎样继续。
+
+> 系统提供两条执行路径。对话分析用 LangGraph 组织规划、检索、分析和报告节点。深度报告由一个 Deep Agent 持续推进，它在工具返回后继续决定下一步。Agent 负责判断和组织行动，Tools 负责取得数据、阅读原文和保存章节，Skills 提供研究方法。
+
+## 结束语
+
+> 用户给出研究目标，系统围绕问题推进分析；报告中的判断，可以追溯到具体证据。
+
+需要展开操作时，可继续阅读[综合分析流程](#guide/demo)。
 
 ---
 
