@@ -63,7 +63,10 @@ test('architecture guide describes the actual agent modes and exports its resear
  assert.ok(chapter);assert.ok(chapter.sections.some(s=>s.diagram==='agent-architecture'));
  for(const term of ['Agent','工具','Skills','LangGraph','Deep Agents','用户'])assert.ok((chapter.intro+chapter.body).includes(term),term);
  assert.ok(readFileSync('docs/USER-GUIDE.md','utf8').includes(agentArchitectureMermaid));
- assert.ok(guideChapters[0].intro.includes('多智能体协作'));
+ assert.ok(guideChapters[0].intro.includes('智能体组织研究'));
+ assert.ok(chapter.body.includes('subagents: []'));
+ assert.ok(chapter.body.includes('一个研究 Agent'));
+ assert.ok(agentArchitectureMermaid.includes('C_R[')&&agentArchitectureMermaid.includes('D_READ['));
 });
 
 

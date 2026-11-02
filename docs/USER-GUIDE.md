@@ -58,7 +58,7 @@
 
 # 系统概述
 
-Invention Atlas 是一个基于多智能体协作的专利分析平台。系统围绕研究问题组织任务规划、检索与范围审查，调用分析和原文阅读工具，逐步形成有证据支持的专业报告。
+Invention Atlas 是一个由智能体组织研究的专利分析平台。系统围绕研究问题组织任务规划、检索与范围审查，调用分析和原文阅读工具，逐步形成有证据支持的专业报告。
 
 用户可以讨论研究方案、调整提纲和补充要求。不同研究任务共用专利资料与分析结果，长报告按章节推进，并保留原文出处和修订记录。
 
@@ -89,60 +89,60 @@ Invention Atlas 是一个基于多智能体协作的专利分析平台。系统�
 
 # 智能体协作与技术架构
 
-一个研究问题如何变成有依据的报告？Agent 决定下一步，Tools 取得数据与原文，Skills 提供研究方法。结果回到 Agent，推动下一轮分析、写作和修订。
+系统有两条执行路径：对话分析通过 LangGraph 的职责节点交接任务状态；深度报告由一个 Deep Agent 持续调用工具、研究和写作。两条路径共用专利分析能力，各自保存执行进度。
 
-本章先解释协作方式，再分别介绍对话分析与深度报告。工具和技能的具体用途可在本章手册中查阅。
+这里的协作包含节点之间的状态交接，以及研究 Agent 与工具、Skills、用户反馈的配合。先看路径对照和连线，再查具体节点、工具与技能。
 
 应用中的章节路由：`#guide/architecture`。
 
-## 研究怎样组织
+## 两条路径，各自怎样工作
 
-用户提出研究目标，与助手确认用途、范围和提纲。执行中，Agent 根据当前发现选择行动：需要分布数据时调用分析工具，需要解释技术差异时读取原文，证据充分时写入章节。新发现改变判断时，再补证或修订。
+| 入口 | 执行主体与框架 | 谁决定下一步 | 交接内容 |
+| --- | --- | --- | --- |
+| 对话分析 | LangGraph StateGraph，由职责节点组成一次运行 | 状态图控制节点顺序与条件路由，模型生成计划、审查范围并组织正文 | 工具步骤、候选编号、范围、实际结果、正文与检查意见 |
+| 深度报告 | Deep Agents JS，使用 LangGraph 执行与 checkpoint；每个任务运行一个研究 Agent | 同一个模型在工具返回后继续选择分析、阅读、补证、写作或修订 | 工具调用与返回、用户反馈、研究记录、证据目录、章节及版本 |
+
+两条路径分别从对话分析和深度报告入口启动。深度报告的工具调用直接进入共享分析能力；对话状态图不会作为其必经阶段。深度报告配置为 `subagents: []`，并关闭通用子 Agent；图中的 Skills、Tools 和状态存储各自承担方法指导、操作执行和记录恢复。
 
 ```mermaid
 flowchart TD
- subgraph Chat[对话分析 · LangGraph 职责节点]
- U[用户问题] --> P[Planner 规划]
- P --> S[Search 检索]
- S --> V[ResearchReview 范围审查]
- V -->|补检索 最多两轮| S
- V --> A[Analysis 综合分析]
- A --> C[Claim 权利要求]
- A --> M[Comparison 条款比较]
- A --> N[Citation 引证网络]
- C --> X[ExecutionAudit 执行检查]
- M --> X
- N --> X
- X --> R[Report 组织回答]
- R --> D[Audit 数值与编号检查]
- D -->|通过| E[完成回答]
- D -->|需校正| F[ReviseReport 修订路由]
- F -->|一次自动修订| R
+ subgraph CHAT[对话分析：LangGraph 状态图]
+ C_U[用户问题] --> C_P[Planner：计划与范围]
+ C_P --> C_S[Search：候选编号与检索来源]
+ C_S --> C_V[ResearchReview：范围审查]
+ C_V -->|补检索：最多两轮| C_S
+ C_V -->|确定研究范围| C_A[Analysis：综合分析]
+ C_A --> C_C[Claim：权利要求]
+ C_A --> C_M[Comparison：条款比较]
+ C_A --> C_N[Citation：引证网络]
+ C_C --> C_X[ExecutionAudit：等待三个分支并检查执行]
+ C_M --> C_X
+ C_N --> C_X
+ C_X -->|范围与实际结果| C_R[Report：模型组织正文]
+ C_R --> C_D[Audit：程序核对编号与数值]
+ C_D -->|通过| C_E[完成回答]
+ C_D -->|需校正| C_F[ReviseReport：最多一次自动修订]
+ C_F --> C_R
  end
- subgraph Deep[深度报告 · 持续研究 Agent]
- Q[目标与用户反馈] --> B[research_state 读取当前状态]
- B --> O[propose_outline 保存方案]
- O --> K[confirm_outline 等待确认]
- K -->|讨论与调整| B
- K -->|确认或全自动| G[研究 Agent 选择行动]
- SK[Skills 方法与读取约定] -.指导.-> G
- G --> T[run_analysis 执行分析]
- T --> H[read_result 阅读完整结果]
- H --> G
- G --> I[read_patent / read_evidence 原文与证据]
- I --> G
- G --> L[record_research 问题 发现 缺口 下一步]
- L --> G
- G --> W[read_chapter / write_chapter 章节与发现]
- W --> G
- G --> R[read_report 全文核对]
- R --> Z[finish_report 组装并入库]
+ subgraph DEEP[深度报告：一个 Deep Agent 持续研究]
+ D_U[用户目标与反馈] --> D_O[propose_outline：保存方案]
+ D_O --> D_K[confirm_outline：确认或继续讨论]
+ D_K -->|修改方案| D_O
+ D_K -->|确认或全自动| D_A[研究 Agent：选择下一步]
+ D_SK[Skills：read_file 读取研究方法] -.方法指导.-> D_A
+ D_A -->|工具名、参数、研究问题| D_T[Tools：分析、阅读、研究记录、章节写作]
+ D_T -->|结果编号、证据位置、章节版本| D_A
+ D_T -->|保存发现、证据与版本| D_STATE[任务状态与 checkpoint]
+ D_STATE -.每轮注入反馈、预算、近期发现；暂停后恢复.-> D_A
+ D_A --> D_READ[read_report：全文与版本核对]
+ D_READ -->|补证或修订| D_A
+ D_READ -->|核对完成| D_FINISH[finish_report：保存到报告库]
  end
 ```
 
 ## 对话分析：节点怎样交接
 
-对话分析由 LangGraph 组织职责节点。它们共享问题、候选范围、工具结果与正文，各自处理一次分析中的具体工作。
+Planner、Search 等名称表示状态图中的职责节点。节点之间通过工具计划与运行状态衔接，接收前序节点保存的范围、结果和正文；模型调用集中在规划、范围审查和报告组织。Claim、Comparison、Citation 调用各自计划中的工具，ExecutionAudit 与 Audit 进行程序检查。
 
 | 节点 | 接收什么 | 执行与交接 |
 | --- | --- | --- |
@@ -162,11 +162,26 @@ flowchart TD
 
 ## 深度报告：研究怎样继续
 
-深度报告由 Deep Agents 中的同一个研究 Agent 持续推进。先通过 propose_outline 保存研究意图、范围和提纲，再由 confirm_outline 等待用户确认；用户提出修改时更新方案，全自动模式直接继续。
+深度报告在 `deep-research-engine.ts` 中通过 `createDeepAgent` 创建。一个研究 Agent 接收用户目标并持续推进同一个任务。先通过 propose_outline 保存研究意图、范围和提纲，再由 confirm_outline 等待用户确认；用户提出修改时更新方案，全自动模式直接继续。
 
-研究开始后，工具返回内容进入下一轮判断。Agent 读取完整结果和相关原文，把阶段发现、证据缺口与下一步保存到 record_research。写作中出现新问题时，可以返回检索、计算或原文阅读，再修订已经写过的章节。
+研究开始后，一次模型调用给出工具名与参数，工具执行后将结果作为消息返回模型。`run_analysis` 返回已保存结果的编号和预览；`read_result` 读取完整行，`read_patent` 登记原文片段与位置。模型根据返回内容决定接下来做什么。Agent 读取完整结果和相关原文，把阶段发现、证据缺口与下一步保存到 record_research。写作中出现新问题时，可以返回检索、计算或原文阅读，再修订已经写过的章节。
 
-章节 findings 供后续比较，正文保存历次版本。每轮同时读取剩余预算和未完成章节，及时保存已有证据支持的论证。研究目标得到回答后，read_report 返回当前全文、来源目录和版本供核对；需要修订时更新章节，再读取最新版本。核对完成后，finish_report 保存整篇报告与核对记录。
+章节 findings 供后续比较，正文保存历次版本。ResearchPersistence 中间件在每次模型调用前注入最新反馈、剩余预算、未完成章节、近期发现和待解问题；checkpoint 保存模型消息与执行状态。暂停后，任务从保存的位置恢复，继续使用已有研究记录与章节。研究目标得到回答后，read_report 返回当前全文、来源目录和版本供核对；需要修订时更新章节，再读取最新版本。核对完成后，finish_report 保存整篇报告与核对记录。
+
+## 一次研究循环，具体传递什么
+
+以“比较两种交易并行处理方案”为例。用户给出研究目标，Agent 读取 research-planning 的 SKILL.md，交出可确认的研究方案。用户确认后，Agent 根据需要选择以下行动；表中的顺序是一个示例，后续可返回任意需要补充的步骤。
+
+| 发起方 → 接收方 | 传递内容 | 返回后怎样继续 |
+| --- | --- | --- |
+| Agent → run_analysis | 研究问题、search_patents 标识、查询参数 | 取得结果编号，判断候选能否回答问题 |
+| Agent → read_result | 结果编号、需要核对的行或编号 | 从完整记录中选出需要研读的案例 |
+| Agent → read_patent | 公开编号、具体问题、字段与位置 | 得到逐字片段、来源位置与证据编号，比较冲突识别条件 |
+| Agent → record_research | 当前发现、证据编号、尚缺的性能证据和下一步 | 保存判断；下一轮模型调用读取相关记录，决定补证还是先写已有结论 |
+| Agent → write_chapter | 章节编号、完整正文、发现和来源编号 | 保存章节版本；新证据改变判断时读取旧章并修订 |
+| Agent → read_report / finish_report | 先读取全文与版本，再提交核对说明和版本映射 | 需要修订时继续循环，满足交付条件后保存整篇报告 |
+
+方案确认前，系统固定加载 research-planning；研究阶段固定加载持续研究、专利全景、原文研读、证据写作、事实修订和中文表达技能。模型通过 `read_file` 查看方法文件。Tools 接收结构化参数并返回实际资料，checkpoint 与任务记录负责跨轮次恢复。用户追加意见后，中间件把反馈带入下一次模型调用，Agent 据此调整研究与章节。
 
 ## 工具与技能手册
 

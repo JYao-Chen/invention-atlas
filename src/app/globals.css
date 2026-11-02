@@ -1680,3 +1680,24 @@ tbody tr:hover { background:var(--band) }
 .device-details dt { flex-shrink:0 }
 .device-details dd { margin:0 }
 @media(max-width:600px) { .device-details dl { grid-template-columns:1fr } .device-heading>div { width:100% } }
+
+.architecture-flow-intro { padding:20px 24px 0; margin:0; color:var(--ink-secondary); font-size:14px; line-height:1.8 }
+.architecture-flow-svg { display:block; width:100%; height:auto; padding:16px; font-family:var(--font-sans); color:var(--muted) }
+.architecture-svg-node rect { fill:var(--paper); stroke:var(--line); stroke-width:1.5 }
+.architecture-svg-node.is-agent rect { fill:var(--band); stroke:var(--accent); stroke-width:2 }
+.architecture-svg-title { fill:var(--ink); font-size:16px; font-weight:600 }
+.architecture-svg-detail { fill:var(--ink-secondary); font-size:13px }
+.architecture-svg-edge { stroke:var(--muted); stroke-width:1.5; fill:none }
+.architecture-svg-edge.is-guidance { stroke-dasharray:5 4 }
+.architecture-svg-label { fill:var(--muted); font-size:12px }
+.architecture-flow-caption { border-top:1px solid var(--line); padding:16px 24px; color:var(--muted); font-size:13px; line-height:1.8 }
+.architecture-mobile-flow { display:none }
+@media(max-width:760px) {
+ .architecture-flow-svg { display:none }
+ .architecture-mobile-flow { display:block; padding:0 24px 0 44px; margin:20px 0; font-size:14px }
+ .architecture-mobile-flow li { padding:0 0 18px 6px }
+ .architecture-mobile-flow li::marker { color:var(--accent) }
+ .architecture-mobile-flow strong { font-weight:600 }
+ .architecture-mobile-flow p { font-size:13px; line-height:1.9; color:var(--ink-secondary); margin:6px 0 0 }
+ .architecture-flow-intro,.architecture-flow-caption { padding-inline:16px }
+}
